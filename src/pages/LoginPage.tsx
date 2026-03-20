@@ -1,19 +1,27 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { useAuth } from '../hooks/useAuth';
 import { toast } from 'sonner';
 import { Loader2, Mail } from 'lucide-react';
 
+const IS_DEMO_MODE = window.location.pathname.startsWith('/demo') || window.location.search.includes('demo=true');
+
 const TEST_ACCOUNTS = [
-  { role: '🛡️ Admin', email: 'yjqbenjaminbusiness@gmail.com', pw: 'admin123', color: '#222' },
-  { role: '🏃 Player', email: 'yjqbenjaminbusiness2@gmail.com', pw: 'player123', color: '#1A7A4A' },
-  { role: '📋 Organizer', email: 'yjqbenjaminbusiness3@gmail.com', pw: 'organizer123', color: '#C47A00' },
-  { role: '📋 Support', email: 'yjqbenjaminbusiness4@gmail.com', pw: 'player456', color: '#555' },
+  { role: '🛡️ Admin', email: 'yjqbenjaminbusiness@gmail.com', pw: 'admin123', color: 'hsl(var(--foreground))' },
+  { role: '🏃 Player', email: 'yjqbenjaminbusiness2@gmail.com', pw: 'player123', color: 'hsl(var(--primary))' },
+  { role: '📋 Organizer', email: 'yjqbenjaminbusiness3@gmail.com', pw: 'organizer123', color: 'hsl(var(--accent))' },
+  { role: '📋 Support', email: 'yjqbenjaminbusiness4@gmail.com', pw: 'player456', color: 'hsl(var(--muted-foreground))' },
 ];
+
+function getDashboardPath(role: string, verified?: boolean) {
+  if (role === 'admin') return '/admin/dashboard';
+  if (role === 'organizer') return verified ? '/organizer/dashboard' : '/signup/organizer/pending';
+  return '/player/dashboard';
+}
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -22,27 +30,34 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [showMagicLink, setShowMagicLink] = useState(false);
   const navigate = useNavigate();
-  const { login, loginWithSupabase, signInWithGoogle, signInWithApple, signInWithMagicLink } = useAuth();
+  const location = useLocation();
+  const { login, loginWithSupabase, signInWithGoogle, signInWithApple, signInWithMagicLink, isAuthenticated, user } = useAuth();
+
+  // Redirect already-authenticated users away from login
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      const from = (location.state as any)?.from?.pathname;
+      navigate(from || getDashboardPath(user.role, user.verified), { replace: true });
+    }
+  }, [isAuthenticated, user, navigate, location.state]);
 
   const doLogin = async (loginEmail: string, loginPw: string) => {
+    if (isLoading) return;
     setIsLoading(true);
     // Try mock login first (for demo accounts)
-    const user = login(loginEmail, loginPw);
-    if (user) {
-      toast.success(`Welcome back, ${user.displayName}!`);
-      if (user.role === 'admin') navigate('/admin/dashboard');
-      else if (user.role === 'organizer') {
-        if (user.verified) navigate('/organizer/dashboard');
-        else navigate('/signup/organizer/pending');
-      } else navigate('/player/dashboard');
+    const mockUser = login(loginEmail, loginPw);
+    if (mockUser) {
+      toast.success(`Welcome back, ${mockUser.displayName}!`);
+      const from = (location.state as any)?.from?.pathname;
+      navigate(from || getDashboardPath(mockUser.role, mockUser.verified), { replace: true });
     } else {
       // Try Supabase auth
       try {
         await loginWithSupabase(loginEmail, loginPw);
         toast.success('Welcome back!');
-        navigate('/player/dashboard');
+        // Auth state change will trigger redirect via useEffect
       } catch {
-        toast.error('Invalid email or password. Please try again.');
+        toast.error('Invalid credentials. Please try again.');
       }
     }
     setIsLoading(false);
@@ -65,11 +80,8 @@ export default function LoginPage() {
     setIsLoading(false);
   };
 
-  const quickLogin = async (testEmail: string, testPw: string) => {
-    setEmail(testEmail);
-    setPassword(testPw);
-    await doLogin(testEmail, testPw);
-  };
+  // Check if demo mode via query param or referrer
+  const isDemoMode = IS_DEMO_MODE || location.search.includes('demo=true');
 
   return (
     <div className="container flex items-center justify-center min-h-[calc(100vh-4rem)] px-4">
@@ -123,9 +135,8 @@ export default function LoginPage() {
                 <Label htmlFor="magic-email">Email</Label>
                 <Input id="magic-email" type="email" placeholder="name@example.com" value={magicEmail} onChange={(e) => setMagicEmail(e.target.value)} required />
               </div>
-              <Button className="w-full" type="submit" disabled={isLoading} style={{ background: '#1A7A4A', color: '#fff' }}>
-                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                <Mail className="mr-2 h-4 w-4" /> Send Magic Link
+              <Button className="w-full bg-primary text-primary-foreground hover:bg-primary/90" type="submit" disabled={isLoading}>
+                {isLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Sending...</> : <><Mail className="mr-2 h-4 w-4" /> Send Magic Link</>}
               </Button>
               <Button variant="ghost" className="w-full text-sm" onClick={() => setShowMagicLink(false)}>
                 Use password instead
@@ -142,9 +153,8 @@ export default function LoginPage() {
                   <Label htmlFor="password">Password</Label>
                   <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
                 </div>
-                <Button className="w-full" type="submit" disabled={isLoading} style={{ background: '#1A7A4A', color: '#fff' }}>
-                  {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Log in
+                <Button className="w-full bg-primary text-primary-foreground hover:bg-primary/90" type="submit" disabled={isLoading}>
+                  {isLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Logging you in...</> : 'Log in'}
                 </Button>
               </form>
               <Button variant="ghost" className="w-full text-sm" onClick={() => setShowMagicLink(true)}>
@@ -164,21 +174,25 @@ export default function LoginPage() {
             <Button variant="link" className="p-0 h-auto" onClick={() => navigate('/signup/player')}>Sign up</Button>
           </div>
         </CardContent>
-        <CardFooter className="flex flex-col border-t bg-muted/30 p-4">
-          <p className="text-xs text-center text-muted-foreground mb-3 font-bold uppercase tracking-widest">
-            Demo Accounts — Quick Login
-          </p>
-          <div className="grid grid-cols-2 gap-3 text-[10px] w-full">
-            {TEST_ACCOUNTS.map(({ role, email: acc, pw, color }) => (
-              <button key={acc} type="button" disabled={isLoading} onClick={() => quickLogin(acc, pw)}
-                className="p-3 rounded-xl bg-white border-2 border-transparent shadow-sm text-left hover:border-primary/40 hover:shadow-md transition-all cursor-pointer active:scale-95 disabled:opacity-50">
-                <p className="font-bold flex items-center gap-1 mb-1" style={{ color }}>{role}</p>
-                <p className="truncate text-gray-500">{acc}</p>
-                <p className="font-mono font-bold" style={{ color: '#1A7A4A' }}>{pw}</p>
-              </button>
-            ))}
+
+        {/* Demo accounts - only visible in demo mode */}
+        {isDemoMode && (
+          <div className="flex flex-col border-t bg-muted/30 p-4">
+            <p className="text-xs text-center text-muted-foreground mb-3 font-bold uppercase tracking-widest">
+              Demo Accounts — Quick Login
+            </p>
+            <div className="grid grid-cols-2 gap-3 text-[10px] w-full">
+              {TEST_ACCOUNTS.map(({ role, email: acc, pw, color }) => (
+                <button key={acc} type="button" disabled={isLoading} onClick={() => doLogin(acc, pw)}
+                  className="p-3 rounded-xl bg-background border-2 border-transparent shadow-sm text-left hover:border-primary/40 hover:shadow-md transition-all cursor-pointer active:scale-95 disabled:opacity-50">
+                  <p className="font-bold flex items-center gap-1 mb-1" style={{ color }}>{role}</p>
+                  <p className="truncate text-muted-foreground">{acc}</p>
+                  <p className="font-mono font-bold text-primary">{pw}</p>
+                </button>
+              ))}
+            </div>
           </div>
-        </CardFooter>
+        )}
       </Card>
     </div>
   );

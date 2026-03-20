@@ -7,6 +7,9 @@ import { Input } from './ui/input';
 import { Checkbox } from './ui/checkbox';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from './ui/form';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
+
+
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
@@ -35,8 +38,14 @@ export function BetaRegistrationForm() {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsSubmitting(true);
     try {
-      // TODO: Replace with Supabase insert when backend is connected
-      console.log('Beta registration:', values);
+      const { error } = await supabase.from('beta_registrations').insert({
+        name: values.name,
+        email: values.email,
+        activity_size: values.activitySize,
+        organize_frequency: values.organizeFrequency,
+        consent: values.consent,
+      });
+      if (error) throw error;
       toast.success('Thanks! We\'ll reach out to invite you for early beta testing.');
       form.reset();
     } catch (error: any) {

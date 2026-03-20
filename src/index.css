@@ -1,105 +1,182 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=Lora:ital,wght@0,400..700;1,400..700&family=IBM+Plex+Mono:ital,wght@0,100..700;1,100..700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
-*/
-
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* === BOOKEE COLOR PALETTE === */
 
+    /* Primary: Jade Green – success, confirmed, CTA */
+    --primary: 152 60% 30%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Secondary: Ice Blue – backgrounds, cards */
+    --secondary: 204 80% 90%;
+    --secondary-foreground: 210 60% 20%;
+
+    /* Accent: Mustard/Amber – stars, waitlist, highlights */
+    --accent: 40 95% 40%;
+    --accent-foreground: 0 0% 100%;
+
+    /* Background: Cream/Off-White */
+    --background: 40 30% 97%;
+    --foreground: 220 30% 10%;
+
+    /* Muted: Very light ice blue for subtle areas */
+    --muted: 204 60% 94%;
+    --muted-foreground: 215 25% 40%;
+
+    /* Destructive: Red */
+    --destructive: 0 84% 50%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Card/Popover: pure white */
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-
+    --card-foreground: 220 30% 10%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover-foreground: 220 30% 10%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    /* Borders and Inputs */
+    --border: 210 30% 88%;
+    --input: 210 30% 88%;
+    --ring: 152 60% 30%;
+    --radius: 0.75rem;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    /* Charts */
+    --chart-1: 152 60% 30%;
+    --chart-2: 204 80% 50%;
+    --chart-3: 40 95% 40%;
+    --chart-4: 0 84% 50%;
+    --chart-5: 280 60% 50%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    /* Sidebar */
+    --sidebar-background: 220 30% 10%;
+    --sidebar-foreground: 210 40% 98%;
+    --sidebar-primary: 152 60% 30%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 40 95% 40%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 210 30% 88%;
+    --sidebar-ring: 152 60% 30%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    /* Fonts */
+    --font-sans: DM Sans, sans-serif;
+    --font-serif: Lora, serif;
+    --font-mono: IBM Plex Mono, monospace;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
-
-    --radius: 0.5rem;
-
-    --sidebar-background: 0 0% 98%;
-
-    --sidebar-foreground: 240 5.3% 26.1%;
-
-    --sidebar-primary: 240 5.9% 10%;
-
-    --sidebar-primary-foreground: 0 0% 98%;
-
-    --sidebar-accent: 240 4.8% 95.9%;
-
-    --sidebar-accent-foreground: 240 5.9% 10%;
-
-    --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    /* Shadows */
+    --shadow-elegant: 0 4px 24px -4px hsl(152 60% 30% / 0.20);
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
+    --background: 222 47% 11%;
+    --foreground: 210 40% 92%;
+    --card: 217 32% 17%;
+    --card-foreground: 210 40% 92%;
+    --popover: 217 32% 17%;
+    --popover-foreground: 210 40% 92%;
+    --primary: 152 55% 45%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 217 23% 23%;
+    --secondary-foreground: 210 40% 80%;
+    --muted: 217 32% 17%;
+    --muted-foreground: 220 9% 46%;
+    --accent: 40 90% 55%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 215 14% 34%;
+    --input: 215 14% 34%;
+    --ring: 152 55% 45%;
+    --chart-1: 152 55% 45%;
+    --chart-2: 204 80% 55%;
+    --chart-3: 40 90% 55%;
+    --chart-4: 0 84% 60%;
+    --chart-5: 280 65% 55%;
+    --sidebar-background: 217 32% 17%;
+    --sidebar-foreground: 210 40% 92%;
+    --sidebar-primary: 152 55% 45%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-accent: 40 90% 55%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 215 14% 34%;
+    --sidebar-ring: 152 55% 45%;
   }
-}
 
-@layer base {
   * {
     @apply border-border;
   }
 
   body {
     @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+    font-family: var(--font-sans), 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+
+  h1, h2 {
+    color: hsl(220, 30%, 8%);
+    font-weight: 700;
+  }
+
+  h3, h4, h5, h6 {
+    color: hsl(220, 20%, 20%);
+    font-weight: 600;
+  }
+}
+
+/* Jade Green utility */
+.text-jade-green { color: #1A7A4A !important; }
+.bg-jade-green { background-color: #1A7A4A !important; }
+.border-jade-green { border-color: #1A7A4A !important; }
+.hover\:bg-jade-green:hover { background-color: #1A7A4A !important; }
+.hover\:bg-jade-green\/90:hover { background-color: rgba(26, 122, 74, 0.9) !important; }
+
+/* Mustard Yellow utility */
+.text-mustard-yellow { color: #C47A00 !important; }
+.bg-mustard-yellow { background-color: #C47A00 !important; }
+.border-mustard-yellow { border-color: #C47A00 !important; }
+.fill-mustard-yellow { fill: #C47A00 !important; }
+
+/* Ice Blue utility */
+.bg-ice-blue { background-color: #C8E8F8 !important; }
+.text-ice-blue { color: #1B5F8C !important; }
+
+/* Shadow elegant */
+.shadow-elegant { box-shadow: var(--shadow-elegant); }
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Carousel animations */
+@keyframes slide-left {
+  from { transform: translateX(0); }
+  to { transform: translateX(-100%); }
+}
+
+@keyframes slide-right {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }

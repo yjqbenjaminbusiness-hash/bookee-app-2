@@ -51,7 +51,7 @@ export const dataService = {
     amount: number;
     status: string;
   }) {
-    return store.createBooking(booking.userId, booking.timeslotId, booking.amount, '');
+    return store.createBooking(booking.userId, booking.timeslotId, booking.amount);
   },
 
   async listGroups(): Promise<Group[]> {

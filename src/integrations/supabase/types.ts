@@ -118,6 +118,7 @@ export type Database = {
           id: string
           name: string
           organize_frequency: string | null
+          role: string | null
         }
         Insert: {
           activity_size?: string | null
@@ -127,6 +128,7 @@ export type Database = {
           id?: string
           name: string
           organize_frequency?: string | null
+          role?: string | null
         }
         Update: {
           activity_size?: string | null
@@ -136,6 +138,7 @@ export type Database = {
           id?: string
           name?: string
           organize_frequency?: string | null
+          role?: string | null
         }
         Relationships: []
       }
@@ -149,6 +152,7 @@ export type Database = {
           player_phone: string | null
           player_username: string | null
           reservation_status: Database["public"]["Enums"]["reservation_status"]
+          reserved_until: string | null
           session_id: string
           stripe_payment_id: string | null
           updated_at: string
@@ -163,6 +167,7 @@ export type Database = {
           player_phone?: string | null
           player_username?: string | null
           reservation_status?: Database["public"]["Enums"]["reservation_status"]
+          reserved_until?: string | null
           session_id: string
           stripe_payment_id?: string | null
           updated_at?: string
@@ -177,6 +182,7 @@ export type Database = {
           player_phone?: string | null
           player_username?: string | null
           reservation_status?: Database["public"]["Enums"]["reservation_status"]
+          reserved_until?: string | null
           session_id?: string
           stripe_payment_id?: string | null
           updated_at?: string
@@ -239,16 +245,19 @@ export type Database = {
       }
       telegram_bot_state: {
         Row: {
+          conversation_states: Json | null
           id: number
           update_offset: number
           updated_at: string
         }
         Insert: {
+          conversation_states?: Json | null
           id: number
           update_offset?: number
           updated_at?: string
         }
         Update: {
+          conversation_states?: Json | null
           id?: number
           update_offset?: number
           updated_at?: string

@@ -68,6 +68,10 @@ export default function LoginPage() {
     const mockUser = login(loginEmail, loginPw);
     if (mockUser) {
       toast.success(`Welcome back, ${mockUser.displayName}!`);
+      if (returnToTelegram && telegramChatId) {
+        window.location.href = 'https://t.me/BookeeAssistBot?start=linked';
+        return;
+      }
       const from = (location.state as any)?.from?.pathname;
       navigate(from || getDashboardPath(mockUser.role, mockUser.verified), { replace: true });
     } else {

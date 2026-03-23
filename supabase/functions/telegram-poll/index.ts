@@ -109,13 +109,14 @@ function resolveDisplayName(profile: any, username?: string): string {
   return "Guest";
 }
 
-// Prompt user to link their account
+// Prompt user to link their account — directs to login page with telegram linking
 async function promptAccountLink(chatId: number, action: string) {
+  const loginUrl = `${SITE_URL}/login?telegram_chat_id=${chatId}&return=telegram`;
   await sendMessage(
     chatId,
     `🔗 <b>Link your account to ${action}</b>\n\n` +
-    `Visit the web app and go to <b>Settings</b> to link your Telegram account with your email.\n\n` +
-    `🌐 ${SITE_URL}/settings`,
+    `Log in or sign up to link your Telegram account:\n\n` +
+    `🌐 <a href="${loginUrl}">Click here to log in</a>`,
     { inline_keyboard: [[{ text: "⬅️ Main Menu", callback_data: "main_menu" }]] }
   );
 }

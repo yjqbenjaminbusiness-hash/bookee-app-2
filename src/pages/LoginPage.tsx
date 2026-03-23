@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
@@ -17,9 +18,9 @@ const TEST_ACCOUNTS = [
   { role: '📋 Support', email: 'yjqbenjaminbusiness4@gmail.com', pw: 'player456', color: 'hsl(var(--muted-foreground))' },
 ];
 
-function getDashboardPath(role: string, verified?: boolean) {
+function getDashboardPath(role: string, _verified?: boolean) {
   if (role === 'admin') return '/admin/dashboard';
-  if (role === 'organizer') return verified ? '/organizer/dashboard' : '/signup/organizer/pending';
+  if (role === 'organizer') return '/organizer/dashboard';
   return '/player/dashboard';
 }
 
@@ -31,15 +32,34 @@ export default function LoginPage() {
   const [showMagicLink, setShowMagicLink] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
-  const { login, loginWithSupabase, signInWithGoogle, signInWithApple, signInWithMagicLink, isAuthenticated, user } = useAuth();
+  const [searchParams] = useSearchParams();
+  const { login, loginWithSupabase, signInWithGoogle, signInWithApple, signInWithMagicLink, isAuthenticated, user, supabaseUser } = useAuth();
 
-  // Redirect already-authenticated users away from login
+  const telegramChatId = searchParams.get('telegram_chat_id');
+  const returnToTelegram = searchParams.get('return') === 'telegram';
+
+  // Link telegram and redirect after auth
   useEffect(() => {
-    if (isAuthenticated && user) {
-      const from = (location.state as any)?.from?.pathname;
-      navigate(from || getDashboardPath(user.role, user.verified), { replace: true });
+    if (isAuthenticated && user && supabaseUser) {
+      const linkAndRedirect = async () => {
+        if (telegramChatId) {
+          // Save telegram_chat_id to profile
+          await supabase
+            .from('profiles')
+            .update({ telegram_chat_id: parseInt(telegramChatId) })
+            .eq('user_id', supabaseUser.id);
+        }
+        if (returnToTelegram && telegramChatId) {
+          // Redirect back to bot
+          window.location.href = 'https://t.me/BookeeAssistBot?start=linked';
+          return;
+        }
+        const from = (location.state as any)?.from?.pathname;
+        navigate(from || getDashboardPath(user.role, user.verified), { replace: true });
+      };
+      linkAndRedirect();
     }
-  }, [isAuthenticated, user, navigate, location.state]);
+  }, [isAuthenticated, user, supabaseUser, navigate, location.state, telegramChatId, returnToTelegram]);
 
   const doLogin = async (loginEmail: string, loginPw: string) => {
     if (isLoading) return;
@@ -48,6 +68,10 @@ export default function LoginPage() {
     const mockUser = login(loginEmail, loginPw);
     if (mockUser) {
       toast.success(`Welcome back, ${mockUser.displayName}!`);
+      if (returnToTelegram && telegramChatId) {
+        window.location.href = 'https://t.me/BookeeAssistBot?start=linked';
+        return;
+      }
       const from = (location.state as any)?.from?.pathname;
       navigate(from || getDashboardPath(mockUser.role, mockUser.verified), { replace: true });
     } else {

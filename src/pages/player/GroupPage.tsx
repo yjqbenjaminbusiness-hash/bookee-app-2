@@ -33,10 +33,10 @@ const GROUP_PHOTO_POOLS: Record<string, Array<{ id: string; src: string; caption
     { id: 'g1-m5', src: 'https://images.unsplash.com/photo-1551958219-acbc630e2914?w=1000&q=80',  caption: 'Coaching Session — Feb 2026',    event: 'Senja Cashew Sports Hall', month: 'Feb 2026' },
   ],
   'grp-2': [
-    { id: 'g2-m1', src: 'https://images.unsplash.com/photo-1515523110800-9415d13b84a8?w=1000&q=80',  caption: 'Basketball Night Feb 2026',      event: 'CCAB Indoor Court',        month: 'Feb 2026' },
+    { id: 'g2-m1', src: 'https://images.unsplash.com/photo-1515523110800-9415d13b84a8?w=1000&q=80',  caption: 'Basketball Night Feb 2026',      event: 'Demo Activity CCAB Indoor Court',        month: 'Feb 2026' },
     { id: 'g2-m2', src: 'https://images.unsplash.com/photo-1546519638405-a9f894ef8a4b?w=1000&q=80',  caption: 'Community League Kickoff',       event: 'Toa Payoh Sports Hall',    month: 'Feb 2026' },
-    { id: 'g2-m3', src: 'https://images.unsplash.com/photo-1519861531473-9200262188bf?w=1000&q=80',  caption: 'Mini-Game Award Ceremony',       event: 'CCAB Indoor Court',        month: 'Jan 2026' },
-    { id: 'g2-m4', src: 'https://images.unsplash.com/photo-1504450758481-73389ba7524a?w=1000&q=80',  caption: 'Group Celebration — Hoops SG',   event: 'CCAB',                     month: 'Feb 2026' },
+    { id: 'g2-m3', src: 'https://images.unsplash.com/photo-1519861531473-9200262188bf?w=1000&q=80',  caption: 'Mini-Game Award Ceremony',       event: 'Demo Activity CCAB Indoor Court',        month: 'Jan 2026' },
+    { id: 'g2-m4', src: 'https://images.unsplash.com/photo-1504450758481-73389ba7524a?w=1000&q=80',  caption: 'Group Celebration — Hoops SG',   event: 'Demo Activity CCAB',                     month: 'Feb 2026' },
   ],
 };
 
@@ -53,9 +53,9 @@ const GROUP_EVENTS: Record<string, Array<{
     { id: 'ge-5', venue: 'Jurong East CC',           date: '2026-02-08', displayDate: 'Sun, 8 Feb 2026',  time: '5–7pm', slots: '8/8', price: '$10', isPast: true  },
   ],
   'grp-2': [
-    { id: 'ge-6', venue: 'CCAB Indoor Court',        date: '2026-03-02', displayDate: 'Mon, 2 Mar 2026',  time: '7–9pm', slots: '4/10', price: '$15', isPast: false },
+    { id: 'ge-6', venue: 'Demo Activity CCAB Indoor Court',        date: '2026-03-02', displayDate: 'Mon, 2 Mar 2026',  time: '7–9pm', slots: '4/10', price: '$15', isPast: false },
     { id: 'ge-7', venue: 'Toa Payoh Sports Hall',    date: '2026-03-09', displayDate: 'Mon, 9 Mar 2026',  time: '7–9pm', slots: '7/10', price: '$15', isPast: false },
-    { id: 'ge-8', venue: 'CCAB Indoor Court',        date: '2026-02-20', displayDate: 'Fri, 20 Feb 2026', time: '7–9pm', slots: '10/10', price: '$15', isPast: true },
+    { id: 'ge-8', venue: 'Demo Activity CCAB Indoor Court',        date: '2026-02-20', displayDate: 'Fri, 20 Feb 2026', time: '7–9pm', slots: '10/10', price: '$15', isPast: true },
   ],
 };
 

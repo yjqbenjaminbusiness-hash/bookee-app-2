@@ -135,7 +135,7 @@ const SEED_EVENTS: MockEvent[] = [
   {
     id: 'evt-2',
     userId: 'user-3',
-    venue: 'CCAB',
+    venue: 'Demo Activity CCAB',
     date: '2026-02-20',
     description: 'Basketball pickup game. All skill levels welcome!',
     createdAt: '2026-02-06T12:00:00Z',

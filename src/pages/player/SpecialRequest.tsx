@@ -12,7 +12,7 @@ import { Calendar, Clock, MapPin, Send, Loader2, Sparkles, DollarSign } from 'lu
 
 const VENUES = [
   'Senja Cashew Sports Hall',
-  'CCAB',
+  'Demo Activity CCAB',
   'Tampines Hub',
   'Jurong East Sports Centre',
   'Clementi Sports Hall',

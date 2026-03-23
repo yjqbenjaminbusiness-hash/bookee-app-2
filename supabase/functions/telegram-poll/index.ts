@@ -109,13 +109,14 @@ function resolveDisplayName(profile: any, username?: string): string {
   return "Guest";
 }
 
-// Prompt user to link their account
+// Prompt user to link their account — directs to login page with telegram linking
 async function promptAccountLink(chatId: number, action: string) {
+  const loginUrl = `${SITE_URL}/login?telegram_chat_id=${chatId}&return=telegram`;
   await sendMessage(
     chatId,
     `🔗 <b>Link your account to ${action}</b>\n\n` +
-    `Visit the web app and go to <b>Settings</b> to link your Telegram account with your email.\n\n` +
-    `🌐 ${SITE_URL}/settings`,
+    `Log in or sign up to link your Telegram account:\n\n` +
+    `🌐 <a href="${loginUrl}">Click here to log in</a>`,
     { inline_keyboard: [[{ text: "⬅️ Main Menu", callback_data: "main_menu" }]] }
   );
 }
@@ -1291,7 +1292,7 @@ async function handleHelp(chatId: number) {
     "Guest users can join activities and ballots. Link your email account in Settings for full access.\n\n" +
     "⏰ Reservations expire after 3 hours if not confirmed.\n\n" +
     `🌐 Web app: ${SITE_URL}\n` +
-    "📧 Support: support@bookee.app",
+    "📧 Support: yjqbenjaminbusiness@gmail.com",
     { inline_keyboard: [[{ text: "⬅️ Back", callback_data: "main_menu" }]] }
   );
 }
@@ -1316,12 +1317,31 @@ async function handleMessage(chatId: number, text: string, supabase: any, userna
     }
   }
 
-  if (text === "/start") {
+  if (text === "/start" || text === "/start ") {
     await sendMessage(
       chatId,
       "🏃 <b>Welcome to Bookee!</b>\n\nFind, book, and organize sports activities.\n\nWhat would you like to do?",
       getMainMenu()
     );
+    return;
+  }
+
+  // Handle /start linked — account was just linked via web login
+  if (text.startsWith("/start linked")) {
+    const profile = await getLinkedProfile(supabase, chatId);
+    if (profile) {
+      await sendMessage(
+        chatId,
+        `✅ <b>Account linked!</b>\n\nWelcome, ${profile.display_name || profile.email}! Your Telegram is now connected to your Bookee account.\n\nWhat would you like to do?`,
+        getMainMenu()
+      );
+    } else {
+      await sendMessage(
+        chatId,
+        "⚠️ Account linking not complete. Please try logging in again.",
+        getMainMenu()
+      );
+    }
     return;
   }
 

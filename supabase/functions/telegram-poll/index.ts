@@ -1291,7 +1291,7 @@ async function handleHelp(chatId: number) {
     "Guest users can join activities and ballots. Link your email account in Settings for full access.\n\n" +
     "⏰ Reservations expire after 3 hours if not confirmed.\n\n" +
     `🌐 Web app: ${SITE_URL}\n` +
-    "📧 Support: support@bookee.app",
+    "📧 Support: yjqbenjaminbusiness@gmail.com",
     { inline_keyboard: [[{ text: "⬅️ Back", callback_data: "main_menu" }]] }
   );
 }

@@ -38,7 +38,7 @@ const SAMPLE_MEMORIES: MemoryPhoto[] = [
     id: 'm4',
     src: 'https://images.unsplash.com/photo-1599474924187-334a4ae5bd3c?w=1000&q=80',
     caption: 'Table Tennis Social',
-    event: 'CCAB Sports Hall',
+    event: 'Demo Activity CCAB Sports Hall',
     month: 'Feb 2026',
   },
   {

@@ -31,12 +31,7 @@ export function ProtectedRoute({ children, allowedRoles, requireVerified = true 
       return <Navigate to={dashboardPath} replace />;
     }
 
-    // Check verification for organizers
-    if (user.role === 'organizer' && requireVerified && !user.verified) {
-      if (location.pathname !== '/signup/organizer/pending') {
-        return <Navigate to="/signup/organizer/pending" replace />;
-      }
-    }
+    // Verification check removed — all logged-in users can organize
   }
 
   return <>{children}</>;

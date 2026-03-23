@@ -17,9 +17,9 @@ const TEST_ACCOUNTS = [
   { role: '📋 Support', email: 'yjqbenjaminbusiness4@gmail.com', pw: 'player456', color: 'hsl(var(--muted-foreground))' },
 ];
 
-function getDashboardPath(role: string, verified?: boolean) {
+function getDashboardPath(role: string, _verified?: boolean) {
   if (role === 'admin') return '/admin/dashboard';
-  if (role === 'organizer') return verified ? '/organizer/dashboard' : '/signup/organizer/pending';
+  if (role === 'organizer') return '/organizer/dashboard';
   return '/player/dashboard';
 }
 

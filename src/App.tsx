@@ -102,22 +102,22 @@ const App = () => (
 
             {/* Organizer Routes */}
             <Route path="/organizer/dashboard" element={
-              <ProtectedRoute allowedRoles={['organizer']}><OrganizerDashboard /></ProtectedRoute>
+              <ProtectedRoute><OrganizerDashboard /></ProtectedRoute>
             } />
             <Route path="/organizer/create-event" element={
-              <ProtectedRoute allowedRoles={['organizer']}><CreateEventPage /></ProtectedRoute>
+              <ProtectedRoute><CreateEventPage /></ProtectedRoute>
             } />
             <Route path="/organizer/events/:id" element={
-              <ProtectedRoute allowedRoles={['organizer']}><ManageEventPage /></ProtectedRoute>
+              <ProtectedRoute><ManageEventPage /></ProtectedRoute>
             } />
             <Route path="/organizer/special-requests" element={
-              <ProtectedRoute allowedRoles={['organizer']}><OrganizerSpecialRequests /></ProtectedRoute>
+              <ProtectedRoute><OrganizerSpecialRequests /></ProtectedRoute>
             } />
             <Route path="/organizer/bookings" element={
-              <ProtectedRoute allowedRoles={['organizer']}><OrganizerBookings /></ProtectedRoute>
+              <ProtectedRoute><OrganizerBookings /></ProtectedRoute>
             } />
             <Route path="/organizer/groups" element={
-              <ProtectedRoute allowedRoles={['organizer']}><OrganizerGroups /></ProtectedRoute>
+              <ProtectedRoute><OrganizerGroups /></ProtectedRoute>
             } />
 
             {/* Admin Routes */}

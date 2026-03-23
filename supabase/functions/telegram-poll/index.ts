@@ -1317,12 +1317,31 @@ async function handleMessage(chatId: number, text: string, supabase: any, userna
     }
   }
 
-  if (text === "/start") {
+  if (text === "/start" || text === "/start ") {
     await sendMessage(
       chatId,
       "🏃 <b>Welcome to Bookee!</b>\n\nFind, book, and organize sports activities.\n\nWhat would you like to do?",
       getMainMenu()
     );
+    return;
+  }
+
+  // Handle /start linked — account was just linked via web login
+  if (text.startsWith("/start linked")) {
+    const profile = await getLinkedProfile(supabase, chatId);
+    if (profile) {
+      await sendMessage(
+        chatId,
+        `✅ <b>Account linked!</b>\n\nWelcome, ${profile.display_name || profile.email}! Your Telegram is now connected to your Bookee account.\n\nWhat would you like to do?`,
+        getMainMenu()
+      );
+    } else {
+      await sendMessage(
+        chatId,
+        "⚠️ Account linking not complete. Please try logging in again.",
+        getMainMenu()
+      );
+    }
     return;
   }
 

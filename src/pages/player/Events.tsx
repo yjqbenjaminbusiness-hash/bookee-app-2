@@ -75,7 +75,7 @@ const DEMO_GROUP_EVENTS: Record<string, Array<{ venue: string; date: string; tim
     { venue: 'Bishan Sports Hall', date: '15 Mar (Sun)', time: '4–6pm', slots: '2/6', price: '$12' },
   ],
   'grp-2': [
-    { venue: 'CCAB Indoor Court', date: '2 Mar (Mon)', time: '7–9pm', slots: '4/10', price: '$15' },
+    { venue: 'Demo Activity CCAB Indoor Court', date: '2 Mar (Mon)', time: '7–9pm', slots: '4/10', price: '$15' },
     { venue: 'Toa Payoh Sports Hall', date: '9 Mar (Mon)', time: '7–9pm', slots: '7/10', price: '$15' },
   ],
 };

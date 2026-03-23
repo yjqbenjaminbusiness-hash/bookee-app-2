@@ -53,9 +53,9 @@ const GROUP_EVENTS: Record<string, Array<{
     { id: 'ge-5', venue: 'Jurong East CC',           date: '2026-02-08', displayDate: 'Sun, 8 Feb 2026',  time: '5–7pm', slots: '8/8', price: '$10', isPast: true  },
   ],
   'grp-2': [
-    { id: 'ge-6', venue: 'CCAB Indoor Court',        date: '2026-03-02', displayDate: 'Mon, 2 Mar 2026',  time: '7–9pm', slots: '4/10', price: '$15', isPast: false },
+    { id: 'ge-6', venue: 'Demo Activity CCAB Indoor Court',        date: '2026-03-02', displayDate: 'Mon, 2 Mar 2026',  time: '7–9pm', slots: '4/10', price: '$15', isPast: false },
     { id: 'ge-7', venue: 'Toa Payoh Sports Hall',    date: '2026-03-09', displayDate: 'Mon, 9 Mar 2026',  time: '7–9pm', slots: '7/10', price: '$15', isPast: false },
-    { id: 'ge-8', venue: 'CCAB Indoor Court',        date: '2026-02-20', displayDate: 'Fri, 20 Feb 2026', time: '7–9pm', slots: '10/10', price: '$15', isPast: true },
+    { id: 'ge-8', venue: 'Demo Activity CCAB Indoor Court',        date: '2026-02-20', displayDate: 'Fri, 20 Feb 2026', time: '7–9pm', slots: '10/10', price: '$15', isPast: true },
   ],
 };
 

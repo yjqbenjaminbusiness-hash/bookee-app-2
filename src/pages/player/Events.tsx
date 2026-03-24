@@ -239,6 +239,11 @@ export default function PlayerEvents() {
                       <span className="absolute top-3 right-3 text-[10px] font-bold px-2.5 py-1 rounded-full" style={{ background: 'rgba(255,255,255,0.92)', color: '#1A7A4A' }}>
                         🌐 Public
                       </span>
+                      {isDemo && (
+                        <span className="absolute top-3 right-20 text-[10px] font-bold px-2.5 py-1 rounded-full bg-foreground/70 text-white">
+                          DEMO
+                        </span>
+                      )}
                       {avgRating > 0 && (
                         <span className="absolute bottom-3 left-3 flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-full" style={{ background: '#1A7A4A', color: '#fff' }}>
                           <Star className="h-2.5 w-2.5 fill-white" /> {avgRating}

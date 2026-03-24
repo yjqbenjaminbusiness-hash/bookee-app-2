@@ -38,9 +38,23 @@ async function answerCallback(callbackQueryId: string) {
   });
 }
 
-// ─── MENUS ──────────────────────────────────────────────────────────
+// ─── PERSISTENT REPLY KEYBOARD (always visible) ────────────────────
 
-function getMainMenu() {
+function getPersistentMenu() {
+  return {
+    keyboard: [
+      [{ text: "📝 Register for Beta" }],
+      [{ text: "📋 My Bookee" }, { text: "🏟️ Organize" }],
+      [{ text: "🎲 Ballot" }, { text: "❓ Help" }],
+      [{ text: "🚪 Logout" }],
+    ],
+    resize_keyboard: true,
+    is_persistent: true,
+  };
+}
+
+// Inline menu for callbacks inside flows
+function getInlineMainMenu() {
   return {
     inline_keyboard: [
       [{ text: "📝 Register for Beta", callback_data: "beta_start" }],
@@ -50,6 +64,38 @@ function getMainMenu() {
       [{ text: "❓ Help", callback_data: "help" }],
     ],
   };
+}
+
+// ─── DATE HELPERS ───────────────────────────────────────────────────
+
+const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+function formatDate(dateStr: string): string {
+  // Accepts YYYY-MM-DD or DD-MM-YYYY or DD/MM/YYYY
+  let d: Date | null = null;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+    d = new Date(dateStr + "T00:00:00");
+  } else if (/^\d{2}[-\/]\d{2}[-\/]\d{4}$/.test(dateStr)) {
+    const parts = dateStr.split(/[-\/]/);
+    d = new Date(`${parts[2]}-${parts[1]}-${parts[0]}T00:00:00`);
+  }
+  if (!d || isNaN(d.getTime())) return dateStr;
+  return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+function parseDateInput(text: string): string | null {
+  // Accept YYYY-MM-DD
+  if (/^\d{4}-\d{2}-\d{2}$/.test(text)) return text;
+  // Accept DD-MM-YYYY or DD/MM/YYYY
+  const m = text.match(/^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})$/);
+  if (m) return `${m[3]}-${m[2].padStart(2,"0")}-${m[1].padStart(2,"0")}`;
+  // Accept "26 Jan 2026" style
+  const m2 = text.match(/^(\d{1,2})\s+(\w+)\s+(\d{4})$/i);
+  if (m2) {
+    const mi = MONTHS.findIndex(mo => mo.toLowerCase() === m2[2].toLowerCase());
+    if (mi >= 0) return `${m2[3]}-${String(mi+1).padStart(2,"0")}-${m2[1].padStart(2,"0")}`;
+  }
+  return null;
 }
 
 // ─── CONVERSATION STATE ─────────────────────────────────────────────
@@ -88,7 +134,6 @@ async function getState(supabase: any, chatId: number): Promise<any | null> {
 
 // ─── USER IDENTITY ──────────────────────────────────────────────────
 
-// Returns linked profile or null. Does NOT create guest records.
 async function getLinkedProfile(supabase: any, chatId: number) {
   const { data: profile } = await supabase
     .from("profiles")
@@ -98,7 +143,6 @@ async function getLinkedProfile(supabase: any, chatId: number) {
   return profile || null;
 }
 
-// Resolve user for read operations: linked profile user_id, or fallback to telegram chatId string
 function resolveUserId(profile: any, chatId: number): string {
   return profile ? profile.user_id : `tg_${chatId}`;
 }
@@ -109,7 +153,6 @@ function resolveDisplayName(profile: any, username?: string): string {
   return "Guest";
 }
 
-// Prompt user to link their account — directs to login page with telegram linking
 async function promptAccountLink(chatId: number, action: string) {
   const loginUrl = `${SITE_URL}/login?telegram_chat_id=${chatId}&return=telegram`;
   await sendMessage(
@@ -128,7 +171,9 @@ async function handleBetaFlow(chatId: number, text: string, supabase: any) {
 
   if (!state || state.step === "beta_start") {
     await setState(supabase, chatId, { flow: "beta", step: "beta_name", data: {} });
-    await sendMessage(chatId, "📝 <b>Beta Registration</b>\n\nWhat's your name?");
+    await sendMessage(chatId, "📝 <b>Beta Registration</b>\n\nWhat's your name?", {
+      inline_keyboard: [[{ text: "❌ Cancel", callback_data: "main_menu" }]],
+    });
     return;
   }
 
@@ -138,7 +183,9 @@ async function handleBetaFlow(chatId: number, text: string, supabase: any) {
     case "beta_name":
       data.name = text;
       await setState(supabase, chatId, { flow: "beta", step: "beta_email", data });
-      await sendMessage(chatId, "📧 What's your email address?");
+      await sendMessage(chatId, "📧 What's your email address?", {
+        inline_keyboard: [[{ text: "⬅️ Back", callback_data: "beta_back_name" }], [{ text: "❌ Cancel", callback_data: "main_menu" }]],
+      });
       break;
 
     case "beta_email":
@@ -152,6 +199,8 @@ async function handleBetaFlow(chatId: number, text: string, supabase: any) {
         inline_keyboard: [
           [{ text: "🏟️ Organizer", callback_data: "beta_role_organizer" }],
           [{ text: "🏃 Player", callback_data: "beta_role_player" }],
+          [{ text: "⬅️ Back", callback_data: "beta_back_email" }],
+          [{ text: "❌ Cancel", callback_data: "main_menu" }],
         ],
       });
       break;
@@ -165,19 +214,49 @@ async function handleBetaFlow(chatId: number, text: string, supabase: any) {
           [{ text: "3–5 times", callback_data: "beta_freq_3-5" }],
           [{ text: "6–10 times", callback_data: "beta_freq_6-10" }],
           [{ text: "10+ times", callback_data: "beta_freq_10+" }],
+          [{ text: "⬅️ Back", callback_data: "beta_back_size" }],
+          [{ text: "❌ Cancel", callback_data: "main_menu" }],
         ],
       });
       break;
 
     default:
       await clearState(supabase, chatId);
-      await sendMessage(chatId, "Something went wrong. Let's start over.", getMainMenu());
+      await sendMessage(chatId, "Something went wrong. Let's start over.", getPersistentMenu());
   }
 }
 
 async function handleBetaCallback(chatId: number, data: string, supabase: any) {
   const state = await getState(supabase, chatId);
   if (!state) return;
+
+  // Back buttons
+  if (data === "beta_back_name") {
+    await setState(supabase, chatId, { flow: "beta", step: "beta_start", data: {} });
+    await handleBetaFlow(chatId, "", supabase);
+    return;
+  }
+  if (data === "beta_back_email") {
+    state.step = "beta_name";
+    await setState(supabase, chatId, state);
+    await sendMessage(chatId, "📝 What's your name?", {
+      inline_keyboard: [[{ text: "❌ Cancel", callback_data: "main_menu" }]],
+    });
+    return;
+  }
+  if (data === "beta_back_size") {
+    state.step = "beta_role";
+    await setState(supabase, chatId, state);
+    await sendMessage(chatId, "🎯 What's your role?", {
+      inline_keyboard: [
+        [{ text: "🏟️ Organizer", callback_data: "beta_role_organizer" }],
+        [{ text: "🏃 Player", callback_data: "beta_role_player" }],
+        [{ text: "⬅️ Back", callback_data: "beta_back_email" }],
+        [{ text: "❌ Cancel", callback_data: "main_menu" }],
+      ],
+    });
+    return;
+  }
 
   if (data.startsWith("beta_role_")) {
     const role = data.replace("beta_role_", "");
@@ -189,6 +268,8 @@ async function handleBetaCallback(chatId: number, data: string, supabase: any) {
         [{ text: "10–20", callback_data: "beta_size_10-20" }],
         [{ text: "20–50", callback_data: "beta_size_20-50" }],
         [{ text: "50+", callback_data: "beta_size_50+" }],
+        [{ text: "⬅️ Back", callback_data: "beta_back_size" }],
+        [{ text: "❌ Cancel", callback_data: "main_menu" }],
       ],
     });
     return;
@@ -204,6 +285,8 @@ async function handleBetaCallback(chatId: number, data: string, supabase: any) {
         [{ text: "3–5 times", callback_data: "beta_freq_3-5" }],
         [{ text: "6–10 times", callback_data: "beta_freq_6-10" }],
         [{ text: "10+ times", callback_data: "beta_freq_10+" }],
+        [{ text: "⬅️ Back", callback_data: "beta_back_size" }],
+        [{ text: "❌ Cancel", callback_data: "main_menu" }],
       ],
     });
     return;
@@ -226,12 +309,12 @@ async function handleBetaCallback(chatId: number, data: string, supabase: any) {
 
     if (error) {
       console.error("Beta registration error:", error);
-      await sendMessage(chatId, "❌ Registration failed. Please try again.", getMainMenu());
+      await sendMessage(chatId, "❌ Registration failed. Please try again.", getPersistentMenu());
     } else {
       await sendMessage(
         chatId,
         "✅ <b>You're registered for Beta!</b>\n\nThanks, " + state.data.name + "! We'll reach out to invite you for early testing.",
-        getMainMenu()
+        getPersistentMenu()
       );
     }
     return;
@@ -250,12 +333,21 @@ async function handleOrganizeFlow(chatId: number, text: string, supabase: any) {
     case "org_title":
       data.title = text;
       await setState(supabase, chatId, { flow: "organize", step: "org_sport", data });
-      await sendMessage(chatId, "⚽ What sport/activity?", {
+      await sendMessage(chatId, "⚽ What sport/activity? (type freely, e.g. Badminton, Futsal, Yoga)", {
         inline_keyboard: [
-          [{ text: "⚽ Football", callback_data: "org_sport_Football" }],
-          [{ text: "🏀 Basketball", callback_data: "org_sport_Basketball" }],
-          [{ text: "🏸 Badminton", callback_data: "org_sport_Badminton" }],
-          [{ text: "🎾 Tennis", callback_data: "org_sport_Tennis" }],
+          [{ text: "⬅️ Back", callback_data: "organize" }],
+          [{ text: "❌ Cancel", callback_data: "main_menu" }],
+        ],
+      });
+      break;
+
+    case "org_sport":
+      data.sport = text;
+      await setState(supabase, chatId, { flow: "organize", step: "org_venue", data });
+      await sendMessage(chatId, "📍 What's the venue/location? (type freely)", {
+        inline_keyboard: [
+          [{ text: "⬅️ Back", callback_data: "org_back_sport" }],
+          [{ text: "❌ Cancel", callback_data: "main_menu" }],
         ],
       });
       break;
@@ -263,23 +355,40 @@ async function handleOrganizeFlow(chatId: number, text: string, supabase: any) {
     case "org_venue":
       data.venue = text;
       await setState(supabase, chatId, { flow: "organize", step: "org_date", data });
-      await sendMessage(chatId, "📅 What date? (YYYY-MM-DD format)");
+      await sendMessage(chatId, "📅 What date?\n\nAccepted formats:\n• 26 Jan 2026\n• 26-01-2026\n• 2026-01-26", {
+        inline_keyboard: [
+          [{ text: "⬅️ Back", callback_data: "org_back_venue" }],
+          [{ text: "❌ Cancel", callback_data: "main_menu" }],
+        ],
+      });
       break;
 
-    case "org_date":
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(text)) {
-        await sendMessage(chatId, "❌ Please use YYYY-MM-DD format (e.g. 2026-04-15)");
+    case "org_date": {
+      const parsed = parseDateInput(text);
+      if (!parsed) {
+        await sendMessage(chatId, "❌ Invalid date. Use formats like: 26 Jan 2026, 26-01-2026, or 2026-01-26");
         return;
       }
-      data.date = text;
+      data.date = parsed;
       await setState(supabase, chatId, { flow: "organize", step: "org_time", data });
-      await sendMessage(chatId, "⏰ Session time label? (e.g. '7pm - 9pm')");
+      await sendMessage(chatId, "⏰ Session time label? (e.g. '7pm - 9pm')", {
+        inline_keyboard: [
+          [{ text: "⬅️ Back", callback_data: "org_back_date" }],
+          [{ text: "❌ Cancel", callback_data: "main_menu" }],
+        ],
+      });
       break;
+    }
 
     case "org_time":
       data.time_label = text;
       await setState(supabase, chatId, { flow: "organize", step: "org_slots", data });
-      await sendMessage(chatId, "👥 How many slots/max players?");
+      await sendMessage(chatId, "👥 How many slots/max players?", {
+        inline_keyboard: [
+          [{ text: "⬅️ Back", callback_data: "org_back_time" }],
+          [{ text: "❌ Cancel", callback_data: "main_menu" }],
+        ],
+      });
       break;
 
     case "org_slots": {
@@ -290,7 +399,12 @@ async function handleOrganizeFlow(chatId: number, text: string, supabase: any) {
       }
       data.max_slots = slots;
       await setState(supabase, chatId, { flow: "organize", step: "org_price", data });
-      await sendMessage(chatId, "💰 Price per slot in SGD? (enter 0 for free)");
+      await sendMessage(chatId, "💰 Price per slot in SGD? (enter 0 for free)", {
+        inline_keyboard: [
+          [{ text: "⬅️ Back", callback_data: "org_back_slots" }],
+          [{ text: "❌ Cancel", callback_data: "main_menu" }],
+        ],
+      });
       break;
     }
 
@@ -317,13 +431,16 @@ async function handleOrganizeFlow(chatId: number, text: string, supabase: any) {
           {
             inline_keyboard: [
               [{ text: "➕ Add Another Session", callback_data: "org_add_session" }],
-              [{ text: "✅ Done — Create Activity", callback_data: "org_create" }],
+              [{ text: "✅ Confirm — Create Activity", callback_data: "org_confirm" }],
+              [{ text: "❌ Cancel", callback_data: "main_menu" }],
             ],
           }
         );
       } else {
+        // Single session — show confirmation
         data.sessions = [{ time_label: data.time_label, max_slots: data.max_slots, price: data.price }];
-        await createActivity(chatId, data, supabase);
+        await setState(supabase, chatId, { flow: "organize", step: "org_confirm_review", data });
+        await showOrganizeConfirmation(chatId, data);
       }
       break;
     }
@@ -331,13 +448,78 @@ async function handleOrganizeFlow(chatId: number, text: string, supabase: any) {
     case "org_multi_time":
       data.time_label = text;
       await setState(supabase, chatId, { flow: "organize", step: "org_slots", data });
-      await sendMessage(chatId, "👥 How many slots for this session?");
+      await sendMessage(chatId, "👥 How many slots for this session?", {
+        inline_keyboard: [
+          [{ text: "⬅️ Back", callback_data: "org_add_session" }],
+          [{ text: "❌ Cancel", callback_data: "main_menu" }],
+        ],
+      });
       break;
+
+    case "org_multi_template": {
+      // Parse multi-session template input
+      const sessionBlocks = text.split(/session\s*\d+\s*:/i).filter(s => s.trim());
+      if (sessionBlocks.length === 0) {
+        await sendMessage(chatId, "❌ Could not parse sessions. Please follow the template format.");
+        return;
+      }
+      data.sessions = data.sessions || [];
+      for (const block of sessionBlocks) {
+        const dateMatch = block.match(/date\s*:\s*(.+)/i);
+        const timeMatch = block.match(/time\s*:\s*(.+)/i);
+        const slotsMatch = block.match(/slots?\s*:\s*(\d+)/i);
+        if (timeMatch && slotsMatch) {
+          data.sessions.push({
+            time_label: timeMatch[1].trim(),
+            max_slots: parseInt(slotsMatch[1]),
+            price: data.price || 0,
+          });
+          if (dateMatch) {
+            const pd = parseDateInput(dateMatch[1].trim());
+            if (pd) data.date = pd; // use last date
+          }
+        }
+      }
+      if (data.sessions.length === 0) {
+        await sendMessage(chatId, "❌ Could not find any sessions. Please include Time and Slots for each session.");
+        return;
+      }
+      await setState(supabase, chatId, { flow: "organize", step: "org_confirm_review", data });
+      await showOrganizeConfirmation(chatId, data);
+      break;
+    }
 
     default:
       await clearState(supabase, chatId);
-      await sendMessage(chatId, "Something went wrong. Let's start over.", getMainMenu());
+      await sendMessage(chatId, "Something went wrong. Let's start over.", getPersistentMenu());
   }
+}
+
+async function showOrganizeConfirmation(chatId: number, data: any) {
+  let msg = "📋 <b>Activity Summary</b>\n\n";
+  msg += `📝 <b>Title:</b> ${data.title}\n`;
+  msg += `⚽ <b>Sport:</b> ${data.sport}\n`;
+  msg += `📍 <b>Venue:</b> ${data.venue}\n`;
+  msg += `📅 <b>Date:</b> ${formatDate(data.date)}\n\n`;
+
+  if (data.sessions && data.sessions.length > 0) {
+    msg += `<b>Sessions (${data.sessions.length}):</b>\n`;
+    for (let i = 0; i < data.sessions.length; i++) {
+      const s = data.sessions[i];
+      const price = s.price > 0 ? `SGD $${(s.price / 100).toFixed(2)}` : "Free";
+      msg += `  ${i+1}. ⏰ ${s.time_label} — 👥 ${s.max_slots} slots — ${price}\n`;
+    }
+  }
+
+  msg += "\n<b>Please confirm:</b>";
+
+  await sendMessage(chatId, msg, {
+    inline_keyboard: [
+      [{ text: "✅ Confirm", callback_data: "org_confirm" }],
+      [{ text: "✏️ Edit", callback_data: "org_edit" }],
+      [{ text: "❌ Cancel", callback_data: "main_menu" }],
+    ],
+  });
 }
 
 async function createActivity(chatId: number, data: any, supabase: any) {
@@ -366,7 +548,7 @@ async function createActivity(chatId: number, data: any, supabase: any) {
   if (actErr) {
     console.error("Activity creation error:", actErr);
     await clearState(supabase, chatId);
-    await sendMessage(chatId, "❌ Failed to create activity. " + actErr.message, getMainMenu());
+    await sendMessage(chatId, "❌ Failed to create activity. " + actErr.message, getPersistentMenu());
     return;
   }
 
@@ -383,17 +565,15 @@ async function createActivity(chatId: number, data: any, supabase: any) {
   await clearState(supabase, chatId);
 
   const typeLabel = data.is_ballot ? "Ballot Group" : "Activity";
-  await sendMessage(
-    chatId,
-    `✅ <b>${typeLabel} Created!</b>\n\n` +
-    `🏟️ ${data.title}\n` +
-    `📍 ${data.venue}\n` +
-    `📅 ${data.date}\n` +
-    `⚽ ${data.sport}\n` +
-    `📊 ${data.sessions.length} session(s)\n\n` +
-    `Manage at: ${SITE_URL}`,
-    getMainMenu()
-  );
+  let msg = `✅ <b>${typeLabel} Created!</b>\n\n`;
+  msg += `🏟️ ${data.title}\n`;
+  msg += `📍 ${data.venue}\n`;
+  msg += `📅 ${formatDate(data.date)}\n`;
+  msg += `⚽ ${data.sport}\n`;
+  msg += `📊 ${data.sessions.length} session(s)\n\n`;
+  msg += `🌐 Manage at: ${SITE_URL}`;
+
+  await sendMessage(chatId, msg, getPersistentMenu());
 }
 
 async function handleOrganizeCallback(chatId: number, cbData: string, supabase: any) {
@@ -419,28 +599,95 @@ async function handleOrganizeCallback(chatId: number, cbData: string, supabase: 
   if (cbData === "org_single" || cbData === "org_multi") {
     const type = cbData === "org_single" ? "single" : "multi";
     await setState(supabase, chatId, { flow: "organize", step: "org_title", data: { type } });
-    await sendMessage(chatId, "📝 What's the activity title?");
+    await sendMessage(chatId, "📝 What's the activity title? (type freely)", {
+      inline_keyboard: [
+        [{ text: "⬅️ Back", callback_data: "organize" }],
+        [{ text: "❌ Cancel", callback_data: "main_menu" }],
+      ],
+    });
     return;
   }
 
-  if (cbData.startsWith("org_sport_")) {
+  // Back buttons for organize flow
+  if (cbData === "org_back_sport" && state) {
+    state.step = "org_title";
+    await setState(supabase, chatId, state);
+    await sendMessage(chatId, "📝 What's the activity title?", {
+      inline_keyboard: [[{ text: "⬅️ Back", callback_data: "organize" }], [{ text: "❌ Cancel", callback_data: "main_menu" }]],
+    });
+    return;
+  }
+  if (cbData === "org_back_venue" && state) {
+    state.step = "org_sport";
+    await setState(supabase, chatId, state);
+    await sendMessage(chatId, "⚽ What sport/activity?", {
+      inline_keyboard: [[{ text: "⬅️ Back", callback_data: "organize" }], [{ text: "❌ Cancel", callback_data: "main_menu" }]],
+    });
+    return;
+  }
+  if (cbData === "org_back_date" && state) {
+    state.step = "org_venue";
+    await setState(supabase, chatId, state);
+    await sendMessage(chatId, "📍 What's the venue/location?", {
+      inline_keyboard: [[{ text: "⬅️ Back", callback_data: "org_back_sport" }], [{ text: "❌ Cancel", callback_data: "main_menu" }]],
+    });
+    return;
+  }
+  if (cbData === "org_back_time" && state) {
+    state.step = "org_date";
+    await setState(supabase, chatId, state);
+    await sendMessage(chatId, "📅 What date?", {
+      inline_keyboard: [[{ text: "⬅️ Back", callback_data: "org_back_venue" }], [{ text: "❌ Cancel", callback_data: "main_menu" }]],
+    });
+    return;
+  }
+  if (cbData === "org_back_slots" && state) {
+    state.step = "org_time";
+    await setState(supabase, chatId, state);
+    await sendMessage(chatId, "⏰ Session time label?", {
+      inline_keyboard: [[{ text: "⬅️ Back", callback_data: "org_back_date" }], [{ text: "❌ Cancel", callback_data: "main_menu" }]],
+    });
+    return;
+  }
+
+  // Edit → restart from title keeping data
+  if (cbData === "org_edit" && state) {
+    state.step = "org_title";
+    await setState(supabase, chatId, state);
+    await sendMessage(chatId, `📝 Current title: "${state.data.title}"\n\nType a new title or re-send the same:`, {
+      inline_keyboard: [[{ text: "❌ Cancel", callback_data: "main_menu" }]],
+    });
+    return;
+  }
+
+  // Confirm → create activity
+  if (cbData === "org_confirm") {
     if (!state) return;
-    state.data.sport = cbData.replace("org_sport_", "");
-    await setState(supabase, chatId, { flow: "organize", step: "org_venue", data: state.data });
-    await sendMessage(chatId, "📍 What's the venue?");
+    await createActivity(chatId, state.data, supabase);
     return;
   }
 
   if (cbData === "org_add_session") {
     if (!state) return;
     await setState(supabase, chatId, { flow: "organize", step: "org_multi_time", data: state.data });
-    await sendMessage(chatId, "⏰ Time label for the next session? (e.g. '9pm - 11pm')");
+    await sendMessage(chatId, "⏰ Time label for the next session? (e.g. '9pm - 11pm')", {
+      inline_keyboard: [
+        [{ text: "❌ Cancel", callback_data: "main_menu" }],
+      ],
+    });
     return;
   }
 
-  if (cbData === "org_create") {
+  // Multi-session template option
+  if (cbData === "org_multi_template") {
     if (!state) return;
-    await createActivity(chatId, state.data, supabase);
+    const template = `Session 1:\nDate: ${formatDate(state.data.date || "2026-01-26")}\nTime: 7pm - 9pm\nSlots: 6\n\nSession 2:\nDate: ${formatDate(state.data.date || "2026-01-26")}\nTime: 9pm - 11pm\nSlots: 12`;
+    await setState(supabase, chatId, { flow: "organize", step: "org_multi_template", data: state.data });
+    await sendMessage(
+      chatId,
+      "📋 <b>Multi-Session Template</b>\n\nCopy the template below, fill in details, and send:\n\n<code>" + template + "</code>",
+      { inline_keyboard: [[{ text: "❌ Cancel", callback_data: "main_menu" }]] }
+    );
     return;
   }
 
@@ -468,7 +715,7 @@ async function handleOrganizeCallback(chatId: number, cbData: string, supabase: 
     let msg = "📊 <b>Your Activities</b>\n\n";
     const buttons: any[] = [];
     for (const a of activities) {
-      msg += `• ${a.title} (${a.date}) — ${a.status}\n`;
+      msg += `• ${a.title} (${formatDate(a.date)}) — ${a.status}\n`;
       buttons.push([{ text: `📊 ${a.title}`, callback_data: `manage_${a.id}` }]);
     }
     buttons.push([{ text: "⬅️ Back", callback_data: "organize" }]);
@@ -498,7 +745,6 @@ async function handleOrganizeCallback(chatId: number, cbData: string, supabase: 
       msg += `💰 SGD $${(s.price / 100).toFixed(2)}\n\n`;
     }
 
-    // Get bookings (privacy: only organizer sees this)
     const sessionIds = sessions.map((s: any) => s.id);
     const { data: bookings } = await supabase
       .from("bookings")
@@ -539,7 +785,6 @@ async function handleBallotCallback(chatId: number, cbData: string, supabase: an
     return;
   }
 
-  // ─── Create Ballot Group ───
   if (cbData === "ballot_create") {
     const profile = await getLinkedProfile(supabase, chatId);
     if (!profile) {
@@ -547,11 +792,12 @@ async function handleBallotCallback(chatId: number, cbData: string, supabase: an
       return;
     }
     await setState(supabase, chatId, { flow: "ballot_create", step: "ballot_title", data: { is_ballot: true } });
-    await sendMessage(chatId, "🎲 <b>Create Ballot Group</b>\n\n📝 What's the activity name?");
+    await sendMessage(chatId, "🎲 <b>Create Ballot Group</b>\n\n📝 What's the activity name? (type freely)", {
+      inline_keyboard: [[{ text: "❌ Cancel", callback_data: "main_menu" }]],
+    });
     return;
   }
 
-  // ─── Manage Ballot Group ───
   if (cbData === "ballot_manage") {
     const profile = await getLinkedProfile(supabase, chatId);
     if (!profile) {
@@ -559,7 +805,6 @@ async function handleBallotCallback(chatId: number, cbData: string, supabase: an
       return;
     }
 
-    // Show organizer's ballots + paste link option
     const { data: orgBallots } = await supabase
       .from("activities")
       .select("id, title, date, venue")
@@ -576,7 +821,7 @@ async function handleBallotCallback(chatId: number, cbData: string, supabase: an
     if (orgBallots && orgBallots.length > 0) {
       msg += "<b>Your Ballot Groups:</b>\n\n";
       for (const b of orgBallots) {
-        msg += `• ${b.title} — ${b.date}\n`;
+        msg += `• ${b.title} — ${formatDate(b.date)}\n`;
         buttons.push([{ text: `📊 ${b.title}`, callback_data: `ballot_manage_view_${b.id}` }]);
       }
     } else {
@@ -588,7 +833,6 @@ async function handleBallotCallback(chatId: number, cbData: string, supabase: an
     return;
   }
 
-  // ─── Manage a specific ballot (organizer view with full participant list) ───
   if (cbData.startsWith("ballot_manage_view_")) {
     const activityId = cbData.replace("ballot_manage_view_", "");
     const { data: activity } = await supabase
@@ -598,7 +842,7 @@ async function handleBallotCallback(chatId: number, cbData: string, supabase: an
       .single();
 
     if (!activity) {
-      await sendMessage(chatId, "Ballot not found.", getMainMenu());
+      await sendMessage(chatId, "Ballot not found.", getPersistentMenu());
       return;
     }
 
@@ -607,7 +851,7 @@ async function handleBallotCallback(chatId: number, cbData: string, supabase: an
       .select("id, time_label, max_slots, filled_slots")
       .eq("activity_id", activityId);
 
-    let msg = `🎲 <b>${activity.title}</b>\n📍 ${activity.venue}\n📅 ${activity.date}\n\n`;
+    let msg = `🎲 <b>${activity.title}</b>\n📍 ${activity.venue}\n📅 ${formatDate(activity.date)}\n\n`;
 
     if (sessions) {
       for (const s of sessions) {
@@ -615,7 +859,6 @@ async function handleBallotCallback(chatId: number, cbData: string, supabase: an
       }
     }
 
-    // Organizer can see full participant list (privacy: only organizer)
     const profile = await getLinkedProfile(supabase, chatId);
     if (profile && activity.organizer_id === profile.user_id && sessions) {
       const sessionIds = sessions.map((s: any) => s.id);
@@ -647,11 +890,13 @@ async function handleBallotCallback(chatId: number, cbData: string, supabase: an
 
   if (cbData === "ballot_paste") {
     await setState(supabase, chatId, { flow: "ballot_paste", step: "awaiting_link", data: {} });
-    await sendMessage(chatId, "🔗 Paste the ballot/activity link:");
+    await sendMessage(chatId, "🔗 Paste the ballot/activity link:", {
+      inline_keyboard: [[{ text: "❌ Cancel", callback_data: "ballot_manage" }]],
+    });
     return;
   }
 
-  // ─── Player ballot view (privacy: no player list shown) ───
+  // Player ballot view
   if (cbData.startsWith("ballot_view_")) {
     const activityId = cbData.replace("ballot_view_", "");
     const { data: activity } = await supabase
@@ -661,7 +906,7 @@ async function handleBallotCallback(chatId: number, cbData: string, supabase: an
       .single();
 
     if (!activity) {
-      await sendMessage(chatId, "Ballot not found.", getMainMenu());
+      await sendMessage(chatId, "Ballot not found.", getPersistentMenu());
       return;
     }
 
@@ -670,7 +915,7 @@ async function handleBallotCallback(chatId: number, cbData: string, supabase: an
       .select("id, time_label, max_slots, filled_slots")
       .eq("activity_id", activityId);
 
-    let msg = `🎲 <b>${activity.title}</b>\n📍 ${activity.venue}\n📅 ${activity.date}\n\n`;
+    let msg = `🎲 <b>${activity.title}</b>\n📍 ${activity.venue}\n📅 ${formatDate(activity.date)}\n\n`;
 
     if (sessions) {
       for (const s of sessions) {
@@ -678,16 +923,12 @@ async function handleBallotCallback(chatId: number, cbData: string, supabase: an
       }
     }
 
-    // Check user's participation (works for both linked and guest users)
     const profile = await getLinkedProfile(supabase, chatId);
-    const userId = resolveUserId(profile, chatId);
     let isJoined = false;
     let userBookingId: string | null = null;
 
     if (sessions && sessions.length > 0) {
       const sessionIds = sessions.map((s: any) => s.id);
-      
-      // Try by user_id first, then by player_username (guest tg_ identifier)
       let bookingQuery = supabase
         .from("bookings")
         .select("id, reservation_status")
@@ -724,13 +965,11 @@ async function handleBallotCallback(chatId: number, cbData: string, supabase: an
     return;
   }
 
-  // ─── Join ballot (supports guest mode) ───
+  // Join ballot
   if (cbData.startsWith("ballot_join_")) {
     const sessionId = cbData.replace("ballot_join_", "");
     const profile = await getLinkedProfile(supabase, chatId);
-    const userId = resolveUserId(profile, chatId);
 
-    // Check if already joined
     let existingQuery = supabase
       .from("bookings")
       .select("id")
@@ -768,7 +1007,6 @@ async function handleBallotCallback(chatId: number, cbData: string, supabase: an
 
     const { error } = await supabase.from("bookings").insert(bookingData);
 
-    // Update filled_slots
     const { data: sess } = await supabase
       .from("activity_sessions")
       .select("filled_slots")
@@ -782,7 +1020,7 @@ async function handleBallotCallback(chatId: number, cbData: string, supabase: an
     }
 
     if (error) {
-      await sendMessage(chatId, "❌ Failed to join: " + error.message, getMainMenu());
+      await sendMessage(chatId, "❌ Failed to join: " + error.message, getPersistentMenu());
       return;
     }
 
@@ -800,7 +1038,7 @@ async function handleBallotCallback(chatId: number, cbData: string, supabase: an
     return;
   }
 
-  // ─── Leave ballot ───
+  // Leave ballot
   if (cbData.startsWith("ballot_leave_")) {
     const bookingId = cbData.replace("ballot_leave_", "");
     
@@ -830,7 +1068,7 @@ async function handleBallotCallback(chatId: number, cbData: string, supabase: an
     }
 
     if (error) {
-      await sendMessage(chatId, "❌ Failed to leave: " + error.message, getMainMenu());
+      await sendMessage(chatId, "❌ Failed to leave: " + error.message, getPersistentMenu());
       return;
     }
 
@@ -848,7 +1086,6 @@ async function handleBallotText(chatId: number, text: string, supabase: any) {
   const state = await getState(supabase, chatId);
   if (!state) return;
 
-  // Ballot create flow
   if (state.flow === "ballot_create") {
     const { step, data } = state;
 
@@ -856,12 +1093,21 @@ async function handleBallotText(chatId: number, text: string, supabase: any) {
       case "ballot_title":
         data.title = text;
         await setState(supabase, chatId, { flow: "ballot_create", step: "ballot_sport", data });
-        await sendMessage(chatId, "⚽ What sport?", {
+        await sendMessage(chatId, "⚽ What sport? (type freely, e.g. Badminton, Futsal)", {
           inline_keyboard: [
-            [{ text: "⚽ Football", callback_data: "bsport_Football" }],
-            [{ text: "🏀 Basketball", callback_data: "bsport_Basketball" }],
-            [{ text: "🏸 Badminton", callback_data: "bsport_Badminton" }],
-            [{ text: "🎾 Tennis", callback_data: "bsport_Tennis" }],
+            [{ text: "⬅️ Back", callback_data: "ballot_create" }],
+            [{ text: "❌ Cancel", callback_data: "main_menu" }],
+          ],
+        });
+        break;
+
+      case "ballot_sport":
+        data.sport = text;
+        await setState(supabase, chatId, { flow: "ballot_create", step: "ballot_venue", data });
+        await sendMessage(chatId, "📍 Location? (type freely)", {
+          inline_keyboard: [
+            [{ text: "⬅️ Back", callback_data: "ballot_back_sport" }],
+            [{ text: "❌ Cancel", callback_data: "main_menu" }],
           ],
         });
         break;
@@ -869,18 +1115,30 @@ async function handleBallotText(chatId: number, text: string, supabase: any) {
       case "ballot_venue":
         data.venue = text;
         await setState(supabase, chatId, { flow: "ballot_create", step: "ballot_date", data });
-        await sendMessage(chatId, "📅 Deadline date? (YYYY-MM-DD, e.g. 2026-12-31)");
+        await sendMessage(chatId, "📅 Deadline date?\n\nAccepted: 31 Dec 2026, 31-12-2026, 2026-12-31", {
+          inline_keyboard: [
+            [{ text: "⬅️ Back", callback_data: "ballot_back_venue" }],
+            [{ text: "❌ Cancel", callback_data: "main_menu" }],
+          ],
+        });
         break;
 
-      case "ballot_date":
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(text)) {
-          await sendMessage(chatId, "❌ Please use YYYY-MM-DD format.");
+      case "ballot_date": {
+        const parsed = parseDateInput(text);
+        if (!parsed) {
+          await sendMessage(chatId, "❌ Invalid date. Use: 31 Dec 2026, 31-12-2026, or 2026-12-31");
           return;
         }
-        data.date = text;
+        data.date = parsed;
         await setState(supabase, chatId, { flow: "ballot_create", step: "ballot_slots", data });
-        await sendMessage(chatId, "👥 How many slots?");
+        await sendMessage(chatId, "👥 How many slots?", {
+          inline_keyboard: [
+            [{ text: "⬅️ Back", callback_data: "ballot_back_date" }],
+            [{ text: "❌ Cancel", callback_data: "main_menu" }],
+          ],
+        });
         break;
+      }
 
       case "ballot_slots": {
         const slots = parseInt(text);
@@ -889,7 +1147,17 @@ async function handleBallotText(chatId: number, text: string, supabase: any) {
           return;
         }
         data.sessions = [{ time_label: "Ballot", max_slots: slots, price: 0 }];
-        await createActivity(chatId, data, supabase);
+        // Show confirmation
+        await setState(supabase, chatId, { flow: "ballot_create", step: "ballot_confirm", data });
+        let msg = "📋 <b>Ballot Group Summary</b>\n\n";
+        msg += `📝 ${data.title}\n⚽ ${data.sport}\n📍 ${data.venue}\n📅 ${formatDate(data.date)}\n👥 ${slots} slots\n\n<b>Confirm?</b>`;
+        await sendMessage(chatId, msg, {
+          inline_keyboard: [
+            [{ text: "✅ Confirm", callback_data: "ballot_confirm_create" }],
+            [{ text: "✏️ Edit", callback_data: "ballot_create" }],
+            [{ text: "❌ Cancel", callback_data: "main_menu" }],
+          ],
+        });
         break;
       }
 
@@ -920,7 +1188,6 @@ async function handleBallotText(chatId: number, text: string, supabase: any) {
       return;
     }
 
-    // Show organizer manage view if they own it, otherwise player view
     const profile = await getLinkedProfile(supabase, chatId);
     if (profile && activity.organizer_id === profile.user_id) {
       await handleBallotCallback(chatId, `ballot_manage_view_${activity.id}`, supabase);
@@ -931,14 +1198,38 @@ async function handleBallotText(chatId: number, text: string, supabase: any) {
   }
 }
 
-// Ballot sport callback
+// Ballot sport + back callbacks
 async function handleBallotSportCallback(chatId: number, cbData: string, supabase: any) {
-  if (cbData.startsWith("bsport_")) {
-    const state = await getState(supabase, chatId);
-    if (!state) return;
-    state.data.sport = cbData.replace("bsport_", "");
-    await setState(supabase, chatId, { flow: "ballot_create", step: "ballot_venue", data: state.data });
-    await sendMessage(chatId, "📍 Location?");
+  const state = await getState(supabase, chatId);
+  if (!state) return;
+
+  if (cbData === "ballot_back_sport") {
+    state.step = "ballot_title";
+    await setState(supabase, chatId, state);
+    await sendMessage(chatId, "📝 What's the activity name?", {
+      inline_keyboard: [[{ text: "❌ Cancel", callback_data: "main_menu" }]],
+    });
+    return;
+  }
+  if (cbData === "ballot_back_venue") {
+    state.step = "ballot_sport";
+    await setState(supabase, chatId, state);
+    await sendMessage(chatId, "⚽ What sport?", {
+      inline_keyboard: [[{ text: "⬅️ Back", callback_data: "ballot_create" }], [{ text: "❌ Cancel", callback_data: "main_menu" }]],
+    });
+    return;
+  }
+  if (cbData === "ballot_back_date") {
+    state.step = "ballot_venue";
+    await setState(supabase, chatId, state);
+    await sendMessage(chatId, "📍 Location?", {
+      inline_keyboard: [[{ text: "⬅️ Back", callback_data: "ballot_back_sport" }], [{ text: "❌ Cancel", callback_data: "main_menu" }]],
+    });
+    return;
+  }
+  if (cbData === "ballot_confirm_create") {
+    await createActivity(chatId, state.data, supabase);
+    return;
   }
 }
 
@@ -976,7 +1267,7 @@ async function handleMyBookeeCallback(chatId: number, cbData: string, supabase: 
     const buttons: any[] = [];
     for (const a of activities) {
       const tag = a.status === "ballot" ? "🎲" : "🏟️";
-      msg += `${tag} <b>${a.title}</b>\n📍 ${a.venue} | 📅 ${a.date}\n⚽ ${a.sport}\n\n`;
+      msg += `${tag} <b>${a.title}</b>\n📍 ${a.venue} | 📅 ${formatDate(a.date)}\n⚽ ${a.sport}\n\n`;
       const action = a.status === "ballot" ? "ballot_view" : "join";
       buttons.push([{ text: `${tag} ${a.title}`, callback_data: `${action}_${a.id}` }]);
     }
@@ -987,9 +1278,8 @@ async function handleMyBookeeCallback(chatId: number, cbData: string, supabase: 
 
   if (cbData === "my_reservations") {
     const profile = await getLinkedProfile(supabase, chatId);
-    
-    // Support both linked and guest users
     let bookings: any[] = [];
+
     if (profile) {
       const { data } = await supabase
         .from("bookings")
@@ -1000,7 +1290,6 @@ async function handleMyBookeeCallback(chatId: number, cbData: string, supabase: 
         .limit(10);
       bookings = data || [];
     } else {
-      // Guest: lookup by player_username
       const { data } = await supabase
         .from("bookings")
         .select("id, player_name, payment_status, reservation_status, session_id, reserved_until")
@@ -1048,7 +1337,6 @@ async function handleMyBookeeCallback(chatId: number, cbData: string, supabase: 
     return;
   }
 
-  // ─── Ballot Status (works for guest + linked) ───
   if (cbData === "my_ballot_status") {
     const profile = await getLinkedProfile(supabase, chatId);
     
@@ -1109,7 +1397,7 @@ async function handleMyBookeeCallback(chatId: number, cbData: string, supabase: 
           return !!sess;
         });
         const status = booking?.reservation_status === "confirmed" ? "✅" : "⏳";
-        msg += `${status} ${ba.title} — ${ba.date}\n`;
+        msg += `${status} ${ba.title} — ${formatDate(ba.date)}\n`;
         buttons.push([{ text: `🎲 ${ba.title}`, callback_data: `ballot_view_${ba.id}` }]);
       }
     } else {
@@ -1150,7 +1438,7 @@ async function handleMyBookeeCallback(chatId: number, cbData: string, supabase: 
     }
 
     if (error) {
-      await sendMessage(chatId, "❌ Cancel failed: " + error.message, getMainMenu());
+      await sendMessage(chatId, "❌ Cancel failed: " + error.message, getPersistentMenu());
       return;
     }
 
@@ -1163,7 +1451,7 @@ async function handleMyBookeeCallback(chatId: number, cbData: string, supabase: 
     return;
   }
 
-  // ─── Join activity (non-ballot, supports guest) ───
+  // Join activity (non-ballot)
   if (cbData.startsWith("join_")) {
     const activityId = cbData.replace("join_", "");
     const { data: activity } = await supabase
@@ -1173,7 +1461,7 @@ async function handleMyBookeeCallback(chatId: number, cbData: string, supabase: 
       .single();
 
     if (!activity) {
-      await sendMessage(chatId, "Activity not found.", getMainMenu());
+      await sendMessage(chatId, "Activity not found.", getPersistentMenu());
       return;
     }
 
@@ -1182,7 +1470,7 @@ async function handleMyBookeeCallback(chatId: number, cbData: string, supabase: 
       .select("id, time_label, price, max_slots, filled_slots")
       .eq("activity_id", activityId);
 
-    let msg = `🏟️ <b>${activity.title}</b>\n📍 ${activity.venue}\n📅 ${activity.date}\n⚽ ${activity.sport}\n\n`;
+    let msg = `🏟️ <b>${activity.title}</b>\n📍 ${activity.venue}\n📅 ${formatDate(activity.date)}\n⚽ ${activity.sport}\n\n`;
     const buttons: any[] = [];
 
     if (sessions && sessions.length > 0) {
@@ -1202,12 +1490,11 @@ async function handleMyBookeeCallback(chatId: number, cbData: string, supabase: 
     return;
   }
 
-  // ─── Book a session (supports guest) ───
+  // Book a session
   if (cbData.startsWith("book_session_")) {
     const sessionId = cbData.replace("book_session_", "");
     const profile = await getLinkedProfile(supabase, chatId);
 
-    // Check existing booking
     let existingQuery = supabase
       .from("bookings")
       .select("id")
@@ -1246,11 +1533,10 @@ async function handleMyBookeeCallback(chatId: number, cbData: string, supabase: 
     const { error } = await supabase.from("bookings").insert(bookingData);
 
     if (error) {
-      await sendMessage(chatId, "❌ Booking failed: " + error.message, getMainMenu());
+      await sendMessage(chatId, "❌ Booking failed: " + error.message, getPersistentMenu());
       return;
     }
 
-    // Increment filled_slots
     const { data: sess } = await supabase
       .from("activity_sessions")
       .select("filled_slots")
@@ -1287,13 +1573,37 @@ async function handleHelp(chatId: number) {
     "• <b>Register for Beta</b> — Sign up for early access\n" +
     "• <b>My Bookee</b> — Explore activities, view reservations\n" +
     "• <b>Organize</b> — Create & manage activities (requires account)\n" +
-    "• <b>Ballot</b> — Create or join ballot groups\n\n" +
+    "• <b>Ballot</b> — Create or join ballot groups\n" +
+    "• <b>Logout</b> — Disconnect your Telegram account\n\n" +
     "🔗 <b>Account Linking:</b>\n" +
-    "Guest users can join activities and ballots. Link your email account in Settings for full access.\n\n" +
+    "Guest users can join activities and ballots. Link your email account for full access.\n\n" +
     "⏰ Reservations expire after 3 hours if not confirmed.\n\n" +
     `🌐 Web app: ${SITE_URL}\n` +
     "📧 Support: yjqbenjaminbusiness@gmail.com",
     { inline_keyboard: [[{ text: "⬅️ Back", callback_data: "main_menu" }]] }
+  );
+}
+
+// ─── LOGOUT ─────────────────────────────────────────────────────────
+
+async function handleLogout(chatId: number, supabase: any) {
+  const profile = await getLinkedProfile(supabase, chatId);
+  if (!profile) {
+    await sendMessage(chatId, "You're not linked to any account.", getPersistentMenu());
+    return;
+  }
+
+  // Remove telegram_chat_id from profile
+  await supabase
+    .from("profiles")
+    .update({ telegram_chat_id: null })
+    .eq("telegram_chat_id", chatId);
+
+  await clearState(supabase, chatId);
+  await sendMessage(
+    chatId,
+    "🚪 <b>Logged out</b>\n\nYour Telegram is no longer linked to your Bookee account. You can still use guest mode.\n\nTo re-link, use Organize or My Bookee.",
+    getPersistentMenu()
   );
 }
 
@@ -1302,6 +1612,34 @@ async function handleHelp(chatId: number) {
 async function handleMessage(chatId: number, text: string, supabase: any, username?: string) {
   const state = await getState(supabase, chatId);
 
+  // Handle persistent keyboard text buttons
+  const trimmed = text.trim();
+  if (trimmed === "📝 Register for Beta") {
+    await handleBetaFlow(chatId, "", supabase);
+    return;
+  }
+  if (trimmed === "📋 My Bookee") {
+    await handleMyBookeeCallback(chatId, "my_bookee", supabase);
+    return;
+  }
+  if (trimmed === "🏟️ Organize") {
+    await handleCallback(chatId, "organize", supabase);
+    return;
+  }
+  if (trimmed === "🎲 Ballot") {
+    await handleCallback(chatId, "ballot", supabase);
+    return;
+  }
+  if (trimmed === "❓ Help") {
+    await handleHelp(chatId);
+    return;
+  }
+  if (trimmed === "🚪 Logout") {
+    await handleLogout(chatId, supabase);
+    return;
+  }
+
+  // Handle conversation state
   if (state) {
     if (state.flow === "beta") {
       await handleBetaFlow(chatId, text, supabase);
@@ -1317,41 +1655,42 @@ async function handleMessage(chatId: number, text: string, supabase: any, userna
     }
   }
 
+  // /start commands
   if (text === "/start" || text === "/start ") {
     await sendMessage(
       chatId,
-      "🏃 <b>Welcome to Bookee!</b>\n\nFind, book, and organize sports activities.\n\nWhat would you like to do?",
-      getMainMenu()
+      "🏃 <b>Welcome to Bookee!</b>\n\nFind, book, and organize sports activities.\n\nUse the menu below or choose an option:",
+      getPersistentMenu()
     );
     return;
   }
 
-  // Handle /start linked — account was just linked via web login
   if (text.startsWith("/start linked")) {
     const profile = await getLinkedProfile(supabase, chatId);
     if (profile) {
       await sendMessage(
         chatId,
-        `✅ <b>Account linked!</b>\n\nWelcome, ${profile.display_name || profile.email}! Your Telegram is now connected to your Bookee account.\n\nWhat would you like to do?`,
-        getMainMenu()
+        `✅ <b>Account linked!</b>\n\nWelcome, ${profile.display_name || profile.email}! Your Telegram is now connected to your Bookee account.`,
+        getPersistentMenu()
       );
     } else {
       await sendMessage(
         chatId,
         "⚠️ Account linking not complete. Please try logging in again.",
-        getMainMenu()
+        getPersistentMenu()
       );
     }
     return;
   }
 
-  await sendMessage(chatId, "Choose an option:", getMainMenu());
+  // Any unrecognized text → show persistent menu
+  await sendMessage(chatId, "Use the menu below to get started:", getPersistentMenu());
 }
 
 async function handleCallback(chatId: number, data: string, supabase: any) {
   if (data === "main_menu") {
     await clearState(supabase, chatId);
-    await sendMessage(chatId, "What would you like to do?", getMainMenu());
+    await sendMessage(chatId, "What would you like to do?", getPersistentMenu());
     return;
   }
 
@@ -1376,7 +1715,7 @@ async function handleCallback(chatId: number, data: string, supabase: any) {
     await handleBallotCallback(chatId, data, supabase);
     return;
   }
-  if (data.startsWith("bsport_")) {
+  if (data.startsWith("bsport_") || data.startsWith("ballot_back_") || data === "ballot_confirm_create") {
     await handleBallotSportCallback(chatId, data, supabase);
     return;
   }
@@ -1396,7 +1735,13 @@ async function handleCallback(chatId: number, data: string, supabase: any) {
     return;
   }
 
-  await sendMessage(chatId, "Choose an option:", getMainMenu());
+  // Logout
+  if (data === "logout") {
+    await handleLogout(chatId, supabase);
+    return;
+  }
+
+  await sendMessage(chatId, "Choose an option:", getPersistentMenu());
 }
 
 // ─── SERVER ─────────────────────────────────────────────────────────

@@ -118,21 +118,6 @@ const SEED_USERS: MockUser[] = [
 // Sample events (created by a verified organizer for demo)
 const SEED_EVENTS: MockEvent[] = [
   {
-    id: 'evt-1',
-    userId: 'user-3',
-    venue: 'Demo Activity – Senja Cashew Sports Hall',
-    date: '2026-02-15',
-    description: 'Badminton session. Bring your own racquet.',
-    createdAt: '2026-02-05T10:00:00Z',
-    publicAnnouncements: ['Bring extra shirts/water', 'Meet at lobby 6:45pm'],
-    exclusiveReveals: ['Door code: 1234#', 'Parking: Level 2 green'],
-    courtAssignments: {
-      'Hour 1 (5-6pm)': ['Court 1', 'Court 2'],
-      'Hour 2 (6-7pm)': ['Court 3', 'Court 4'],
-    },
-    organizerPhone: '+65 9123 4567',
-  },
-  {
     id: 'evt-2',
     userId: 'user-3',
     venue: 'Demo Activity CCAB',

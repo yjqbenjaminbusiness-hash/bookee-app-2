@@ -24,7 +24,27 @@ interface AuthContextType {
   isSupabaseAuth: boolean;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const defaultAuthContext: AuthContextType = {
+  user: null,
+  supabaseUser: null,
+  session: null,
+  isLoading: true,
+  isAuthenticated: false,
+  login: () => null,
+  loginWithSupabase: async () => false,
+  signupPlayer: () => ({ id: '', email: '', role: 'player' as const, verified: false, pendingVerification: false, password: '', displayName: '' }),
+  signupOrganizer: () => ({ id: '', email: '', role: 'organizer' as const, verified: false, pendingVerification: false, password: '', displayName: '' }),
+  signupPlayerSupabase: async () => false,
+  signupOrganizerSupabase: async () => false,
+  signInWithGoogle: async () => {},
+  signInWithApple: async () => {},
+  signInWithMagicLink: async () => {},
+  logout: () => {},
+  refreshUser: () => {},
+  isSupabaseAuth: false,
+};
+
+const AuthContext = createContext<AuthContextType>(defaultAuthContext);
 
 function supabaseUserToMockUser(profile: any, role: string): MockUser {
   return {

@@ -140,20 +140,11 @@ const SEED_GROUPS: MockGroup[] = [
   {
     id: 'grp-1',
     organizerId: 'user-3',
-    name: 'Weekend Warriors',
+    name: 'Demo Group – Weekend Warriors',
     description: 'Casual badminton group for weekend games. All levels welcome!',
     sport: 'Badminton',
     memberIds: ['user-3', 'user-2'],
     createdAt: '2026-02-01T10:00:00Z',
-  },
-  {
-    id: 'grp-2',
-    organizerId: 'user-3',
-    name: 'Hoops SG',
-    description: 'Pickup basketball sessions. Must be able to run 3v3.',
-    sport: 'Basketball',
-    memberIds: ['user-3'],
-    createdAt: '2026-02-03T10:00:00Z',
   },
 ];
 

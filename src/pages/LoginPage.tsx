@@ -37,6 +37,7 @@ export default function LoginPage() {
 
   const telegramChatId = searchParams.get('telegram_chat_id');
   const returnToTelegram = searchParams.get('return') === 'telegram';
+  const redirectPath = searchParams.get('redirect');
 
   // Link telegram and redirect after auth
   useEffect(() => {
@@ -54,7 +55,7 @@ export default function LoginPage() {
           window.location.href = 'https://t.me/BookeeAssistBot?start=linked';
           return;
         }
-        const from = (location.state as any)?.from?.pathname;
+        const from = redirectPath || (location.state as any)?.from?.pathname;
         navigate(from || getDashboardPath(user.role, user.verified), { replace: true });
       };
       linkAndRedirect();
@@ -72,7 +73,7 @@ export default function LoginPage() {
         window.location.href = 'https://t.me/BookeeAssistBot?start=linked';
         return;
       }
-      const from = (location.state as any)?.from?.pathname;
+      const from = redirectPath || (location.state as any)?.from?.pathname;
       navigate(from || getDashboardPath(mockUser.role, mockUser.verified), { replace: true });
     } else {
       // Try Supabase auth

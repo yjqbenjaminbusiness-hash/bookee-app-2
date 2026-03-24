@@ -120,7 +120,7 @@ const SEED_EVENTS: MockEvent[] = [
   {
     id: 'evt-1',
     userId: 'user-3',
-    venue: 'Senja Cashew Sports Hall',
+    venue: 'Demo Activity – Senja Cashew Sports Hall',
     date: '2026-02-15',
     description: 'Badminton session. Bring your own racquet.',
     createdAt: '2026-02-05T10:00:00Z',

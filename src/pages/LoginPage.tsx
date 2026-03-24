@@ -37,6 +37,7 @@ export default function LoginPage() {
 
   const telegramChatId = searchParams.get('telegram_chat_id');
   const returnToTelegram = searchParams.get('return') === 'telegram';
+  const redirectPath = searchParams.get('redirect');
 
   // Link telegram and redirect after auth
   useEffect(() => {

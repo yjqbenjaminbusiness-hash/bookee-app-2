@@ -73,6 +73,7 @@ const App = () => (
             <Route path="/demo/player" element={<PlayerDemo />} />
             <Route path="/demo/chat" element={<ChatDemo />} />
             <Route path="/our-story" element={<OurStoryPage />} />
+            <Route path="/announcements" element={<AnnouncementsPage />} />
             <Route path="/organizer/info" element={<OrganizerInfoPage />} />
             <Route path="/help" element={<HelpPage />} />
 

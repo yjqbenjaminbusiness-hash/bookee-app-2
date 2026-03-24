@@ -333,6 +333,7 @@ export default function PlayerEvents() {
                 const previewEvents = groupEvents.slice(0, 2);
                 const hasMore = groupEvents.length > 2;
                 const sportCat = SPORT_CATEGORIES.find(c => c.id === group.sport) || SPORT_CATEGORIES[1];
+                const isDemo = group.name.toLowerCase().includes('demo');
 
                 return (
                   <motion.div
@@ -340,8 +341,8 @@ export default function PlayerEvents() {
                     initial={{ opacity: 0, y: 16 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.3, delay: i * 0.08 }}
-                    className="bg-white rounded-2xl border-2 overflow-hidden hover:shadow-lg transition-all"
-                    style={{ borderColor: 'rgba(196,122,0,0.14)' }}
+                    className={`rounded-2xl border-2 overflow-hidden hover:shadow-lg transition-all relative ${isDemo ? 'opacity-75 bg-muted/40' : 'bg-white'}`}
+                    style={{ borderColor: isDemo ? 'rgba(0,0,0,0.08)' : 'rgba(196,122,0,0.14)' }}
                   >
                     {/* Group header */}
                     <div

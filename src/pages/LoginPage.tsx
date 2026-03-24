@@ -55,7 +55,7 @@ export default function LoginPage() {
           window.location.href = 'https://t.me/BookeeAssistBot?start=linked';
           return;
         }
-        const from = (location.state as any)?.from?.pathname;
+        const from = redirectPath || (location.state as any)?.from?.pathname;
         navigate(from || getDashboardPath(user.role, user.verified), { replace: true });
       };
       linkAndRedirect();

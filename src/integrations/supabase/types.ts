@@ -109,6 +109,77 @@ export type Database = {
           },
         ]
       }
+      ballot_participants: {
+        Row: {
+          ballot_id: string
+          created_at: string
+          display_name: string | null
+          id: string
+          status: string
+          telegram_username: string | null
+          user_id: string | null
+        }
+        Insert: {
+          ballot_id: string
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          status?: string
+          telegram_username?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          ballot_id?: string
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          status?: string
+          telegram_username?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ballot_participants_ballot_id_fkey"
+            columns: ["ballot_id"]
+            isOneToOne: false
+            referencedRelation: "ballots"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ballots: {
+        Row: {
+          activity_name: string
+          ballot_deadline: string
+          created_at: string
+          created_by: string
+          id: string
+          location: string
+          slots: number
+          sport: string
+        }
+        Insert: {
+          activity_name: string
+          ballot_deadline: string
+          created_at?: string
+          created_by: string
+          id?: string
+          location: string
+          slots?: number
+          sport: string
+        }
+        Update: {
+          activity_name?: string
+          ballot_deadline?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          location?: string
+          slots?: number
+          sport?: string
+        }
+        Relationships: []
+      }
       beta_registrations: {
         Row: {
           activity_size: string | null

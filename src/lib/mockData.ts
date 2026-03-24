@@ -118,21 +118,6 @@ const SEED_USERS: MockUser[] = [
 // Sample events (created by a verified organizer for demo)
 const SEED_EVENTS: MockEvent[] = [
   {
-    id: 'evt-1',
-    userId: 'user-3',
-    venue: 'Demo Activity – Senja Cashew Sports Hall',
-    date: '2026-02-15',
-    description: 'Badminton session. Bring your own racquet.',
-    createdAt: '2026-02-05T10:00:00Z',
-    publicAnnouncements: ['Bring extra shirts/water', 'Meet at lobby 6:45pm'],
-    exclusiveReveals: ['Door code: 1234#', 'Parking: Level 2 green'],
-    courtAssignments: {
-      'Hour 1 (5-6pm)': ['Court 1', 'Court 2'],
-      'Hour 2 (6-7pm)': ['Court 3', 'Court 4'],
-    },
-    organizerPhone: '+65 9123 4567',
-  },
-  {
     id: 'evt-2',
     userId: 'user-3',
     venue: 'Demo Activity CCAB',
@@ -147,10 +132,6 @@ const SEED_EVENTS: MockEvent[] = [
 ];
 
 const SEED_TIMESLOTS: MockTimeslot[] = [
-  { id: 'ts-1', userId: 'user-3', eventId: 'evt-1', label: '4hr: 5-9pm', price: 80, maxCapacity: 8, currentCapacity: 0, startTime: '1700', duration: '4HR' },
-  { id: 'ts-2', userId: 'user-3', eventId: 'evt-1', label: '3hr: 5-8pm', price: 60, maxCapacity: 6, currentCapacity: 0, startTime: '1700', duration: '3HR' },
-  { id: 'ts-3', userId: 'user-3', eventId: 'evt-1', label: '2hr: 5-7pm', price: 40, maxCapacity: 4, currentCapacity: 2, startTime: '1700', duration: '2HR' },
-  { id: 'ts-4', userId: 'user-3', eventId: 'evt-1', label: '2hr: 7-9pm', price: 40, maxCapacity: 4, currentCapacity: 1, startTime: '1900', duration: '2HR' },
   { id: 'ts-5', userId: 'user-3', eventId: 'evt-2', label: '3hr: 6-9pm', price: 60, maxCapacity: 10, currentCapacity: 3, startTime: '1800', duration: '3HR' },
   { id: 'ts-6', userId: 'user-3', eventId: 'evt-2', label: '2hr: 6-8pm', price: 40, maxCapacity: 6, currentCapacity: 0, startTime: '1800', duration: '2HR' },
 ];
@@ -159,28 +140,15 @@ const SEED_GROUPS: MockGroup[] = [
   {
     id: 'grp-1',
     organizerId: 'user-3',
-    name: 'Weekend Warriors',
+    name: 'Demo Group – Weekend Warriors',
     description: 'Casual badminton group for weekend games. All levels welcome!',
     sport: 'Badminton',
     memberIds: ['user-3', 'user-2'],
     createdAt: '2026-02-01T10:00:00Z',
   },
-  {
-    id: 'grp-2',
-    organizerId: 'user-3',
-    name: 'Hoops SG',
-    description: 'Pickup basketball sessions. Must be able to run 3v3.',
-    sport: 'Basketball',
-    memberIds: ['user-3'],
-    createdAt: '2026-02-03T10:00:00Z',
-  },
 ];
 
-const SEED_BOOKINGS: MockBooking[] = [
-  { id: 'bk-1', userId: 'user-2', timeslotId: 'ts-3', status: 'confirmed', paymentRef: 'SENJA-20260215-1700-2HR-2', amount: 40, createdAt: '2026-02-07T08:00:00Z' },
-  { id: 'bk-2', userId: 'user-2', timeslotId: 'ts-3', status: 'confirmed', paymentRef: 'SENJA-20260215-1700-2HR-2', amount: 40, createdAt: '2026-02-07T08:10:00Z' },
-  { id: 'bk-3', userId: 'user-2', timeslotId: 'ts-4', status: 'pending', paymentRef: '', amount: 40, createdAt: '2026-02-07T09:00:00Z' },
-];
+const SEED_BOOKINGS: MockBooking[] = [];
 
 function genId(): string {
   return Math.random().toString(36).substring(2, 12);

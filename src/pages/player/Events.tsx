@@ -207,16 +207,18 @@ export default function PlayerEvents() {
                 const fillPct = totalSpots > 0 ? (takenSpots / totalSpots) * 100 : 0;
                 const sportCat = SPORT_CATEGORIES.find(c => c.id === sport) || SPORT_CATEGORIES[0];
 
-                return (
-                  <motion.div
-                    key={event.id}
-                    initial={{ opacity: 0, y: 16 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.3, delay: i * 0.05 }}
-                    className="group bg-white rounded-2xl border-2 overflow-hidden hover:shadow-lg transition-all cursor-pointer"
-                    style={{ borderColor: 'rgba(26,122,74,0.10)' }}
-                    onClick={() => navigate(`/player/events/${event.id}`)}
-                  >
+                  const isDemo = event.venue.toLowerCase().includes('demo');
+
+                  return (
+                    <motion.div
+                      key={event.id}
+                      initial={{ opacity: 0, y: 16 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3, delay: i * 0.05 }}
+                      className={`group rounded-2xl border-2 overflow-hidden hover:shadow-lg transition-all cursor-pointer relative ${isDemo ? 'opacity-75 bg-muted/40' : 'bg-white'}`}
+                      style={{ borderColor: isDemo ? 'rgba(0,0,0,0.08)' : 'rgba(26,122,74,0.10)' }}
+                      onClick={() => navigate(`/player/events/${event.id}`)}
+                    >
                     {/* Image */}
                     <div className="relative h-44 overflow-hidden bg-muted">
                       <img
@@ -237,6 +239,11 @@ export default function PlayerEvents() {
                       <span className="absolute top-3 right-3 text-[10px] font-bold px-2.5 py-1 rounded-full" style={{ background: 'rgba(255,255,255,0.92)', color: '#1A7A4A' }}>
                         🌐 Public
                       </span>
+                      {isDemo && (
+                        <span className="absolute top-3 right-20 text-[10px] font-bold px-2.5 py-1 rounded-full bg-foreground/70 text-white">
+                          DEMO
+                        </span>
+                      )}
                       {avgRating > 0 && (
                         <span className="absolute bottom-3 left-3 flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-full" style={{ background: '#1A7A4A', color: '#fff' }}>
                           <Star className="h-2.5 w-2.5 fill-white" /> {avgRating}
@@ -326,6 +333,7 @@ export default function PlayerEvents() {
                 const previewEvents = groupEvents.slice(0, 2);
                 const hasMore = groupEvents.length > 2;
                 const sportCat = SPORT_CATEGORIES.find(c => c.id === group.sport) || SPORT_CATEGORIES[1];
+                const isDemo = group.name.toLowerCase().includes('demo');
 
                 return (
                   <motion.div
@@ -333,8 +341,8 @@ export default function PlayerEvents() {
                     initial={{ opacity: 0, y: 16 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.3, delay: i * 0.08 }}
-                    className="bg-white rounded-2xl border-2 overflow-hidden hover:shadow-lg transition-all"
-                    style={{ borderColor: 'rgba(196,122,0,0.14)' }}
+                    className={`rounded-2xl border-2 overflow-hidden hover:shadow-lg transition-all relative ${isDemo ? 'opacity-75 bg-muted/40' : 'bg-white'}`}
+                    style={{ borderColor: isDemo ? 'rgba(0,0,0,0.08)' : 'rgba(196,122,0,0.14)' }}
                   >
                     {/* Group header */}
                     <div
@@ -365,6 +373,11 @@ export default function PlayerEvents() {
                             <span className="text-[10px] font-bold px-2.5 py-1 rounded-full" style={{ background: '#FEF9EC', color: '#C47A00' }}>
                               👥 Community
                             </span>
+                            {isDemo && (
+                              <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-foreground/70 text-white">
+                                DEMO
+                              </span>
+                            )}
                           </div>
                           <p className="text-sm text-muted-foreground line-clamp-1">{group.description}</p>
                           <p className="text-[11px] text-muted-foreground mt-1">

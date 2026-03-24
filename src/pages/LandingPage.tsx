@@ -284,6 +284,34 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* ── Our Story ── */}
+      <section className="py-24 bg-muted/20">
+        <div className="container px-4 max-w-3xl mx-auto text-center">
+          <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: '#1A7A4A' }}>Our Story</p>
+          <h2 className="text-3xl md:text-5xl font-bold mb-6" style={{ color: '#111', fontFamily: 'Lora, serif' }}>
+            Why We Built Bookee
+          </h2>
+          <div className="space-y-4 text-muted-foreground text-base leading-relaxed text-left">
+            <p>
+              We started as a group of friends who loved playing badminton, basketball, and futsal every week. But the coordination — tracking who's coming, collecting payments, finding courts — was a nightmare.
+            </p>
+            <p>
+              Group chats were messy. People forgot to pay. Slots got double-booked. The <strong className="text-foreground">fun part was the game</strong>, but the <strong className="text-foreground">admin killed the vibe</strong>.
+            </p>
+            <p>
+              So we built Bookee — a platform that handles the coordination so you can focus on what matters: <strong className="text-foreground">playing more and working less</strong>.
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            className="mt-8 rounded-full font-bold"
+            onClick={() => navigate('/our-story')}
+          >
+            Read the Full Story <ArrowRight className="ml-2 h-4 w-4" />
+          </Button>
+        </div>
+      </section>
+
       {/* ── Organizer Callout ── */}
       <section className="py-24 overflow-hidden" style={{ background: 'linear-gradient(135deg, #1A7A4A 0%, #0d5c35 100%)' }}>
         <div className="container px-4">

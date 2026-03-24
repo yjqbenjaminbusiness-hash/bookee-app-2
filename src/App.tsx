@@ -15,6 +15,7 @@ import SignupOrganizerPage from "./pages/SignupOrganizerPage";
 import OrganizerPendingPage from "./pages/OrganizerPendingPage";
 import DemoPage from "./pages/DemoPage";
 import OurStoryPage from "./pages/OurStoryPage";
+import AnnouncementsPage from "./pages/AnnouncementsPage";
 import OrganizerInfoPage from "./pages/organizer/OrganizerInfoPage";
 import HelpPage from "./pages/HelpPage";
 
@@ -72,6 +73,7 @@ const App = () => (
             <Route path="/demo/player" element={<PlayerDemo />} />
             <Route path="/demo/chat" element={<ChatDemo />} />
             <Route path="/our-story" element={<OurStoryPage />} />
+            <Route path="/announcements" element={<AnnouncementsPage />} />
             <Route path="/organizer/info" element={<OrganizerInfoPage />} />
             <Route path="/help" element={<HelpPage />} />
 

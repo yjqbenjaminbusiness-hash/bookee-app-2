@@ -207,16 +207,18 @@ export default function PlayerEvents() {
                 const fillPct = totalSpots > 0 ? (takenSpots / totalSpots) * 100 : 0;
                 const sportCat = SPORT_CATEGORIES.find(c => c.id === sport) || SPORT_CATEGORIES[0];
 
-                return (
-                  <motion.div
-                    key={event.id}
-                    initial={{ opacity: 0, y: 16 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.3, delay: i * 0.05 }}
-                    className="group bg-white rounded-2xl border-2 overflow-hidden hover:shadow-lg transition-all cursor-pointer"
-                    style={{ borderColor: 'rgba(26,122,74,0.10)' }}
-                    onClick={() => navigate(`/player/events/${event.id}`)}
-                  >
+                  const isDemo = event.venue.toLowerCase().includes('demo');
+
+                  return (
+                    <motion.div
+                      key={event.id}
+                      initial={{ opacity: 0, y: 16 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3, delay: i * 0.05 }}
+                      className={`group rounded-2xl border-2 overflow-hidden hover:shadow-lg transition-all cursor-pointer relative ${isDemo ? 'opacity-75 bg-muted/40' : 'bg-white'}`}
+                      style={{ borderColor: isDemo ? 'rgba(0,0,0,0.08)' : 'rgba(26,122,74,0.10)' }}
+                      onClick={() => navigate(`/player/events/${event.id}`)}
+                    >
                     {/* Image */}
                     <div className="relative h-44 overflow-hidden bg-muted">
                       <img

@@ -148,11 +148,7 @@ const SEED_GROUPS: MockGroup[] = [
   },
 ];
 
-const SEED_BOOKINGS: MockBooking[] = [
-  { id: 'bk-1', userId: 'user-2', timeslotId: 'ts-3', status: 'confirmed', paymentRef: 'SENJA-20260215-1700-2HR-2', amount: 40, createdAt: '2026-02-07T08:00:00Z' },
-  { id: 'bk-2', userId: 'user-2', timeslotId: 'ts-3', status: 'confirmed', paymentRef: 'SENJA-20260215-1700-2HR-2', amount: 40, createdAt: '2026-02-07T08:10:00Z' },
-  { id: 'bk-3', userId: 'user-2', timeslotId: 'ts-4', status: 'pending', paymentRef: '', amount: 40, createdAt: '2026-02-07T09:00:00Z' },
-];
+const SEED_BOOKINGS: MockBooking[] = [];
 
 function genId(): string {
   return Math.random().toString(36).substring(2, 12);

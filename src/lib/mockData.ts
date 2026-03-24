@@ -132,10 +132,6 @@ const SEED_EVENTS: MockEvent[] = [
 ];
 
 const SEED_TIMESLOTS: MockTimeslot[] = [
-  { id: 'ts-1', userId: 'user-3', eventId: 'evt-1', label: '4hr: 5-9pm', price: 80, maxCapacity: 8, currentCapacity: 0, startTime: '1700', duration: '4HR' },
-  { id: 'ts-2', userId: 'user-3', eventId: 'evt-1', label: '3hr: 5-8pm', price: 60, maxCapacity: 6, currentCapacity: 0, startTime: '1700', duration: '3HR' },
-  { id: 'ts-3', userId: 'user-3', eventId: 'evt-1', label: '2hr: 5-7pm', price: 40, maxCapacity: 4, currentCapacity: 2, startTime: '1700', duration: '2HR' },
-  { id: 'ts-4', userId: 'user-3', eventId: 'evt-1', label: '2hr: 7-9pm', price: 40, maxCapacity: 4, currentCapacity: 1, startTime: '1900', duration: '2HR' },
   { id: 'ts-5', userId: 'user-3', eventId: 'evt-2', label: '3hr: 6-9pm', price: 60, maxCapacity: 10, currentCapacity: 3, startTime: '1800', duration: '3HR' },
   { id: 'ts-6', userId: 'user-3', eventId: 'evt-2', label: '2hr: 6-8pm', price: 40, maxCapacity: 6, currentCapacity: 0, startTime: '1800', duration: '2HR' },
 ];

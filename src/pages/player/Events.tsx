@@ -373,6 +373,11 @@ export default function PlayerEvents() {
                             <span className="text-[10px] font-bold px-2.5 py-1 rounded-full" style={{ background: '#FEF9EC', color: '#C47A00' }}>
                               👥 Community
                             </span>
+                            {isDemo && (
+                              <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-foreground/70 text-white">
+                                DEMO
+                              </span>
+                            )}
                           </div>
                           <p className="text-sm text-muted-foreground line-clamp-1">{group.description}</p>
                           <p className="text-[11px] text-muted-foreground mt-1">

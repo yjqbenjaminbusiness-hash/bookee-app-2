@@ -53,7 +53,6 @@ function getPersistentMenu() {
   };
 }
 
-// Inline menu for callbacks inside flows
 function getInlineMainMenu() {
   return {
     inline_keyboard: [
@@ -71,7 +70,6 @@ function getInlineMainMenu() {
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
 function formatDate(dateStr: string): string {
-  // Accepts YYYY-MM-DD or DD-MM-YYYY or DD/MM/YYYY
   let d: Date | null = null;
   if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
     d = new Date(dateStr + "T00:00:00");
@@ -84,12 +82,9 @@ function formatDate(dateStr: string): string {
 }
 
 function parseDateInput(text: string): string | null {
-  // Accept YYYY-MM-DD
   if (/^\d{4}-\d{2}-\d{2}$/.test(text)) return text;
-  // Accept DD-MM-YYYY or DD/MM/YYYY
   const m = text.match(/^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})$/);
   if (m) return `${m[3]}-${m[2].padStart(2,"0")}-${m[1].padStart(2,"0")}`;
-  // Accept "26 Jan 2026" style
   const m2 = text.match(/^(\d{1,2})\s+(\w+)\s+(\d{4})$/i);
   if (m2) {
     const mi = MONTHS.findIndex(mo => mo.toLowerCase() === m2[2].toLowerCase());
@@ -230,7 +225,6 @@ async function handleBetaCallback(chatId: number, data: string, supabase: any) {
   const state = await getState(supabase, chatId);
   if (!state) return;
 
-  // Back buttons
   if (data === "beta_back_name") {
     await setState(supabase, chatId, { flow: "beta", step: "beta_start", data: {} });
     await handleBetaFlow(chatId, "", supabase);
@@ -437,7 +431,6 @@ async function handleOrganizeFlow(chatId: number, text: string, supabase: any) {
           }
         );
       } else {
-        // Single session — show confirmation
         data.sessions = [{ time_label: data.time_label, max_slots: data.max_slots, price: data.price }];
         await setState(supabase, chatId, { flow: "organize", step: "org_confirm_review", data });
         await showOrganizeConfirmation(chatId, data);
@@ -457,7 +450,6 @@ async function handleOrganizeFlow(chatId: number, text: string, supabase: any) {
       break;
 
     case "org_multi_template": {
-      // Parse multi-session template input
       const sessionBlocks = text.split(/session\s*\d+\s*:/i).filter(s => s.trim());
       if (sessionBlocks.length === 0) {
         await sendMessage(chatId, "❌ Could not parse sessions. Please follow the template format.");
@@ -476,7 +468,7 @@ async function handleOrganizeFlow(chatId: number, text: string, supabase: any) {
           });
           if (dateMatch) {
             const pd = parseDateInput(dateMatch[1].trim());
-            if (pd) data.date = pd; // use last date
+            if (pd) data.date = pd;
           }
         }
       }
@@ -539,7 +531,7 @@ async function createActivity(chatId: number, data: any, supabase: any) {
       venue: data.venue,
       date: data.date,
       organizer_id: profile.user_id,
-      status: data.is_ballot ? "ballot" : "active",
+      status: "active",
       description: data.description || null,
     })
     .select("id")
@@ -564,8 +556,7 @@ async function createActivity(chatId: number, data: any, supabase: any) {
 
   await clearState(supabase, chatId);
 
-  const typeLabel = data.is_ballot ? "Ballot Group" : "Activity";
-  let msg = `✅ <b>${typeLabel} Created!</b>\n\n`;
+  let msg = `✅ <b>Activity Created!</b>\n\n`;
   msg += `🏟️ ${data.title}\n`;
   msg += `📍 ${data.venue}\n`;
   msg += `📅 ${formatDate(data.date)}\n`;
@@ -650,7 +641,6 @@ async function handleOrganizeCallback(chatId: number, cbData: string, supabase: 
     return;
   }
 
-  // Edit → restart from title keeping data
   if (cbData === "org_edit" && state) {
     state.step = "org_title";
     await setState(supabase, chatId, state);
@@ -660,7 +650,6 @@ async function handleOrganizeCallback(chatId: number, cbData: string, supabase: 
     return;
   }
 
-  // Confirm → create activity
   if (cbData === "org_confirm") {
     if (!state) return;
     await createActivity(chatId, state.data, supabase);
@@ -678,7 +667,6 @@ async function handleOrganizeCallback(chatId: number, cbData: string, supabase: 
     return;
   }
 
-  // Multi-session template option
   if (cbData === "org_multi_template") {
     if (!state) return;
     const template = `Session 1:\nDate: ${formatDate(state.data.date || "2026-01-26")}\nTime: 7pm - 9pm\nSlots: 6\n\nSession 2:\nDate: ${formatDate(state.data.date || "2026-01-26")}\nTime: 9pm - 11pm\nSlots: 12`;
@@ -771,7 +759,7 @@ async function handleOrganizeCallback(chatId: number, cbData: string, supabase: 
   }
 }
 
-// ─── BALLOT FLOW ────────────────────────────────────────────────────
+// ─── BALLOT FLOW (uses separate ballots table) ──────────────────────
 
 async function handleBallotCallback(chatId: number, cbData: string, supabase: any) {
   if (cbData === "ballot") {
@@ -791,7 +779,7 @@ async function handleBallotCallback(chatId: number, cbData: string, supabase: an
       await promptAccountLink(chatId, "create ballot groups");
       return;
     }
-    await setState(supabase, chatId, { flow: "ballot_create", step: "ballot_title", data: { is_ballot: true } });
+    await setState(supabase, chatId, { flow: "ballot_create", step: "ballot_title", data: {} });
     await sendMessage(chatId, "🎲 <b>Create Ballot Group</b>\n\n📝 What's the activity name? (type freely)", {
       inline_keyboard: [[{ text: "❌ Cancel", callback_data: "main_menu" }]],
     });
@@ -806,11 +794,10 @@ async function handleBallotCallback(chatId: number, cbData: string, supabase: an
     }
 
     const { data: orgBallots } = await supabase
-      .from("activities")
-      .select("id, title, date, venue")
-      .eq("organizer_id", profile.user_id)
-      .eq("status", "ballot")
-      .order("date", { ascending: true })
+      .from("ballots")
+      .select("id, activity_name, ballot_deadline, location")
+      .eq("created_by", profile.user_id)
+      .order("ballot_deadline", { ascending: true })
       .limit(10);
 
     let msg = "📊 <b>Manage Ballot Group</b>\n\n";
@@ -821,8 +808,8 @@ async function handleBallotCallback(chatId: number, cbData: string, supabase: an
     if (orgBallots && orgBallots.length > 0) {
       msg += "<b>Your Ballot Groups:</b>\n\n";
       for (const b of orgBallots) {
-        msg += `• ${b.title} — ${formatDate(b.date)}\n`;
-        buttons.push([{ text: `📊 ${b.title}`, callback_data: `ballot_manage_view_${b.id}` }]);
+        msg += `• ${b.activity_name} — ${formatDate(b.ballot_deadline)}\n`;
+        buttons.push([{ text: `📊 ${b.activity_name}`, callback_data: `ballot_manage_view_${b.id}` }]);
       }
     } else {
       msg += "No ballot groups found. Create one or paste a link.";
@@ -834,46 +821,33 @@ async function handleBallotCallback(chatId: number, cbData: string, supabase: an
   }
 
   if (cbData.startsWith("ballot_manage_view_")) {
-    const activityId = cbData.replace("ballot_manage_view_", "");
-    const { data: activity } = await supabase
-      .from("activities")
-      .select("id, title, venue, date, sport, organizer_id")
-      .eq("id", activityId)
+    const ballotId = cbData.replace("ballot_manage_view_", "");
+    const { data: ballot } = await supabase
+      .from("ballots")
+      .select("id, activity_name, location, ballot_deadline, sport, slots, created_by")
+      .eq("id", ballotId)
       .single();
 
-    if (!activity) {
+    if (!ballot) {
       await sendMessage(chatId, "Ballot not found.", getPersistentMenu());
       return;
     }
 
-    const { data: sessions } = await supabase
-      .from("activity_sessions")
-      .select("id, time_label, max_slots, filled_slots")
-      .eq("activity_id", activityId);
+    const { data: participants } = await supabase
+      .from("ballot_participants")
+      .select("id, display_name, status, user_id")
+      .eq("ballot_id", ballotId);
 
-    let msg = `🎲 <b>${activity.title}</b>\n📍 ${activity.venue}\n📅 ${formatDate(activity.date)}\n\n`;
+    let msg = `🎲 <b>${ballot.activity_name}</b>\n📍 ${ballot.location}\n📅 Deadline: ${formatDate(ballot.ballot_deadline)}\n⚽ ${ballot.sport}\n👥 ${ballot.slots} slots\n\n`;
 
-    if (sessions) {
-      for (const s of sessions) {
-        msg += `⏰ ${s.time_label} — ${s.filled_slots}/${s.max_slots} joined\n`;
-      }
-    }
+    const totalParticipants = participants?.length || 0;
+    msg += `<b>Participants:</b> ${totalParticipants}\n`;
 
     const profile = await getLinkedProfile(supabase, chatId);
-    if (profile && activity.organizer_id === profile.user_id && sessions) {
-      const sessionIds = sessions.map((s: any) => s.id);
-      const { data: bookings } = await supabase
-        .from("bookings")
-        .select("player_name, reservation_status, payment_status")
-        .in("session_id", sessionIds)
-        .neq("reservation_status", "cancelled");
-
-      if (bookings && bookings.length > 0) {
-        msg += "\n<b>Participants:</b>\n";
-        for (const b of bookings) {
-          const s = b.reservation_status === "confirmed" ? "✅" : "⏳";
-          msg += `${s} ${b.player_name}\n`;
-        }
+    if (profile && ballot.created_by === profile.user_id && participants && participants.length > 0) {
+      for (const p of participants) {
+        const s = p.status === "selected" ? "✅" : p.status === "rejected" ? "❌" : "⏳";
+        msg += `${s} ${p.display_name || "Anonymous"}\n`;
       }
     }
 
@@ -881,7 +855,7 @@ async function handleBallotCallback(chatId: number, cbData: string, supabase: an
 
     await sendMessage(chatId, msg, {
       inline_keyboard: [
-        [{ text: "🔄 Refresh", callback_data: `ballot_manage_view_${activityId}` }],
+        [{ text: "🔄 Refresh", callback_data: `ballot_manage_view_${ballotId}` }],
         [{ text: "⬅️ Back", callback_data: "ballot_manage" }],
       ],
     });
@@ -890,7 +864,7 @@ async function handleBallotCallback(chatId: number, cbData: string, supabase: an
 
   if (cbData === "ballot_paste") {
     await setState(supabase, chatId, { flow: "ballot_paste", step: "awaiting_link", data: {} });
-    await sendMessage(chatId, "🔗 Paste the ballot/activity link:", {
+    await sendMessage(chatId, "🔗 Paste the ballot ID or link:", {
       inline_keyboard: [[{ text: "❌ Cancel", callback_data: "ballot_manage" }]],
     });
     return;
@@ -898,66 +872,52 @@ async function handleBallotCallback(chatId: number, cbData: string, supabase: an
 
   // Player ballot view
   if (cbData.startsWith("ballot_view_")) {
-    const activityId = cbData.replace("ballot_view_", "");
-    const { data: activity } = await supabase
-      .from("activities")
-      .select("id, title, venue, date, sport")
-      .eq("id", activityId)
+    const ballotId = cbData.replace("ballot_view_", "");
+    const { data: ballot } = await supabase
+      .from("ballots")
+      .select("id, activity_name, location, ballot_deadline, sport, slots")
+      .eq("id", ballotId)
       .single();
 
-    if (!activity) {
+    if (!ballot) {
       await sendMessage(chatId, "Ballot not found.", getPersistentMenu());
       return;
     }
 
-    const { data: sessions } = await supabase
-      .from("activity_sessions")
-      .select("id, time_label, max_slots, filled_slots")
-      .eq("activity_id", activityId);
+    const { data: participants } = await supabase
+      .from("ballot_participants")
+      .select("id, status, user_id, telegram_username")
+      .eq("ballot_id", ballotId);
 
-    let msg = `🎲 <b>${activity.title}</b>\n📍 ${activity.venue}\n📅 ${formatDate(activity.date)}\n\n`;
-
-    if (sessions) {
-      for (const s of sessions) {
-        msg += `⏰ ${s.time_label} — ${s.filled_slots}/${s.max_slots} joined\n`;
-      }
-    }
+    let msg = `🎲 <b>${ballot.activity_name}</b>\n📍 ${ballot.location}\n📅 Deadline: ${formatDate(ballot.ballot_deadline)}\n⚽ ${ballot.sport}\n👥 ${participants?.length || 0}/${ballot.slots} joined\n`;
 
     const profile = await getLinkedProfile(supabase, chatId);
     let isJoined = false;
-    let userBookingId: string | null = null;
+    let participantId: string | null = null;
 
-    if (sessions && sessions.length > 0) {
-      const sessionIds = sessions.map((s: any) => s.id);
-      let bookingQuery = supabase
-        .from("bookings")
-        .select("id, reservation_status")
-        .in("session_id", sessionIds)
-        .neq("reservation_status", "cancelled")
-        .limit(1);
-
-      if (profile) {
-        bookingQuery = bookingQuery.eq("user_id", profile.user_id);
-      } else {
-        bookingQuery = bookingQuery.eq("player_username", `tg_${chatId}`);
-      }
-
-      const { data: booking } = await bookingQuery.single();
-
-      if (booking) {
-        isJoined = true;
-        userBookingId = booking.id;
-        const status = booking.reservation_status === "confirmed" ? "✅ Confirmed" : "⏳ Pending";
-        msg += `\n<b>Your status:</b> ${status}`;
+    if (participants) {
+      for (const p of participants) {
+        if (profile && p.user_id === profile.user_id) {
+          isJoined = true;
+          participantId = p.id;
+          const status = p.status === "selected" ? "✅ Selected" : p.status === "rejected" ? "❌ Rejected" : "⏳ Pending";
+          msg += `\n<b>Your status:</b> ${status}`;
+          break;
+        } else if (!profile && p.telegram_username === `tg_${chatId}`) {
+          isJoined = true;
+          participantId = p.id;
+          msg += `\n<b>Your status:</b> ⏳ Pending`;
+          break;
+        }
       }
     }
 
     const buttons: any[] = [];
     if (isJoined) {
-      buttons.push([{ text: "🔄 Check Status", callback_data: `ballot_view_${activityId}` }]);
-      buttons.push([{ text: "🚪 Leave Ballot", callback_data: `ballot_leave_${userBookingId}` }]);
-    } else if (sessions && sessions.length > 0) {
-      buttons.push([{ text: "✋ Join Ballot", callback_data: `ballot_join_${sessions[0].id}` }]);
+      buttons.push([{ text: "🔄 Check Status", callback_data: `ballot_view_${ballotId}` }]);
+      buttons.push([{ text: "🚪 Leave Ballot", callback_data: `ballot_leave_${participantId}` }]);
+    } else {
+      buttons.push([{ text: "✋ Join Ballot", callback_data: `ballot_join_${ballotId}` }]);
     }
     buttons.push([{ text: "⬅️ Back", callback_data: "my_bookee" }]);
 
@@ -967,24 +927,24 @@ async function handleBallotCallback(chatId: number, cbData: string, supabase: an
 
   // Join ballot
   if (cbData.startsWith("ballot_join_")) {
-    const sessionId = cbData.replace("ballot_join_", "");
+    const ballotId = cbData.replace("ballot_join_", "");
     const profile = await getLinkedProfile(supabase, chatId);
+    const displayName = resolveDisplayName(profile);
 
+    // Check if already joined
     let existingQuery = supabase
-      .from("bookings")
+      .from("ballot_participants")
       .select("id")
-      .eq("session_id", sessionId)
-      .neq("reservation_status", "cancelled")
+      .eq("ballot_id", ballotId)
       .limit(1);
 
     if (profile) {
       existingQuery = existingQuery.eq("user_id", profile.user_id);
     } else {
-      existingQuery = existingQuery.eq("player_username", `tg_${chatId}`);
+      existingQuery = existingQuery.eq("telegram_username", `tg_${chatId}`);
     }
 
     const { data: existing } = await existingQuery.single();
-
     if (existing) {
       await sendMessage(chatId, "You've already joined this ballot!", {
         inline_keyboard: [[{ text: "⬅️ Back", callback_data: "my_bookee" }]],
@@ -992,42 +952,28 @@ async function handleBallotCallback(chatId: number, cbData: string, supabase: an
       return;
     }
 
-    const reservedUntil = new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString();
-    const displayName = resolveDisplayName(profile);
-    
-    const bookingData: any = {
-      session_id: sessionId,
-      player_name: displayName,
-      player_username: profile ? null : `tg_${chatId}`,
-      reservation_status: "pending",
-      payment_status: "unpaid",
-      reserved_until: reservedUntil,
+    const participantData: any = {
+      ballot_id: ballotId,
+      display_name: displayName,
+      status: "pending",
     };
-    if (profile) bookingData.user_id = profile.user_id;
-
-    const { error } = await supabase.from("bookings").insert(bookingData);
-
-    const { data: sess } = await supabase
-      .from("activity_sessions")
-      .select("filled_slots")
-      .eq("id", sessionId)
-      .single();
-    if (sess) {
-      await supabase
-        .from("activity_sessions")
-        .update({ filled_slots: sess.filled_slots + 1 })
-        .eq("id", sessionId);
+    if (profile) {
+      participantData.user_id = profile.user_id;
+    } else {
+      participantData.telegram_username = `tg_${chatId}`;
     }
+
+    const { error } = await supabase.from("ballot_participants").insert(participantData);
 
     if (error) {
       await sendMessage(chatId, "❌ Failed to join: " + error.message, getPersistentMenu());
       return;
     }
 
-    const guestNote = profile ? "" : "\n\n💡 Link your account in Settings to manage bookings across platforms.";
+    const guestNote = profile ? "" : "\n\n💡 Link your account to manage across platforms.";
     await sendMessage(
       chatId,
-      `✅ <b>You have joined this ballot!</b>\n\n⏰ Your slot is reserved for 3 hours. Please confirm before expiry.${guestNote}`,
+      `✅ <b>You have joined this ballot!</b>${guestNote}`,
       {
         inline_keyboard: [
           [{ text: "📋 My Bookee", callback_data: "my_bookee" }],
@@ -1040,32 +986,12 @@ async function handleBallotCallback(chatId: number, cbData: string, supabase: an
 
   // Leave ballot
   if (cbData.startsWith("ballot_leave_")) {
-    const bookingId = cbData.replace("ballot_leave_", "");
-    
-    const { data: booking } = await supabase
-      .from("bookings")
-      .select("session_id")
-      .eq("id", bookingId)
-      .single();
+    const participantId = cbData.replace("ballot_leave_", "");
 
     const { error } = await supabase
-      .from("bookings")
-      .update({ reservation_status: "cancelled" })
-      .eq("id", bookingId);
-
-    if (booking) {
-      const { data: sess } = await supabase
-        .from("activity_sessions")
-        .select("filled_slots")
-        .eq("id", booking.session_id)
-        .single();
-      if (sess && sess.filled_slots > 0) {
-        await supabase
-          .from("activity_sessions")
-          .update({ filled_slots: sess.filled_slots - 1 })
-          .eq("id", booking.session_id);
-      }
-    }
+      .from("ballot_participants")
+      .delete()
+      .eq("id", participantId);
 
     if (error) {
       await sendMessage(chatId, "❌ Failed to leave: " + error.message, getPersistentMenu());
@@ -1080,6 +1006,56 @@ async function handleBallotCallback(chatId: number, cbData: string, supabase: an
     });
     return;
   }
+
+  // Confirm create ballot
+  if (cbData === "ballot_confirm_create") {
+    const state = await getState(supabase, chatId);
+    if (!state) return;
+    await createBallot(chatId, state.data, supabase);
+    return;
+  }
+}
+
+async function createBallot(chatId: number, data: any, supabase: any) {
+  const profile = await getLinkedProfile(supabase, chatId);
+  if (!profile) {
+    await clearState(supabase, chatId);
+    await promptAccountLink(chatId, "create ballot groups");
+    return;
+  }
+
+  const { data: ballot, error } = await supabase
+    .from("ballots")
+    .insert({
+      activity_name: data.title,
+      sport: data.sport,
+      location: data.venue,
+      ballot_deadline: data.date,
+      slots: data.slots,
+      created_by: profile.user_id,
+    })
+    .select("id")
+    .single();
+
+  if (error) {
+    console.error("Ballot creation error:", error);
+    await clearState(supabase, chatId);
+    await sendMessage(chatId, "❌ Failed to create ballot. " + error.message, getPersistentMenu());
+    return;
+  }
+
+  await clearState(supabase, chatId);
+
+  let msg = `✅ <b>Ballot Group Created!</b>\n\n`;
+  msg += `🎲 ${data.title}\n`;
+  msg += `📍 ${data.venue}\n`;
+  msg += `📅 Deadline: ${formatDate(data.date)}\n`;
+  msg += `⚽ ${data.sport}\n`;
+  msg += `👥 ${data.slots} slots\n\n`;
+  msg += `🆔 Ballot ID: <code>${ballot.id}</code>\n`;
+  msg += `Share this ID so others can join!`;
+
+  await sendMessage(chatId, msg, getPersistentMenu());
 }
 
 async function handleBallotText(chatId: number, text: string, supabase: any) {
@@ -1146,8 +1122,7 @@ async function handleBallotText(chatId: number, text: string, supabase: any) {
           await sendMessage(chatId, "❌ Please enter a valid number.");
           return;
         }
-        data.sessions = [{ time_label: "Ballot", max_slots: slots, price: 0 }];
-        // Show confirmation
+        data.slots = slots;
         await setState(supabase, chatId, { flow: "ballot_create", step: "ballot_confirm", data });
         let msg = "📋 <b>Ballot Group Summary</b>\n\n";
         msg += `📝 ${data.title}\n⚽ ${data.sport}\n📍 ${data.venue}\n📅 ${formatDate(data.date)}\n👥 ${slots} slots\n\n<b>Confirm?</b>`;
@@ -1169,36 +1144,36 @@ async function handleBallotText(chatId: number, text: string, supabase: any) {
 
   // Paste ballot link flow
   if (state.flow === "ballot_paste" && state.step === "awaiting_link") {
-    let activityId = text.trim();
-    const urlMatch = text.match(/events\/([a-f0-9-]+)/i) || text.match(/([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/i);
-    if (urlMatch) activityId = urlMatch[1];
+    let ballotId = text.trim();
+    // Try to extract UUID from link
+    const urlMatch = text.match(/([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/i);
+    if (urlMatch) ballotId = urlMatch[1];
 
-    const { data: activity } = await supabase
-      .from("activities")
-      .select("id, title, venue, date, sport, status, organizer_id")
-      .eq("id", activityId)
+    const { data: ballot } = await supabase
+      .from("ballots")
+      .select("id, activity_name, location, ballot_deadline, sport, slots, created_by")
+      .eq("id", ballotId)
       .single();
 
     await clearState(supabase, chatId);
 
-    if (!activity) {
-      await sendMessage(chatId, "❌ Could not find that activity. Check the link and try again.", {
+    if (!ballot) {
+      await sendMessage(chatId, "❌ Could not find that ballot. Check the ID and try again.", {
         inline_keyboard: [[{ text: "⬅️ Back", callback_data: "ballot_manage" }]],
       });
       return;
     }
 
     const profile = await getLinkedProfile(supabase, chatId);
-    if (profile && activity.organizer_id === profile.user_id) {
-      await handleBallotCallback(chatId, `ballot_manage_view_${activity.id}`, supabase);
+    if (profile && ballot.created_by === profile.user_id) {
+      await handleBallotCallback(chatId, `ballot_manage_view_${ballot.id}`, supabase);
     } else {
-      await handleBallotCallback(chatId, `ballot_view_${activity.id}`, supabase);
+      await handleBallotCallback(chatId, `ballot_view_${ballot.id}`, supabase);
     }
     return;
   }
 }
 
-// Ballot sport + back callbacks
 async function handleBallotSportCallback(chatId: number, cbData: string, supabase: any) {
   const state = await getState(supabase, chatId);
   if (!state) return;
@@ -1227,10 +1202,6 @@ async function handleBallotSportCallback(chatId: number, cbData: string, supabas
     });
     return;
   }
-  if (cbData === "ballot_confirm_create") {
-    await createActivity(chatId, state.data, supabase);
-    return;
-  }
 }
 
 // ─── MY BOOKEE ──────────────────────────────────────────────────────
@@ -1252,25 +1223,39 @@ async function handleMyBookeeCallback(chatId: number, cbData: string, supabase: 
     const { data: activities } = await supabase
       .from("activities")
       .select("id, title, sport, venue, date, status")
-      .in("status", ["active", "ballot"])
+      .eq("status", "active")
       .order("date", { ascending: true })
       .limit(8);
 
-    if (!activities || activities.length === 0) {
-      await sendMessage(chatId, "No activities available right now.", {
-        inline_keyboard: [[{ text: "⬅️ Back", callback_data: "my_bookee" }]],
-      });
-      return;
+    // Also fetch ballots
+    const { data: ballots } = await supabase
+      .from("ballots")
+      .select("id, activity_name, sport, location, ballot_deadline")
+      .order("ballot_deadline", { ascending: true })
+      .limit(5);
+
+    const buttons: any[] = [];
+    let msg = "🔍 <b>Available Activities</b>\n\n";
+
+    if (activities && activities.length > 0) {
+      for (const a of activities) {
+        msg += `🏟️ <b>${a.title}</b>\n📍 ${a.venue} | 📅 ${formatDate(a.date)}\n⚽ ${a.sport}\n\n`;
+        buttons.push([{ text: `🏟️ ${a.title}`, callback_data: `join_${a.id}` }]);
+      }
     }
 
-    let msg = "🔍 <b>Available Activities</b>\n\n";
-    const buttons: any[] = [];
-    for (const a of activities) {
-      const tag = a.status === "ballot" ? "🎲" : "🏟️";
-      msg += `${tag} <b>${a.title}</b>\n📍 ${a.venue} | 📅 ${formatDate(a.date)}\n⚽ ${a.sport}\n\n`;
-      const action = a.status === "ballot" ? "ballot_view" : "join";
-      buttons.push([{ text: `${tag} ${a.title}`, callback_data: `${action}_${a.id}` }]);
+    if (ballots && ballots.length > 0) {
+      msg += "<b>Open Ballots:</b>\n\n";
+      for (const b of ballots) {
+        msg += `🎲 <b>${b.activity_name}</b>\n📍 ${b.location} | 📅 ${formatDate(b.ballot_deadline)}\n\n`;
+        buttons.push([{ text: `🎲 ${b.activity_name}`, callback_data: `ballot_view_${b.id}` }]);
+      }
     }
+
+    if (buttons.length === 0) {
+      msg = "No activities available right now.";
+    }
+
     buttons.push([{ text: "⬅️ Back", callback_data: "my_bookee" }]);
     await sendMessage(chatId, msg, { inline_keyboard: buttons });
     return;
@@ -1339,25 +1324,23 @@ async function handleMyBookeeCallback(chatId: number, cbData: string, supabase: 
 
   if (cbData === "my_ballot_status") {
     const profile = await getLinkedProfile(supabase, chatId);
-    
-    let myBookings: any[] = [];
+
+    let myParticipations: any[] = [];
     if (profile) {
       const { data } = await supabase
-        .from("bookings")
-        .select("id, session_id, reservation_status")
-        .eq("user_id", profile.user_id)
-        .neq("reservation_status", "cancelled");
-      myBookings = data || [];
+        .from("ballot_participants")
+        .select("id, ballot_id, status")
+        .eq("user_id", profile.user_id);
+      myParticipations = data || [];
     } else {
       const { data } = await supabase
-        .from("bookings")
-        .select("id, session_id, reservation_status")
-        .eq("player_username", `tg_${chatId}`)
-        .neq("reservation_status", "cancelled");
-      myBookings = data || [];
+        .from("ballot_participants")
+        .select("id, ballot_id, status")
+        .eq("telegram_username", `tg_${chatId}`);
+      myParticipations = data || [];
     }
 
-    if (myBookings.length === 0) {
+    if (myParticipations.length === 0) {
       await sendMessage(chatId, "No ballot entries found.", {
         inline_keyboard: [
           [{ text: "🔍 Explore", callback_data: "explore" }],
@@ -1367,38 +1350,21 @@ async function handleMyBookeeCallback(chatId: number, cbData: string, supabase: 
       return;
     }
 
-    const sessionIds = myBookings.map((b: any) => b.session_id);
-    const { data: sessions } = await supabase
-      .from("activity_sessions")
-      .select("id, activity_id")
-      .in("id", sessionIds);
-
-    if (!sessions || sessions.length === 0) {
-      await sendMessage(chatId, "No ballot data found.", {
-        inline_keyboard: [[{ text: "⬅️ Back", callback_data: "my_bookee" }]],
-      });
-      return;
-    }
-
-    const activityIds = [...new Set(sessions.map((s: any) => s.activity_id))];
-    const { data: ballotActivities } = await supabase
-      .from("activities")
-      .select("id, title, date")
-      .in("id", activityIds)
-      .eq("status", "ballot");
+    const ballotIds = [...new Set(myParticipations.map((p: any) => p.ballot_id))];
+    const { data: ballots } = await supabase
+      .from("ballots")
+      .select("id, activity_name, ballot_deadline")
+      .in("id", ballotIds);
 
     let msg = "🎲 <b>My Ballot Status</b>\n\n";
     const buttons: any[] = [];
 
-    if (ballotActivities && ballotActivities.length > 0) {
-      for (const ba of ballotActivities) {
-        const booking = myBookings.find((b: any) => {
-          const sess = sessions.find((s: any) => s.id === b.session_id && s.activity_id === ba.id);
-          return !!sess;
-        });
-        const status = booking?.reservation_status === "confirmed" ? "✅" : "⏳";
-        msg += `${status} ${ba.title} — ${formatDate(ba.date)}\n`;
-        buttons.push([{ text: `🎲 ${ba.title}`, callback_data: `ballot_view_${ba.id}` }]);
+    if (ballots && ballots.length > 0) {
+      for (const b of ballots) {
+        const part = myParticipations.find((p: any) => p.ballot_id === b.id);
+        const status = part?.status === "selected" ? "✅" : part?.status === "rejected" ? "❌" : "⏳";
+        msg += `${status} ${b.activity_name} — ${formatDate(b.ballot_deadline)}\n`;
+        buttons.push([{ text: `🎲 ${b.activity_name}`, callback_data: `ballot_view_${b.id}` }]);
       }
     } else {
       msg += "No active ballots.";
@@ -1593,7 +1559,6 @@ async function handleLogout(chatId: number, supabase: any) {
     return;
   }
 
-  // Remove telegram_chat_id from profile
   await supabase
     .from("profiles")
     .update({ telegram_chat_id: null })
@@ -1690,61 +1655,46 @@ async function handleMessage(chatId: number, text: string, supabase: any, userna
 async function handleCallback(chatId: number, data: string, supabase: any) {
   if (data === "main_menu") {
     await clearState(supabase, chatId);
-    await sendMessage(chatId, "What would you like to do?", getPersistentMenu());
+    await sendMessage(
+      chatId,
+      "🏃 <b>Bookee</b>\n\nWhat would you like to do?",
+      getPersistentMenu()
+    );
     return;
   }
 
-  // Beta
-  if (data === "beta_start") {
-    await handleBetaFlow(chatId, "", supabase);
-    return;
-  }
   if (data.startsWith("beta_")) {
     await handleBetaCallback(chatId, data, supabase);
     return;
   }
 
-  // Organize
   if (data === "organize" || data.startsWith("org_") || data.startsWith("manage_")) {
     await handleOrganizeCallback(chatId, data, supabase);
     return;
   }
 
-  // Ballot
   if (data === "ballot" || data.startsWith("ballot_")) {
+    // Check for back navigation callbacks first
+    if (data === "ballot_back_sport" || data === "ballot_back_venue" || data === "ballot_back_date") {
+      await handleBallotSportCallback(chatId, data, supabase);
+      return;
+    }
     await handleBallotCallback(chatId, data, supabase);
     return;
   }
-  if (data.startsWith("bsport_") || data.startsWith("ballot_back_") || data === "ballot_confirm_create") {
-    await handleBallotSportCallback(chatId, data, supabase);
-    return;
-  }
 
-  // My Bookee and all sub-flows
-  if (data === "my_bookee" || data === "explore" || data === "my_reservations" ||
-      data === "my_ballot_status" ||
-      data.startsWith("cancel_booking_") || data.startsWith("join_") ||
-      data.startsWith("book_session_")) {
+  if (data === "my_bookee" || data === "explore" || data === "my_reservations" || data === "my_ballot_status" || data.startsWith("cancel_booking_") || data.startsWith("join_") || data.startsWith("book_session_")) {
     await handleMyBookeeCallback(chatId, data, supabase);
     return;
   }
 
-  // Help
   if (data === "help") {
     await handleHelp(chatId);
     return;
   }
-
-  // Logout
-  if (data === "logout") {
-    await handleLogout(chatId, supabase);
-    return;
-  }
-
-  await sendMessage(chatId, "Choose an option:", getPersistentMenu());
 }
 
-// ─── SERVER ─────────────────────────────────────────────────────────
+// ─── HTTP ENTRY POINT ───────────────────────────────────────────────
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -1752,30 +1702,23 @@ Deno.serve(async (req) => {
   }
 
   const startTime = Date.now();
-
-  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-  if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
-  const TELEGRAM_API_KEY = Deno.env.get("TELEGRAM_API_KEY");
-  if (!TELEGRAM_API_KEY) throw new Error("TELEGRAM_API_KEY is not configured");
-
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
   let totalProcessed = 0;
-  let currentOffset: number;
 
-  const { data: state, error: stateErr } = await supabase
+  const { data: botState, error: stateErr } = await supabase
     .from("telegram_bot_state")
     .select("update_offset")
     .eq("id", 1)
     .single();
 
   if (stateErr) {
-    return new Response(JSON.stringify({ error: stateErr.message }), { status: 500 });
+    return new Response(JSON.stringify({ error: stateErr.message }), { status: 500, headers: corsHeaders });
   }
 
-  currentOffset = state.update_offset;
+  let currentOffset = botState.update_offset;
 
   while (true) {
     const elapsed = Date.now() - startTime;
@@ -1795,42 +1738,55 @@ Deno.serve(async (req) => {
       }),
     });
 
-    const respData = await response.json();
+    const apiData = await response.json();
     if (!response.ok) {
-      return new Response(JSON.stringify({ error: respData }), { status: 502 });
+      return new Response(JSON.stringify({ error: apiData }), { status: 502, headers: corsHeaders });
     }
 
-    const updates = respData.result ?? [];
+    const updates = apiData.result ?? [];
     if (updates.length === 0) continue;
 
     for (const update of updates) {
       try {
-        if (update.message) {
-          const chatId = update.message.chat.id;
-          const text = update.message.text || "";
-          const username = update.message.from?.username;
-          await handleMessage(chatId, text, supabase, username);
-
-          await supabase.from("telegram_messages").upsert({
-            update_id: update.update_id,
-            chat_id: chatId,
-            text,
-            raw_update: update,
-          }, { onConflict: "update_id" });
-        }
-
         if (update.callback_query) {
-          const chatId = update.callback_query.message.chat.id;
-          const callbackData = update.callback_query.data;
-          await handleCallback(chatId, callbackData, supabase);
-          await answerCallback(update.callback_query.id);
+          const cb = update.callback_query;
+          const chatId = cb.message?.chat?.id;
+          const data = cb.data;
+          if (chatId && data) {
+            await answerCallback(cb.id);
+            await handleCallback(chatId, data, supabase);
+          }
+        } else if (update.message) {
+          const msg = update.message;
+          const chatId = msg.chat?.id;
+          const text = msg.text || "";
+          const username = msg.from?.username;
+          if (chatId && text) {
+            await handleMessage(chatId, text, supabase, username);
+          }
         }
-
-        totalProcessed++;
-      } catch (e) {
-        console.error("Error processing update:", e);
+      } catch (err) {
+        console.error("Error processing update:", err);
       }
     }
+
+    // Store messages
+    const rows = updates
+      .filter((u: any) => u.message)
+      .map((u: any) => ({
+        update_id: u.update_id,
+        chat_id: u.message.chat.id,
+        text: u.message.text ?? null,
+        raw_update: u,
+      }));
+
+    if (rows.length > 0) {
+      await supabase
+        .from("telegram_messages")
+        .upsert(rows, { onConflict: "update_id" });
+    }
+
+    totalProcessed += updates.length;
 
     const newOffset = Math.max(...updates.map((u: any) => u.update_id)) + 1;
     await supabase
@@ -1841,5 +1797,8 @@ Deno.serve(async (req) => {
     currentOffset = newOffset;
   }
 
-  return new Response(JSON.stringify({ ok: true, processed: totalProcessed, finalOffset: currentOffset }));
+  return new Response(
+    JSON.stringify({ ok: true, processed: totalProcessed, finalOffset: currentOffset }),
+    { headers: corsHeaders }
+  );
 });

@@ -835,7 +835,7 @@ async function handleBallotCallback(chatId: number, cbData: string, supabase: an
 
     const { data: participants } = await supabase
       .from("ballot_participants")
-      .select("id, display_name, status, user_id")
+      .select("id, display_name, status, user_id, attempt_count")
       .eq("ballot_id", ballotId);
 
     let msg = `🎲 <b>${ballot.activity_name}</b>\n📍 ${ballot.location}\n📅 Deadline: ${formatDate(ballot.ballot_deadline)}\n⚽ ${ballot.sport}\n👥 ${ballot.slots} slots\n\n`;
@@ -847,7 +847,8 @@ async function handleBallotCallback(chatId: number, cbData: string, supabase: an
     if (profile && ballot.created_by === profile.user_id && participants && participants.length > 0) {
       for (const p of participants) {
         const s = p.status === "selected" ? "✅" : p.status === "rejected" ? "❌" : "⏳";
-        msg += `${s} ${p.display_name || "Anonymous"}\n`;
+        const attempts = p.attempt_count > 1 ? ` (×${p.attempt_count})` : "";
+        msg += `${s} ${p.display_name || "Anonymous"}${attempts}\n`;
       }
     }
 

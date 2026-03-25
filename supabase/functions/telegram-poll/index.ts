@@ -1028,7 +1028,7 @@ async function createBallot(chatId: number, data: any, supabase: any) {
   const profile = await getLinkedProfile(supabase, chatId);
   if (!profile) {
     await clearState(supabase, chatId);
-    await promptAccountLink(chatId, "create ballot groups");
+    await promptAccountLink(chatId, "create ballot sessions");
     return;
   }
 

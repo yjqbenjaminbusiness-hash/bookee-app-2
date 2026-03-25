@@ -67,8 +67,6 @@ export default function CreateEvent() {
 
   const [timeslots, setTimeslots] = useState<TimeslotForm[]>([
     { startHour: '5', startPeriod: 'pm', endHour: '9', endPeriod: 'pm', price: '80', maxCapacity: '8' },
-    { startHour: '5', startPeriod: 'pm', endHour: '8', endPeriod: 'pm', price: '60', maxCapacity: '6' },
-    { startHour: '5', startPeriod: 'pm', endHour: '7', endPeriod: 'pm', price: '40', maxCapacity: '4' },
     { startHour: '7', startPeriod: 'pm', endHour: '9', endPeriod: 'pm', price: '40', maxCapacity: '4' },
   ]);
 

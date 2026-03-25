@@ -925,7 +925,7 @@ async function handleBallotCallback(chatId: number, cbData: string, supabase: an
     return;
   }
 
-  // Join ballot
+  // Join ballot (tracks attempt_count for repeated ballots)
   if (cbData.startsWith("ballot_join_")) {
     const ballotId = cbData.replace("ballot_join_", "");
     const profile = await getLinkedProfile(supabase, chatId);
@@ -934,7 +934,7 @@ async function handleBallotCallback(chatId: number, cbData: string, supabase: an
     // Check if already joined
     let existingQuery = supabase
       .from("ballot_participants")
-      .select("id")
+      .select("id, attempt_count")
       .eq("ballot_id", ballotId)
       .limit(1);
 
@@ -946,8 +946,14 @@ async function handleBallotCallback(chatId: number, cbData: string, supabase: an
 
     const { data: existing } = await existingQuery.single();
     if (existing) {
-      await sendMessage(chatId, "You've already joined this ballot!", {
-        inline_keyboard: [[{ text: "⬅️ Back", callback_data: "my_bookee" }]],
+      // Increment attempt_count for repeated ballot participation
+      await supabase
+        .from("ballot_participants")
+        .update({ attempt_count: existing.attempt_count + 1, last_attempt_at: new Date().toISOString() })
+        .eq("id", existing.id);
+
+      await sendMessage(chatId, `✅ Ballot attempt recorded! (Attempt #${existing.attempt_count + 1})`, {
+        inline_keyboard: [[{ text: "📋 My Bookee", callback_data: "my_bookee" }]],
       });
       return;
     }
@@ -956,6 +962,7 @@ async function handleBallotCallback(chatId: number, cbData: string, supabase: an
       ballot_id: ballotId,
       display_name: displayName,
       status: "pending",
+      attempt_count: 1,
     };
     if (profile) {
       participantData.user_id = profile.user_id;
@@ -973,7 +980,7 @@ async function handleBallotCallback(chatId: number, cbData: string, supabase: an
     const guestNote = profile ? "" : "\n\n💡 Link your account to manage across platforms.";
     await sendMessage(
       chatId,
-      `✅ <b>You have joined this ballot!</b>${guestNote}`,
+      `✅ <b>You have joined this ballot!</b> (Attempt #1)${guestNote}`,
       {
         inline_keyboard: [
           [{ text: "📋 My Bookee", callback_data: "my_bookee" }],

@@ -812,7 +812,7 @@ async function handleBallotCallback(chatId: number, cbData: string, supabase: an
         buttons.push([{ text: `📊 ${b.activity_name}`, callback_data: `ballot_manage_view_${b.id}` }]);
       }
     } else {
-      msg += "No ballot groups found. Create one or paste a link.";
+      msg += "No ballot sessions found. Create one or paste a link.";
     }
 
     buttons.push([{ text: "⬅️ Back", callback_data: "ballot" }]);

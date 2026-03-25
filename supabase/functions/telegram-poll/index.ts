@@ -776,7 +776,7 @@ async function handleBallotCallback(chatId: number, cbData: string, supabase: an
   if (cbData === "ballot_create") {
     const profile = await getLinkedProfile(supabase, chatId);
     if (!profile) {
-      await promptAccountLink(chatId, "create ballot groups");
+      await promptAccountLink(chatId, "create ballot sessions");
       return;
     }
     await setState(supabase, chatId, { flow: "ballot_create", step: "ballot_title", data: {} });

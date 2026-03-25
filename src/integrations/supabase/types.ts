@@ -111,28 +111,34 @@ export type Database = {
       }
       ballot_participants: {
         Row: {
+          attempt_count: number
           ballot_id: string
           created_at: string
           display_name: string | null
           id: string
+          last_attempt_at: string
           status: string
           telegram_username: string | null
           user_id: string | null
         }
         Insert: {
+          attempt_count?: number
           ballot_id: string
           created_at?: string
           display_name?: string | null
           id?: string
+          last_attempt_at?: string
           status?: string
           telegram_username?: string | null
           user_id?: string | null
         }
         Update: {
+          attempt_count?: number
           ballot_id?: string
           created_at?: string
           display_name?: string | null
           id?: string
+          last_attempt_at?: string
           status?: string
           telegram_username?: string | null
           user_id?: string | null

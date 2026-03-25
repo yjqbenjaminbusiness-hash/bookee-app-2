@@ -1,45 +1,87 @@
+import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Bell, Calendar, Sparkles, ArrowLeft } from 'lucide-react';
+import { Bell, Calendar, ArrowLeft, ThumbsUp, Send } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
+import { Card, CardContent } from '../components/ui/card';
 
 const ANNOUNCEMENTS = [
   {
-    date: '24 Mar 2026',
+    date: '25 Mar 2026',
+    title: 'Beta Registration Open!',
+    description: 'Sign up for early access to exclusive venues and community features. Limited spots available!',
+    tag: 'Beta',
+    tagColor: 'hsl(var(--primary))',
+  },
+  {
+    date: '25 Mar 2026',
     title: 'Ballot System Now Live!',
     description: 'Organizers can now create ballot groups for oversubscribed sessions. Players can join and track their ballot status directly from the bot or web app.',
     tag: 'New Feature',
-    tagColor: 'hsl(var(--primary))',
+    tagColor: 'hsl(142 60% 40%)',
+  },
+  {
+    date: '24 Mar 2026',
+    title: 'Organize Flow Revamped',
+    description: 'Create Groups or Events with a cleaner flow. Activity Sessions and Ballot Groups are now separate paths.',
+    tag: 'Update',
+    tagColor: 'hsl(220 70% 50%)',
   },
   {
     date: '20 Mar 2026',
     title: 'PayNow Integration',
     description: 'Pay for your bookings using PayNow QR code — fast, secure, and built for Singapore.',
     tag: 'Payments',
-    tagColor: 'hsl(142 60% 40%)',
+    tagColor: 'hsl(35 90% 50%)',
   },
   {
     date: '15 Mar 2026',
     title: 'Telegram Bot Launch',
     description: 'Manage your bookings, organize activities, and join ballots all from @BookeeAssistBot on Telegram.',
     tag: 'Launch',
-    tagColor: 'hsl(220 70% 50%)',
-  },
-  {
-    date: '10 Mar 2026',
-    title: 'Beta Registration Open',
-    description: 'Sign up for early access to exclusive venues and community features. Limited spots available!',
-    tag: 'Beta',
-    tagColor: 'hsl(35 90% 50%)',
+    tagColor: 'hsl(260 60% 55%)',
   },
 ];
 
+interface Suggestion {
+  id: string;
+  text: string;
+  votes: number;
+  voted: boolean;
+}
+
 export default function AnnouncementsPage() {
   const navigate = useNavigate();
+  const [suggestions, setSuggestions] = useState<Suggestion[]>([
+    { id: '1', text: 'WhatsApp bot support', votes: 12, voted: false },
+    { id: '2', text: 'Multi-sport group support', votes: 8, voted: false },
+    { id: '3', text: 'Recurring weekly sessions', votes: 15, voted: false },
+  ]);
+  const [newSuggestion, setNewSuggestion] = useState('');
+
+  const handleVote = (id: string) => {
+    setSuggestions(prev =>
+      prev.map(s =>
+        s.id === id
+          ? { ...s, votes: s.voted ? s.votes - 1 : s.votes + 1, voted: !s.voted }
+          : s
+      ).sort((a, b) => b.votes - a.votes)
+    );
+  };
+
+  const handleAddSuggestion = () => {
+    if (!newSuggestion.trim()) return;
+    setSuggestions(prev => [
+      ...prev,
+      { id: Date.now().toString(), text: newSuggestion.trim(), votes: 1, voted: true },
+    ].sort((a, b) => b.votes - a.votes));
+    setNewSuggestion('');
+  };
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="container px-4 py-12 max-w-3xl mx-auto">
+      <div className="container px-4 py-12 max-w-5xl mx-auto">
         <Button variant="ghost" className="mb-6" onClick={() => navigate(-1)}>
           <ArrowLeft className="h-4 w-4 mr-2" /> Back
         </Button>
@@ -56,31 +98,101 @@ export default function AnnouncementsPage() {
           </p>
         </div>
 
-        <div className="space-y-6">
-          {ANNOUNCEMENTS.map((item, i) => (
-            <motion.div
-              key={i}
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, delay: i * 0.08 }}
-              className="p-6 rounded-2xl border-2 bg-card hover:shadow-md transition-all"
-            >
-              <div className="flex items-center justify-between mb-3">
-                <span
-                  className="text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-full text-white"
-                  style={{ background: item.tagColor }}
+        {/* Horizontal Timeline */}
+        <div className="relative mb-16">
+          <div className="overflow-x-auto pb-4 -mx-4 px-4">
+            <div className="flex gap-4 min-w-max">
+              {ANNOUNCEMENTS.map((item, i) => (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4, delay: i * 0.08 }}
+                  className="w-72 flex-shrink-0"
                 >
-                  {item.tag}
-                </span>
-                <span className="text-xs text-muted-foreground flex items-center gap-1">
-                  <Calendar className="h-3 w-3" /> {item.date}
-                </span>
-              </div>
-              <h3 className="text-lg font-bold text-foreground mb-1">{item.title}</h3>
-              <p className="text-sm text-muted-foreground leading-relaxed">{item.description}</p>
-            </motion.div>
-          ))}
+                  <div className="relative">
+                    {/* Timeline dot and line */}
+                    <div className="flex items-center mb-3">
+                      <div
+                        className="w-3 h-3 rounded-full flex-shrink-0"
+                        style={{ background: item.tagColor }}
+                      />
+                      {i < ANNOUNCEMENTS.length - 1 && (
+                        <div className="h-px flex-1 bg-border ml-2" />
+                      )}
+                    </div>
+                    <Card className="border-2 hover:shadow-md transition-all h-full">
+                      <CardContent className="p-5">
+                        <div className="flex items-center justify-between mb-3">
+                          <span
+                            className="text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-full text-white"
+                            style={{ background: item.tagColor }}
+                          >
+                            {item.tag}
+                          </span>
+                          <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                            <Calendar className="h-3 w-3" /> {item.date}
+                          </span>
+                        </div>
+                        <h3 className="text-base font-bold text-foreground mb-1">{item.title}</h3>
+                        <p className="text-xs text-muted-foreground leading-relaxed">{item.description}</p>
+                      </CardContent>
+                    </Card>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </div>
         </div>
+
+        {/* Feedback & Suggestions */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.4 }}
+        >
+          <div className="text-center mb-8">
+            <h2 className="text-2xl font-bold text-foreground">Feedback & Suggestions</h2>
+            <p className="text-muted-foreground text-sm mt-1">Vote on features you'd love to see, or suggest your own.</p>
+          </div>
+
+          {/* Add suggestion */}
+          <div className="flex gap-2 mb-6 max-w-xl mx-auto">
+            <Input
+              placeholder="Suggest a feature..."
+              value={newSuggestion}
+              onChange={e => setNewSuggestion(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleAddSuggestion()}
+            />
+            <Button onClick={handleAddSuggestion} size="sm" className="px-4">
+              <Send className="h-4 w-4" />
+            </Button>
+          </div>
+
+          {/* Suggestions list */}
+          <div className="space-y-3 max-w-xl mx-auto">
+            {suggestions.map((s, i) => (
+              <motion.div
+                key={s.id}
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.3, delay: i * 0.05 }}
+                className="flex items-center gap-3 p-4 rounded-xl border bg-card"
+              >
+                <button
+                  onClick={() => handleVote(s.id)}
+                  className={`flex flex-col items-center gap-0.5 px-3 py-2 rounded-lg transition-colors ${
+                    s.voted ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                  }`}
+                >
+                  <ThumbsUp className={`h-4 w-4 ${s.voted ? 'fill-primary' : ''}`} />
+                  <span className="text-xs font-bold">{s.votes}</span>
+                </button>
+                <span className="text-sm text-foreground">{s.text}</span>
+              </motion.div>
+            ))}
+          </div>
+        </motion.div>
       </div>
     </div>
   );

@@ -1,0 +1,1 @@
+ALTER TABLE public.ballot_participants ADD COLUMN IF NOT EXISTS attempt_count integer NOT NULL DEFAULT 1; ALTER TABLE public.ballot_participants ADD COLUMN IF NOT EXISTS last_attempt_at timestamptz NOT NULL DEFAULT now();

@@ -37,6 +37,9 @@ import MyGroups from "./pages/player/MyGroups";
 // Organizer Pages
 import OrganizerDashboard from "./pages/organizer/Dashboard";
 import CreateEventPage from "./pages/organizer/CreateEvent";
+import CreateEventTypePage from "./pages/organizer/CreateEventType";
+import CreateBallotSessionPage from "./pages/organizer/CreateBallotSession";
+import OrganizeLandingPage from "./pages/organizer/OrganizeLanding";
 import ManageEventPage from "./pages/organizer/ManageEvent";
 import OrganizerSpecialRequests from "./pages/organizer/SpecialRequests";
 import OrganizerBookings from "./pages/organizer/Bookings";
@@ -103,11 +106,20 @@ const App = () => (
             } />
 
             {/* Organizer Routes */}
+            <Route path="/organize" element={
+              <ProtectedRoute><OrganizeLandingPage /></ProtectedRoute>
+            } />
             <Route path="/organizer/dashboard" element={
               <ProtectedRoute><OrganizerDashboard /></ProtectedRoute>
             } />
+            <Route path="/organizer/create-event-type" element={
+              <ProtectedRoute><CreateEventTypePage /></ProtectedRoute>
+            } />
             <Route path="/organizer/create-event" element={
               <ProtectedRoute><CreateEventPage /></ProtectedRoute>
+            } />
+            <Route path="/organizer/create-ballot" element={
+              <ProtectedRoute><CreateBallotSessionPage /></ProtectedRoute>
             } />
             <Route path="/organizer/events/:id" element={
               <ProtectedRoute><ManageEventPage /></ProtectedRoute>

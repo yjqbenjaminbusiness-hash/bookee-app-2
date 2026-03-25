@@ -37,6 +37,9 @@ import MyGroups from "./pages/player/MyGroups";
 // Organizer Pages
 import OrganizerDashboard from "./pages/organizer/Dashboard";
 import CreateEventPage from "./pages/organizer/CreateEvent";
+import CreateEventTypePage from "./pages/organizer/CreateEventType";
+import CreateBallotSessionPage from "./pages/organizer/CreateBallotSession";
+import OrganizeLandingPage from "./pages/organizer/OrganizeLanding";
 import ManageEventPage from "./pages/organizer/ManageEvent";
 import OrganizerSpecialRequests from "./pages/organizer/SpecialRequests";
 import OrganizerBookings from "./pages/organizer/Bookings";

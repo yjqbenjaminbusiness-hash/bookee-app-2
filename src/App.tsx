@@ -106,11 +106,20 @@ const App = () => (
             } />
 
             {/* Organizer Routes */}
+            <Route path="/organize" element={
+              <ProtectedRoute><OrganizeLandingPage /></ProtectedRoute>
+            } />
             <Route path="/organizer/dashboard" element={
               <ProtectedRoute><OrganizerDashboard /></ProtectedRoute>
             } />
+            <Route path="/organizer/create-event-type" element={
+              <ProtectedRoute><CreateEventTypePage /></ProtectedRoute>
+            } />
             <Route path="/organizer/create-event" element={
               <ProtectedRoute><CreateEventPage /></ProtectedRoute>
+            } />
+            <Route path="/organizer/create-ballot" element={
+              <ProtectedRoute><CreateBallotSessionPage /></ProtectedRoute>
             } />
             <Route path="/organizer/events/:id" element={
               <ProtectedRoute><ManageEventPage /></ProtectedRoute>

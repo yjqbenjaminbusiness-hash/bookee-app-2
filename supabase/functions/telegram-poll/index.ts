@@ -806,7 +806,7 @@ async function handleBallotCallback(chatId: number, cbData: string, supabase: an
     buttons.push([{ text: "🔗 Paste Ballot Link", callback_data: "ballot_paste" }]);
 
     if (orgBallots && orgBallots.length > 0) {
-      msg += "<b>Your Ballot Groups:</b>\n\n";
+      msg += "<b>Your Ballot Sessions:</b>\n\n";
       for (const b of orgBallots) {
         msg += `• ${b.activity_name} — ${formatDate(b.ballot_deadline)}\n`;
         buttons.push([{ text: `📊 ${b.activity_name}`, callback_data: `ballot_manage_view_${b.id}` }]);

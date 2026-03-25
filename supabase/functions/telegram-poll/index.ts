@@ -800,7 +800,7 @@ async function handleBallotCallback(chatId: number, cbData: string, supabase: an
       .order("ballot_deadline", { ascending: true })
       .limit(10);
 
-    let msg = "📊 <b>Manage Ballot Group</b>\n\n";
+    let msg = "📊 <b>Manage Ballot Sessions</b>\n\n";
     const buttons: any[] = [];
 
     buttons.push([{ text: "🔗 Paste Ballot Link", callback_data: "ballot_paste" }]);

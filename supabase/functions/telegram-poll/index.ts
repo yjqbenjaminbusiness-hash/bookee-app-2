@@ -780,7 +780,7 @@ async function handleBallotCallback(chatId: number, cbData: string, supabase: an
       return;
     }
     await setState(supabase, chatId, { flow: "ballot_create", step: "ballot_title", data: {} });
-    await sendMessage(chatId, "🎲 <b>Create Ballot Group</b>\n\n📝 What's the activity name? (type freely)", {
+    await sendMessage(chatId, "🎲 <b>Create Ballot Session</b>\n\n📝 What's the activity name? (type freely)", {
       inline_keyboard: [[{ text: "❌ Cancel", callback_data: "main_menu" }]],
     });
     return;

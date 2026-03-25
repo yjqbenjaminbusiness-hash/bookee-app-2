@@ -1547,7 +1547,7 @@ async function handleHelp(chatId: number) {
     "• <b>Register for Beta</b> — Sign up for early access\n" +
     "• <b>My Bookee</b> — Explore activities, view reservations\n" +
     "• <b>Organize</b> — Create & manage activities (requires account)\n" +
-    "• <b>Ballot</b> — Create or join ballot groups\n" +
+    "• <b>Ballot</b> — Create or join ballot sessions\n" +
     "• <b>Logout</b> — Disconnect your Telegram account\n\n" +
     "🔗 <b>Account Linking:</b>\n" +
     "Guest users can join activities and ballots. Link your email account for full access.\n\n" +

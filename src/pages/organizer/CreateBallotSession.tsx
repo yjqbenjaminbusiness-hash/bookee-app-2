@@ -42,32 +42,32 @@ export default function CreateBallotSession() {
     setIsLoading(false);
 
     if (error) {
-      toast.error('Failed to create ballot: ' + error.message);
+      toast.error('Failed to create ballot session: ' + error.message);
       return;
     }
 
-    toast.success('Ballot Group created!');
+    toast.success('Ballot Session created!');
     navigate('/organizer/dashboard');
   };
 
   return (
     <div className="container py-10 px-4 max-w-3xl">
-      <Button variant="ghost" className="mb-6" onClick={() => navigate('/organizer/create-event-type')}>
+      <Button variant="ghost" className="mb-6" onClick={() => navigate('/organize')}>
         <ArrowLeft className="mr-2 h-4 w-4" /> Back
       </Button>
 
       <div className="flex flex-col gap-2 mb-8">
         <h1 className="text-3xl font-bold text-foreground flex items-center gap-3">
-          <Shuffle className="h-7 w-7 text-accent" /> Create Ballot Group
+          <Shuffle className="h-7 w-7 text-accent" /> Create Ballot Session
         </h1>
-        <p className="text-muted-foreground">Set up a ballot for users to join. No payment fields — focus on participation only.</p>
+        <p className="text-muted-foreground">Set up a ballot session for users to join. No payment fields — focus on participation only.</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <Card className="shadow-sm border-accent/10">
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
-              <MapPin className="h-4 w-4 text-accent" /> Ballot Details
+              <MapPin className="h-4 w-4 text-accent" /> Session Details
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -99,10 +99,10 @@ export default function CreateBallotSession() {
         </Card>
 
         <div className="flex justify-end gap-4 pt-4 border-t">
-          <Button variant="ghost" type="button" onClick={() => navigate('/organizer/create-event-type')}>Cancel</Button>
+          <Button variant="ghost" type="button" onClick={() => navigate('/organize')}>Cancel</Button>
           <Button size="lg" className="bg-accent hover:bg-accent/90 px-10 rounded-full" type="submit" disabled={isLoading}>
             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Create Ballot Group
+            Create Ballot Session
           </Button>
         </div>
       </form>

@@ -789,7 +789,7 @@ async function handleBallotCallback(chatId: number, cbData: string, supabase: an
   if (cbData === "ballot_manage") {
     const profile = await getLinkedProfile(supabase, chatId);
     if (!profile) {
-      await promptAccountLink(chatId, "manage ballot groups");
+      await promptAccountLink(chatId, "manage ballot sessions");
       return;
     }
 

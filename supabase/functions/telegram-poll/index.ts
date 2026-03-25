@@ -1132,7 +1132,7 @@ async function handleBallotText(chatId: number, text: string, supabase: any) {
         }
         data.slots = slots;
         await setState(supabase, chatId, { flow: "ballot_create", step: "ballot_confirm", data });
-        let msg = "📋 <b>Ballot Group Summary</b>\n\n";
+        let msg = "📋 <b>Ballot Session Summary</b>\n\n";
         msg += `📝 ${data.title}\n⚽ ${data.sport}\n📍 ${data.venue}\n📅 ${formatDate(data.date)}\n👥 ${slots} slots\n\n<b>Confirm?</b>`;
         await sendMessage(chatId, msg, {
           inline_keyboard: [

@@ -765,8 +765,8 @@ async function handleBallotCallback(chatId: number, cbData: string, supabase: an
   if (cbData === "ballot") {
     await sendMessage(chatId, "🎲 <b>Ballot</b>\n\nWhat would you like to do?", {
       inline_keyboard: [
-        [{ text: "🆕 Create Ballot Group", callback_data: "ballot_create" }],
-        [{ text: "📊 Manage Ballot Group", callback_data: "ballot_manage" }],
+        [{ text: "🆕 Create Ballot Session", callback_data: "ballot_create" }],
+        [{ text: "📊 Manage Ballot Sessions", callback_data: "ballot_manage" }],
         [{ text: "⬅️ Back", callback_data: "main_menu" }],
       ],
     });
@@ -776,11 +776,11 @@ async function handleBallotCallback(chatId: number, cbData: string, supabase: an
   if (cbData === "ballot_create") {
     const profile = await getLinkedProfile(supabase, chatId);
     if (!profile) {
-      await promptAccountLink(chatId, "create ballot groups");
+      await promptAccountLink(chatId, "create ballot sessions");
       return;
     }
     await setState(supabase, chatId, { flow: "ballot_create", step: "ballot_title", data: {} });
-    await sendMessage(chatId, "🎲 <b>Create Ballot Group</b>\n\n📝 What's the activity name? (type freely)", {
+    await sendMessage(chatId, "🎲 <b>Create Ballot Session</b>\n\n📝 What's the activity name? (type freely)", {
       inline_keyboard: [[{ text: "❌ Cancel", callback_data: "main_menu" }]],
     });
     return;
@@ -789,7 +789,7 @@ async function handleBallotCallback(chatId: number, cbData: string, supabase: an
   if (cbData === "ballot_manage") {
     const profile = await getLinkedProfile(supabase, chatId);
     if (!profile) {
-      await promptAccountLink(chatId, "manage ballot groups");
+      await promptAccountLink(chatId, "manage ballot sessions");
       return;
     }
 
@@ -800,19 +800,19 @@ async function handleBallotCallback(chatId: number, cbData: string, supabase: an
       .order("ballot_deadline", { ascending: true })
       .limit(10);
 
-    let msg = "📊 <b>Manage Ballot Group</b>\n\n";
+    let msg = "📊 <b>Manage Ballot Sessions</b>\n\n";
     const buttons: any[] = [];
 
     buttons.push([{ text: "🔗 Paste Ballot Link", callback_data: "ballot_paste" }]);
 
     if (orgBallots && orgBallots.length > 0) {
-      msg += "<b>Your Ballot Groups:</b>\n\n";
+      msg += "<b>Your Ballot Sessions:</b>\n\n";
       for (const b of orgBallots) {
         msg += `• ${b.activity_name} — ${formatDate(b.ballot_deadline)}\n`;
         buttons.push([{ text: `📊 ${b.activity_name}`, callback_data: `ballot_manage_view_${b.id}` }]);
       }
     } else {
-      msg += "No ballot groups found. Create one or paste a link.";
+      msg += "No ballot sessions found. Create one or paste a link.";
     }
 
     buttons.push([{ text: "⬅️ Back", callback_data: "ballot" }]);
@@ -1028,7 +1028,7 @@ async function createBallot(chatId: number, data: any, supabase: any) {
   const profile = await getLinkedProfile(supabase, chatId);
   if (!profile) {
     await clearState(supabase, chatId);
-    await promptAccountLink(chatId, "create ballot groups");
+    await promptAccountLink(chatId, "create ballot sessions");
     return;
   }
 
@@ -1054,7 +1054,7 @@ async function createBallot(chatId: number, data: any, supabase: any) {
 
   await clearState(supabase, chatId);
 
-  let msg = `✅ <b>Ballot Group Created!</b>\n\n`;
+  let msg = `✅ <b>Ballot Session Created!</b>\n\n`;
   msg += `🎲 ${data.title}\n`;
   msg += `📍 ${data.venue}\n`;
   msg += `📅 Deadline: ${formatDate(data.date)}\n`;
@@ -1132,7 +1132,7 @@ async function handleBallotText(chatId: number, text: string, supabase: any) {
         }
         data.slots = slots;
         await setState(supabase, chatId, { flow: "ballot_create", step: "ballot_confirm", data });
-        let msg = "📋 <b>Ballot Group Summary</b>\n\n";
+        let msg = "📋 <b>Ballot Session Summary</b>\n\n";
         msg += `📝 ${data.title}\n⚽ ${data.sport}\n📍 ${data.venue}\n📅 ${formatDate(data.date)}\n👥 ${slots} slots\n\n<b>Confirm?</b>`;
         await sendMessage(chatId, msg, {
           inline_keyboard: [
@@ -1547,7 +1547,7 @@ async function handleHelp(chatId: number) {
     "• <b>Register for Beta</b> — Sign up for early access\n" +
     "• <b>My Bookee</b> — Explore activities, view reservations\n" +
     "• <b>Organize</b> — Create & manage activities (requires account)\n" +
-    "• <b>Ballot</b> — Create or join ballot groups\n" +
+    "• <b>Ballot</b> — Create or join ballot sessions\n" +
     "• <b>Logout</b> — Disconnect your Telegram account\n\n" +
     "🔗 <b>Account Linking:</b>\n" +
     "Guest users can join activities and ballots. Link your email account for full access.\n\n" +

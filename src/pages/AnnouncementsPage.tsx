@@ -1,12 +1,34 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Bell, Calendar, ArrowLeft, ThumbsUp, Send } from 'lucide-react';
+import { Bell, Calendar, ArrowLeft, ThumbsUp, Send, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Card, CardContent } from '../components/ui/card';
+import { Badge } from '../components/ui/badge';
 
-const ANNOUNCEMENTS = [
+const TIMELINE_ITEMS = [
+  {
+    date: '1 Jan 2026',
+    title: 'Prototype Started',
+    description: 'Initial concept and prototype development began for Bookee.',
+    tag: 'Milestone',
+    tagColor: 'hsl(var(--muted-foreground))',
+  },
+  {
+    date: '15 Feb 2026',
+    title: 'Core System Built',
+    description: 'Activity creation, booking flow, and organizer tools were implemented.',
+    tag: 'Milestone',
+    tagColor: 'hsl(220 70% 50%)',
+  },
+  {
+    date: '24 Mar 2026',
+    title: 'Organize Flow Revamped',
+    description: 'Activity Sessions and Ballot Sessions are now cleanly separated paths.',
+    tag: 'Update',
+    tagColor: 'hsl(142 60% 40%)',
+  },
   {
     date: '25 Mar 2026',
     title: 'Beta Registration Open!',
@@ -17,28 +39,22 @@ const ANNOUNCEMENTS = [
   {
     date: '25 Mar 2026',
     title: 'Ballot System Now Live!',
-    description: 'Organizers can now create ballot groups for oversubscribed sessions. Players can join and track their ballot status directly from the bot or web app.',
+    description: 'Organizers can now create ballot sessions for oversubscribed courts. Players join and track status from the web app.',
     tag: 'New Feature',
-    tagColor: 'hsl(142 60% 40%)',
+    tagColor: 'hsl(35 90% 50%)',
   },
+];
+
+const IN_PROGRESS_ITEMS = [
   {
-    date: '24 Mar 2026',
-    title: 'Organize Flow Revamped',
-    description: 'Create Groups or Events with a cleaner flow. Activity Sessions and Ballot Groups are now separate paths.',
-    tag: 'Update',
-    tagColor: 'hsl(220 70% 50%)',
-  },
-  {
-    date: '20 Mar 2026',
     title: 'PayNow Integration',
     description: 'Pay for your bookings using PayNow QR code — fast, secure, and built for Singapore.',
     tag: 'Payments',
     tagColor: 'hsl(35 90% 50%)',
   },
   {
-    date: '15 Mar 2026',
     title: 'Telegram Bot Launch',
-    description: 'Manage your bookings, organize activities, and join ballots all from @BookeeAssistBot on Telegram.',
+    description: 'Manage your bookings, organize activities, and join ballot sessions all from @BookeeAssistBot on Telegram.',
     tag: 'Launch',
     tagColor: 'hsl(260 60% 55%)',
   },
@@ -98,11 +114,11 @@ export default function AnnouncementsPage() {
           </p>
         </div>
 
-        {/* Horizontal Timeline */}
+        {/* Horizontal Timeline (earliest LEFT → latest RIGHT) */}
         <div className="relative mb-16">
           <div className="overflow-x-auto pb-4 -mx-4 px-4">
             <div className="flex gap-4 min-w-max">
-              {ANNOUNCEMENTS.map((item, i) => (
+              {TIMELINE_ITEMS.map((item, i) => (
                 <motion.div
                   key={i}
                   initial={{ opacity: 0, y: 16 }}
@@ -111,13 +127,12 @@ export default function AnnouncementsPage() {
                   className="w-72 flex-shrink-0"
                 >
                   <div className="relative">
-                    {/* Timeline dot and line */}
                     <div className="flex items-center mb-3">
                       <div
                         className="w-3 h-3 rounded-full flex-shrink-0"
                         style={{ background: item.tagColor }}
                       />
-                      {i < ANNOUNCEMENTS.length - 1 && (
+                      {i < TIMELINE_ITEMS.length - 1 && (
                         <div className="h-px flex-1 bg-border ml-2" />
                       )}
                     </div>
@@ -145,18 +160,58 @@ export default function AnnouncementsPage() {
           </div>
         </div>
 
+        {/* In Progress Section */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.3 }}
+          className="mb-16"
+        >
+          <div className="text-center mb-8">
+            <h2 className="text-2xl font-bold text-foreground flex items-center justify-center gap-2">
+              <Loader2 className="h-5 w-5 animate-spin text-primary" /> In Progress
+            </h2>
+            <p className="text-muted-foreground text-sm mt-1">Features currently being built.</p>
+          </div>
+
+          <div className="grid sm:grid-cols-2 gap-4 max-w-2xl mx-auto">
+            {IN_PROGRESS_ITEMS.map((item, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, delay: 0.4 + i * 0.1 }}
+              >
+                <Card className="border-2 border-dashed border-primary/30 bg-primary/5 h-full">
+                  <CardContent className="p-5">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Badge variant="secondary" className="text-[10px] font-bold uppercase tracking-widest">
+                        {item.tag}
+                      </Badge>
+                      <Badge variant="outline" className="text-[10px] text-primary border-primary/40">
+                        Building
+                      </Badge>
+                    </div>
+                    <h3 className="text-base font-bold text-foreground mb-1">{item.title}</h3>
+                    <p className="text-xs text-muted-foreground leading-relaxed">{item.description}</p>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            ))}
+          </div>
+        </motion.div>
+
         {/* Feedback & Suggestions */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.4 }}
+          transition={{ duration: 0.5, delay: 0.5 }}
         >
           <div className="text-center mb-8">
             <h2 className="text-2xl font-bold text-foreground">Feedback & Suggestions</h2>
             <p className="text-muted-foreground text-sm mt-1">Vote on features you'd love to see, or suggest your own.</p>
           </div>
 
-          {/* Add suggestion */}
           <div className="flex gap-2 mb-6 max-w-xl mx-auto">
             <Input
               placeholder="Suggest a feature..."
@@ -169,7 +224,6 @@ export default function AnnouncementsPage() {
             </Button>
           </div>
 
-          {/* Suggestions list */}
           <div className="space-y-3 max-w-xl mx-auto">
             {suggestions.map((s, i) => (
               <motion.div

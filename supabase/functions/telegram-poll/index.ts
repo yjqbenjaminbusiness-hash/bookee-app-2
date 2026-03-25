@@ -1054,7 +1054,7 @@ async function createBallot(chatId: number, data: any, supabase: any) {
 
   await clearState(supabase, chatId);
 
-  let msg = `✅ <b>Ballot Group Created!</b>\n\n`;
+  let msg = `✅ <b>Ballot Session Created!</b>\n\n`;
   msg += `🎲 ${data.title}\n`;
   msg += `📍 ${data.venue}\n`;
   msg += `📅 Deadline: ${formatDate(data.date)}\n`;

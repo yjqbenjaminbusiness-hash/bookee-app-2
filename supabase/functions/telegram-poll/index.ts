@@ -765,8 +765,8 @@ async function handleBallotCallback(chatId: number, cbData: string, supabase: an
   if (cbData === "ballot") {
     await sendMessage(chatId, "🎲 <b>Ballot</b>\n\nWhat would you like to do?", {
       inline_keyboard: [
-        [{ text: "🆕 Create Ballot Group", callback_data: "ballot_create" }],
-        [{ text: "📊 Manage Ballot Group", callback_data: "ballot_manage" }],
+        [{ text: "🆕 Create Ballot Session", callback_data: "ballot_create" }],
+        [{ text: "📊 Manage Ballot Sessions", callback_data: "ballot_manage" }],
         [{ text: "⬅️ Back", callback_data: "main_menu" }],
       ],
     });

@@ -8,6 +8,7 @@ import { Label } from '../../components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { toast } from 'sonner';
 import { Shuffle, MapPin, Calendar, Users, ArrowLeft, Loader2 } from 'lucide-react';
+import { GroupSelector } from '../../components/GroupSelector';
 
 export default function CreateBallotSession() {
   const { user, isAuthenticated } = useAuth();

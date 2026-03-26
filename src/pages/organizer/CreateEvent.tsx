@@ -466,6 +466,12 @@ export default function CreateEvent() {
           </CardContent>
         </Card>
 
+        {/* Group Tagging */}
+        <GroupSelector
+          onGroupSelected={setSelectedGroupId}
+          selectedGroupId={selectedGroupId}
+        />
+
         <div className="flex justify-end gap-4 pt-4 border-t">
           <Button variant="ghost" type="button" onClick={() => navigate('/organizer/dashboard')}>Cancel</Button>
           <Button size="lg" className="bg-accent hover:bg-accent/90 px-10 rounded-full" type="submit" disabled={isLoading}>

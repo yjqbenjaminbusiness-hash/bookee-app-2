@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { store } from '../../lib/mockData';
 import { Button } from '../../components/ui/button';
@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 import { Plus, Trash2, MapPin, Clock, DollarSign, Users, Loader2, Eye, Unlock, Globe, Lock, CreditCard, Phone } from 'lucide-react';
 import type { PaymentPolicy } from '../../lib/mockData';
 import { Progress } from '../../components/ui/progress';
+import { GroupSelector } from '../../components/GroupSelector';
 
 interface TimeslotForm {
   startHour: string;
@@ -48,8 +49,12 @@ function getDurationStr(ts: TimeslotForm): string {
 export default function CreateEvent() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const sessionType = searchParams.get('type') || 'activity';
+  const isBallot = sessionType === 'ballot';
   const [isLoading, setIsLoading] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
+  const [selectedGroupId, setSelectedGroupId] = useState<string>('');
 
   const [venue, setVenue] = useState('Senja Cashew Sports Hall');
   const [date, setDate] = useState('');
@@ -208,8 +213,8 @@ export default function CreateEvent() {
           </CardContent>
         </Card>
 
-        {/* Payment Policy */}
-        <Card className="shadow-sm border-accent/10">
+        {/* Payment Policy - hidden for ballot sessions */}
+        {!isBallot && <Card className="shadow-sm border-accent/10">
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <CreditCard className="h-4 w-4 text-accent" /> Payment Policy
@@ -258,7 +263,7 @@ export default function CreateEvent() {
               💡 Payments processed through MAS-regulated payment providers.
             </div>
           </CardContent>
-        </Card>
+        </Card>}
 
         {/* Contact Requirements */}
         <Card className="shadow-sm border-accent/10">
@@ -460,6 +465,12 @@ export default function CreateEvent() {
             )}
           </CardContent>
         </Card>
+
+        {/* Group Tagging */}
+        <GroupSelector
+          onGroupSelected={setSelectedGroupId}
+          selectedGroupId={selectedGroupId}
+        />
 
         <div className="flex justify-end gap-4 pt-4 border-t">
           <Button variant="ghost" type="button" onClick={() => navigate('/organizer/dashboard')}>Cancel</Button>

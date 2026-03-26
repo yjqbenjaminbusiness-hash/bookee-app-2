@@ -8,11 +8,13 @@ import { Label } from '../../components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { toast } from 'sonner';
 import { Shuffle, MapPin, Calendar, Users, ArrowLeft, Loader2 } from 'lucide-react';
+import { GroupSelector } from '../../components/GroupSelector';
 
 export default function CreateBallotSession() {
   const { user, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedGroupId, setSelectedGroupId] = useState<string>('');
 
   const [activityName, setActivityName] = useState('');
   const [sport, setSport] = useState('');
@@ -97,6 +99,12 @@ export default function CreateBallotSession() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Group Tagging */}
+        <GroupSelector
+          onGroupSelected={setSelectedGroupId}
+          selectedGroupId={selectedGroupId}
+        />
 
         <div className="flex justify-end gap-4 pt-4 border-t">
           <Button variant="ghost" type="button" onClick={() => navigate('/organize')}>Cancel</Button>

@@ -99,6 +99,13 @@ export default function CreateBallotSession() {
             </div>
           </CardContent>
         </Card>
+        </Card>
+
+        {/* Group Tagging */}
+        <GroupSelector
+          onGroupSelected={setSelectedGroupId}
+          selectedGroupId={selectedGroupId}
+        />
 
         <div className="flex justify-end gap-4 pt-4 border-t">
           <Button variant="ghost" type="button" onClick={() => navigate('/organize')}>Cancel</Button>

@@ -263,7 +263,7 @@ export default function CreateEvent() {
               💡 Payments processed through MAS-regulated payment providers.
             </div>
           </CardContent>
-        </Card>
+        </Card>}
 
         {/* Contact Requirements */}
         <Card className="shadow-sm border-accent/10">

@@ -25,7 +25,7 @@ const TIMELINE_ITEMS = [
     {
     date: '3 Mar 2026',
     title: 'Community Focus',
-    description: 'Interacted with ~30 organizers to redesign tools to address organizing pain points. ',
+    description: 'Interacted with organizers to understand & design tools to address their pain points. ',
     tag: 'Update',
     tagColor: 'hsl(142 60% 40%)',
   },

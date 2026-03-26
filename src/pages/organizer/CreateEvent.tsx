@@ -213,8 +213,8 @@ export default function CreateEvent() {
           </CardContent>
         </Card>
 
-        {/* Payment Policy */}
-        <Card className="shadow-sm border-accent/10">
+        {/* Payment Policy - hidden for ballot sessions */}
+        {!isBallot && <Card className="shadow-sm border-accent/10">
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <CreditCard className="h-4 w-4 text-accent" /> Payment Policy

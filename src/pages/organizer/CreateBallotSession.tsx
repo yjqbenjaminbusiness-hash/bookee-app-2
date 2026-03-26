@@ -30,24 +30,34 @@ export default function CreateBallotSession() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
-    setIsLoading(true);
 
-    const { error } = await supabase.from('ballots').insert({
+    if (!activityName.trim() || !sport.trim() || !location.trim() || !deadline) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
+
+    setIsLoading(true);
+    console.log('[CreateBallot] Creating ballot:', { activityName, sport, location, deadline, slots, selectedGroupId });
+
+    const { data, error } = await supabase.from('ballots').insert({
       activity_name: activityName,
       sport,
       location,
       ballot_deadline: deadline,
       slots: parseInt(slots) || 10,
       created_by: user.id,
-    });
+      group_id: selectedGroupId || null,
+    } as any).select();
 
     setIsLoading(false);
 
     if (error) {
+      console.error('[CreateBallot] Error:', error);
       toast.error('Failed to create ballot session: ' + error.message);
       return;
     }
 
+    console.log('[CreateBallot] Ballot created:', data);
     toast.success('Ballot Session created!');
     navigate('/organizer/dashboard');
   };
@@ -74,22 +84,22 @@ export default function CreateBallotSession() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label>Activity Name</Label>
+              <Label>Activity Name *</Label>
               <Input placeholder="e.g. Weekly Badminton Court Ballot" value={activityName} onChange={e => setActivityName(e.target.value)} required />
             </div>
             <div className="grid md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Sport</Label>
+                <Label>Sport *</Label>
                 <Input placeholder="e.g. Badminton, Futsal" value={sport} onChange={e => setSport(e.target.value)} required />
               </div>
               <div className="space-y-2">
-                <Label>Location</Label>
+                <Label>Location *</Label>
                 <Input placeholder="e.g. Senja Cashew Sports Hall" value={location} onChange={e => setLocation(e.target.value)} required />
               </div>
             </div>
             <div className="grid md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label className="flex items-center gap-1"><Calendar className="h-3 w-3" /> Ballot Deadline</Label>
+                <Label className="flex items-center gap-1"><Calendar className="h-3 w-3" /> Ballot Deadline *</Label>
                 <Input type="date" value={deadline} onChange={e => setDeadline(e.target.value)} required />
               </div>
               <div className="space-y-2">
@@ -101,10 +111,7 @@ export default function CreateBallotSession() {
         </Card>
 
         {/* Group Tagging */}
-        <GroupSelector
-          onGroupSelected={setSelectedGroupId}
-          selectedGroupId={selectedGroupId}
-        />
+        <GroupSelector onGroupSelected={setSelectedGroupId} selectedGroupId={selectedGroupId} />
 
         <div className="flex justify-end gap-4 pt-4 border-t">
           <Button variant="ghost" type="button" onClick={() => navigate('/organize')}>Cancel</Button>

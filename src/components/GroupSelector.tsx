@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
-import { Users, Plus, Check } from 'lucide-react';
-import { store } from '../lib/mockData';
+import { Users, Plus, Check, Loader2 } from 'lucide-react';
+import { dataService, type Group } from '../lib/data';
 import { useAuth } from '../hooks/useAuth';
 import { toast } from 'sonner';
 
@@ -17,23 +17,44 @@ export function GroupSelector({ onGroupSelected, selectedGroupId }: GroupSelecto
   const { user } = useAuth();
   const [showCreate, setShowCreate] = useState(false);
   const [newGroupName, setNewGroupName] = useState('');
-  const [, setRefresh] = useState(0);
+  const [groups, setGroups] = useState<Group[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isCreating, setIsCreating] = useState(false);
+
+  useEffect(() => {
+    if (!user) return;
+    dataService.listGroupsByOrganizer(user.id).then(g => {
+      setGroups(g);
+      setIsLoading(false);
+    });
+  }, [user]);
 
   if (!user) return null;
 
-  const groups = store.listGroupsByOrganizer(user.id);
-
-  const handleCreate = () => {
+  const handleCreate = async () => {
     if (!newGroupName.trim()) {
       toast.error('Please enter a group name');
       return;
     }
-    const group = store.createGroup(user.id, newGroupName.trim(), '', 'Other');
-    setNewGroupName('');
-    setShowCreate(false);
-    setRefresh(n => n + 1);
-    onGroupSelected(group.id);
-    toast.success('Group created!');
+    setIsCreating(true);
+    try {
+      const group = await dataService.createGroup({
+        organizer_id: user.id,
+        name: newGroupName.trim(),
+        sport: 'Other',
+      });
+      if (group) {
+        setGroups(prev => [group, ...prev]);
+        setNewGroupName('');
+        setShowCreate(false);
+        onGroupSelected(group.id);
+        toast.success('Group created!');
+      }
+    } catch (err: any) {
+      toast.error('Failed to create group: ' + err.message);
+    } finally {
+      setIsCreating(false);
+    }
   };
 
   const examples = ['Badminton Group', 'Pickleball Group', 'Balloting Group'];
@@ -48,7 +69,11 @@ export function GroupSelector({ onGroupSelected, selectedGroupId }: GroupSelecto
       <CardContent className="space-y-4">
         <p className="text-sm text-muted-foreground">Tag this session to a group, or create a new one.</p>
 
-        {groups.length > 0 && (
+        {isLoading ? (
+          <div className="flex items-center justify-center py-4">
+            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+          </div>
+        ) : groups.length > 0 ? (
           <div className="space-y-2">
             {groups.map(group => (
               <button
@@ -67,14 +92,14 @@ export function GroupSelector({ onGroupSelected, selectedGroupId }: GroupSelecto
                   </div>
                   <div>
                     <p className="font-bold text-sm text-foreground">{group.name}</p>
-                    <p className="text-xs text-muted-foreground">{group.memberIds.length} members</p>
+                    <p className="text-xs text-muted-foreground">{group.sport}</p>
                   </div>
                 </div>
                 {selectedGroupId === group.id && <Check className="h-4 w-4 text-primary" />}
               </button>
             ))}
           </div>
-        )}
+        ) : null}
 
         {!showCreate ? (
           <Button
@@ -109,7 +134,8 @@ export function GroupSelector({ onGroupSelected, selectedGroupId }: GroupSelecto
               ))}
             </div>
             <div className="flex gap-2">
-              <Button type="button" size="sm" className="rounded-full" onClick={handleCreate}>
+              <Button type="button" size="sm" className="rounded-full" onClick={handleCreate} disabled={isCreating}>
+                {isCreating && <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />}
                 <Plus className="mr-1 h-3.5 w-3.5" /> Create
               </Button>
               <Button type="button" size="sm" variant="ghost" className="rounded-full" onClick={() => setShowCreate(false)}>

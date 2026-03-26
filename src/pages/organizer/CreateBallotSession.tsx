@@ -99,7 +99,6 @@ export default function CreateBallotSession() {
             </div>
           </CardContent>
         </Card>
-        </Card>
 
         {/* Group Tagging */}
         <GroupSelector

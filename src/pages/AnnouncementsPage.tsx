@@ -10,8 +10,8 @@ import { Badge } from '../components/ui/badge';
 const TIMELINE_ITEMS = [
   {
     date: '16 Jan 2026',
-    title: 'Prototype Started',
-    description: 'Initial concept and prototype development began for Bookee.',
+    title: 'Bookee Conceptualized',
+    description: 'Initial prototype & development began for Bookee.',
     tag: 'Milestone',
     tagColor: 'hsl(var(--muted-foreground))',
   },
@@ -21,6 +21,13 @@ const TIMELINE_ITEMS = [
     description: 'Activity creation, booking flow, and organizer tools were implemented.',
     tag: 'Milestone',
     tagColor: 'hsl(220 70% 50%)',
+  },
+    {
+    date: '3 Mar 2026',
+    title: 'Community Focus',
+    description: 'Interacted with ~30 organizers to redesign tools to address organizing pain points. ',
+    tag: 'Update',
+    tagColor: 'hsl(142 60% 40%)',
   },
   {
     date: '23 Mar 2026',

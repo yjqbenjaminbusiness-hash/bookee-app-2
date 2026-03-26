@@ -14,6 +14,7 @@ export default function CreateBallotSession() {
   const { user, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedGroupId, setSelectedGroupId] = useState<string>('');
 
   const [activityName, setActivityName] = useState('');
   const [sport, setSport] = useState('');

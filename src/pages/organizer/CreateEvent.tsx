@@ -49,8 +49,12 @@ function getDurationStr(ts: TimeslotForm): string {
 export default function CreateEvent() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const sessionType = searchParams.get('type') || 'activity';
+  const isBallot = sessionType === 'ballot';
   const [isLoading, setIsLoading] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
+  const [selectedGroupId, setSelectedGroupId] = useState<string>('');
 
   const [venue, setVenue] = useState('Senja Cashew Sports Hall');
   const [date, setDate] = useState('');

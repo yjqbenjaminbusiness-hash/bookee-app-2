@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 import { Plus, Trash2, MapPin, Clock, DollarSign, Users, Loader2, Eye, Unlock, Globe, Lock, CreditCard, Phone } from 'lucide-react';
 import type { PaymentPolicy } from '../../lib/mockData';
 import { Progress } from '../../components/ui/progress';
+import { GroupSelector } from '../../components/GroupSelector';
 
 interface TimeslotForm {
   startHour: string;

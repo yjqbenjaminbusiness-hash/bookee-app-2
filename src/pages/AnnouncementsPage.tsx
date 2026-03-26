@@ -9,7 +9,7 @@ import { Badge } from '../components/ui/badge';
 
 const TIMELINE_ITEMS = [
   {
-    date: '1 Jan 2026',
+    date: '16 Jan 2026',
     title: 'Prototype Started',
     description: 'Initial concept and prototype development began for Bookee.',
     tag: 'Milestone',
@@ -23,9 +23,9 @@ const TIMELINE_ITEMS = [
     tagColor: 'hsl(220 70% 50%)',
   },
   {
-    date: '24 Mar 2026',
+    date: '23 Mar 2026',
     title: 'Organize Flow Revamped',
-    description: 'Activity Sessions and Ballot Sessions are now cleanly separated paths.',
+    description: 'Demo Flows & Ballot Sessions are added for Organizers to manage Balloting activities with members',
     tag: 'Update',
     tagColor: 'hsl(142 60% 40%)',
   },

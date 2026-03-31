@@ -106,7 +106,14 @@ export default function PlayerEvents() {
     }
   };
 
-  const filteredActivities = activities.filter(a => {
+  // Demo data
+  const demoActivity = dataService.getDemoActivity();
+  const demoGroup = dataService.getDemoGroup();
+
+  const allActivities = showDemo ? [...activities, demoActivity] : activities;
+  const allGroups = showDemo ? [...groups, demoGroup] : groups;
+
+  const filteredActivities = allActivities.filter(a => {
     const matchesSport = selectedSport === 'all' || a.sport === selectedSport;
     const matchesSearch = !search ||
       a.title.toLowerCase().includes(search.toLowerCase()) ||

@@ -4,7 +4,7 @@ import { dataService, type Activity, type ActivitySession, type Group } from '..
 import { useAuth } from '../../hooks/useAuth';
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
-import { Search, ArrowRight, Users, Star, Calendar, MapPin, ChevronRight, Clock, UserPlus, Check, Loader2 } from 'lucide-react';
+import { Search, ArrowRight, Users, Star, Calendar, MapPin, ChevronRight, Clock, UserPlus, Check, Loader2, Eye, EyeOff } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 

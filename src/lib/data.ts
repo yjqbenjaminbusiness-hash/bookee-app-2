@@ -351,4 +351,53 @@ export const dataService = {
       .getPublicUrl(path);
     return urlData.publicUrl;
   },
+
+  async uploadGroupImage(file: File, groupId: string): Promise<string | null> {
+    const ext = file.name.split('.').pop();
+    const path = `${groupId}/${Date.now()}.${ext}`;
+    const { error } = await supabase.storage
+      .from('group-images')
+      .upload(path, file);
+    if (error) {
+      console.error('[dataService] uploadGroupImage error:', error);
+      return null;
+    }
+    const { data: urlData } = supabase.storage
+      .from('group-images')
+      .getPublicUrl(path);
+    return urlData.publicUrl;
+  },
+
+  // ─── Demo Data ──────────────────────────────────────────────
+  getDemoActivity(): Activity {
+    return {
+      id: 'demo-activity-001',
+      organizer_id: 'demo-user',
+      title: 'Demo Activity – Weekend Badminton',
+      sport: 'Badminton',
+      venue: 'Demo Sports Hall',
+      location: 'Demo Location',
+      date: '2033-12-31',
+      description: 'This is a demo activity to showcase the platform. Not a real session.',
+      status: 'active',
+      group_id: 'demo-group-001',
+      image_url: null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+  },
+
+  getDemoGroup(): Group {
+    return {
+      id: 'demo-group-001',
+      organizer_id: 'demo-user',
+      name: 'Demo Group – Badminton Club',
+      description: 'This is a demo group to showcase the platform features.',
+      sport: 'Badminton',
+      image_url: null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      member_count: 25,
+    };
+  },
 };

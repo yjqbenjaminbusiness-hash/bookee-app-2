@@ -63,6 +63,11 @@ export default function PlayerEvents() {
         setActivities(acts);
         setGroups(grps);
 
+        // Build group lookup map
+        const gMap: Record<string, Group> = {};
+        grps.forEach(g => { gMap[g.id] = g; });
+        setGroupMap(gMap);
+
         // Load sessions for all activities
         const sessMap: Record<string, ActivitySession[]> = {};
         await Promise.all(acts.map(async (a) => {

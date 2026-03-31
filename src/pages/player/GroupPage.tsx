@@ -109,6 +109,13 @@ export default function GroupPage() {
       </div>
 
       <div className="container px-4 py-8 space-y-8 max-w-3xl">
+        {/* Group banner */}
+        {group.image_url && (
+          <div className="h-48 rounded-2xl overflow-hidden -mt-4">
+            <img src={group.image_url} alt={group.name} className="w-full h-full object-cover" />
+          </div>
+        )}
+
         {/* Group header */}
         <div className="flex items-start gap-4">
           <div>

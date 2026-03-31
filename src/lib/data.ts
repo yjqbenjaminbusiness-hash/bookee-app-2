@@ -264,7 +264,7 @@ export const dataService = {
     if (error) throw new Error(error.message);
   },
 
-  async updateGroup(id: string, updates: { name?: string; description?: string; sport?: string }): Promise<void> {
+  async updateGroup(id: string, updates: { name?: string; description?: string; sport?: string; image_url?: string }): Promise<void> {
     const { error } = await supabase.from('groups').update(updates).eq('id', id);
     if (error) throw new Error(error.message);
   },

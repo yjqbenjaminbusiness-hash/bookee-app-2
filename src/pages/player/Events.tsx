@@ -292,7 +292,7 @@ export default function PlayerEvents() {
             <h2 className="text-xl font-bold" style={{ color: '#111' }}>Groups</h2>
           </div>
 
-          {groups.length === 0 ? (
+          {allGroups.length === 0 ? (
             <div className="text-center py-12 rounded-2xl border-2 border-dashed bg-muted/10">
               <Users className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
               <p className="font-bold" style={{ color: '#111' }}>No groups yet</p>
@@ -300,18 +300,25 @@ export default function PlayerEvents() {
             </div>
           ) : (
             <div className="space-y-5">
-              {groups.map((group, i) => {
+              {allGroups.map((group, i) => {
                 const sportCat = SPORT_CATEGORIES.find(c => c.id === group.sport) || SPORT_CATEGORIES[0];
+                const isDemo = group.id.startsWith('demo-');
                 return (
                   <motion.div key={group.id}
                     initial={{ opacity: 0, y: 16 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.3, delay: i * 0.08 }}
-                    className="rounded-2xl border-2 overflow-hidden hover:shadow-lg transition-all bg-white"
-                    style={{ borderColor: 'rgba(196,122,0,0.14)' }}>
-                    <div className="p-5 cursor-pointer" onClick={() => navigate(`/player/groups/${group.id}`)}>
+                    className={`rounded-2xl border-2 overflow-hidden hover:shadow-lg transition-all ${isDemo ? 'opacity-60 border-dashed' : 'bg-white'}`}
+                    style={{ borderColor: isDemo ? '#ccc' : 'rgba(196,122,0,0.14)', background: isDemo ? '#f5f5f5' : undefined }}>
+                    {/* Group banner */}
+                    {group.image_url && (
+                      <div className="h-28 overflow-hidden">
+                        <img src={group.image_url} alt={group.name} className="w-full h-full object-cover" />
+                      </div>
+                    )}
+                    <div className="p-5 cursor-pointer" onClick={() => !isDemo && navigate(`/player/groups/${group.id}`)}>
                       <div className="flex items-start gap-4">
-                        <div className="w-16 h-16 rounded-xl overflow-hidden flex-shrink-0 border-2 bg-muted flex items-center justify-center text-2xl font-bold text-primary"
+                        <div className="w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 border-2 bg-muted flex items-center justify-center text-xl font-bold text-primary"
                           style={{ borderColor: `${sportCat.color}33` }}>
                           {group.image_url ? (
                             <img src={group.image_url} alt={group.name} className="w-full h-full object-cover" />
@@ -321,9 +328,9 @@ export default function PlayerEvents() {
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap mb-1">
-                            <h3 className="font-bold text-lg leading-tight" style={{ color: '#111' }}>{group.name}</h3>
-                            <span className="text-[10px] font-bold px-2.5 py-1 rounded-full" style={{ background: sportCat.bg, color: sportCat.color }}>
-                              {sportCat.emoji} {group.sport}
+                            <h3 className="font-bold text-lg leading-tight" style={{ color: isDemo ? '#555' : '#111' }}>{group.name}</h3>
+                            <span className="text-[10px] font-bold px-2.5 py-1 rounded-full" style={{ background: isDemo ? '#ddd' : sportCat.bg, color: isDemo ? '#666' : sportCat.color }}>
+                              {isDemo ? 'DEMO' : `${sportCat.emoji} ${group.sport}`}
                             </span>
                           </div>
                           <p className="text-sm text-muted-foreground line-clamp-1">{group.description}</p>
@@ -333,7 +340,7 @@ export default function PlayerEvents() {
                         </div>
                         <div className="flex flex-col items-end gap-2 flex-shrink-0">
                           <ChevronRight className="h-5 w-5 text-muted-foreground/50" />
-                          {user && !joinedGroupIds.has(group.id) ? (
+                          {!isDemo && user && !joinedGroupIds.has(group.id) ? (
                             <Button size="sm" className="rounded-full font-bold text-xs px-4" style={{ background: '#C47A00', color: '#fff' }}
                               onClick={e => handleJoinGroup(e, group.id)}
                               disabled={joiningGroupId === group.id}>
@@ -343,7 +350,7 @@ export default function PlayerEvents() {
                                 <span className="flex items-center gap-1"><UserPlus className="h-3 w-3" />Join Group</span>
                               )}
                             </Button>
-                          ) : user && joinedGroupIds.has(group.id) ? (
+                          ) : !isDemo && user && joinedGroupIds.has(group.id) ? (
                             <span className="flex items-center gap-1 text-[10px] font-bold px-2.5 py-1 rounded-full" style={{ background: '#E8F7EF', color: '#1A7A4A' }}>
                               <Check className="h-3 w-3" /> Joined
                             </span>

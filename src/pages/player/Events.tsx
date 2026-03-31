@@ -224,13 +224,18 @@ export default function PlayerEvents() {
                       <span className="absolute top-3 left-3 text-[10px] font-bold px-2.5 py-1 rounded-full" style={{ background: sportCat.bg, color: sportCat.color }}>
                         {sportCat.emoji} {activity.sport}
                       </span>
-                      <span className="absolute top-3 right-3 text-[10px] font-bold px-2.5 py-1 rounded-full" style={{ background: 'rgba(255,255,255,0.92)', color: '#1A7A4A' }}>
-                        🌐 Public
+                      <span className="absolute top-3 right-3 text-[10px] font-bold px-2.5 py-1 rounded-full" style={{ background: isDemo ? '#666' : 'rgba(255,255,255,0.92)', color: isDemo ? '#fff' : '#1A7A4A' }}>
+                        {isDemo ? 'DEMO' : '🌐 Public'}
                       </span>
                     </div>
                     <div className="p-4 space-y-3">
                       <div>
-                        <h3 className="font-bold text-base leading-snug" style={{ color: '#111' }}>{activity.title}</h3>
+                        <h3 className="font-bold text-base leading-snug" style={{ color: isDemo ? '#555' : '#111' }}>{activity.title}</h3>
+                        {linkedGroup && (
+                          <p className="text-[10px] font-bold mt-0.5 px-2 py-0.5 rounded-full inline-block" style={{ background: '#E8F7EF', color: '#1A7A4A' }}>
+                            {linkedGroup.name}
+                          </p>
+                        )}
                         <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
                           <MapPin className="h-3 w-3" /> {activity.venue}
                         </p>

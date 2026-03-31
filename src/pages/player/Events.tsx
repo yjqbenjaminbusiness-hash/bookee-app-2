@@ -139,14 +139,22 @@ export default function PlayerEvents() {
             <h1 className="text-2xl font-bold" style={{ color: '#111' }}>Explore</h1>
             <p className="text-sm text-muted-foreground">Discover public sessions & community groups</p>
           </div>
-          <div className="relative w-full sm:w-80">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <input
-              placeholder="Search by venue or sport..."
-              className="w-full pl-10 pr-4 py-2 rounded-full border bg-muted/40 text-sm outline-none focus:border-primary/50 transition-colors"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-            />
+          <div className="flex items-center gap-3">
+            <button onClick={() => setShowDemo(!showDemo)}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-bold transition-all hover:bg-muted"
+              style={{ color: showDemo ? '#888' : '#1A7A4A' }}>
+              {showDemo ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+              {showDemo ? 'Hide Demo' : 'Show Demo'}
+            </button>
+            <div className="relative w-full sm:w-64">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <input
+                placeholder="Search by venue or sport..."
+                className="w-full pl-10 pr-4 py-2 rounded-full border bg-muted/40 text-sm outline-none focus:border-primary/50 transition-colors"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+              />
+            </div>
           </div>
         </div>
       </div>

@@ -205,15 +205,17 @@ export default function PlayerEvents() {
                 const takenSpots = actSessions.reduce((a, s) => a + s.filled_slots, 0);
                 const fillPct = totalSpots > 0 ? (takenSpots / totalSpots) * 100 : 0;
                 const sportCat = SPORT_CATEGORIES.find(c => c.id === activity.sport) || SPORT_CATEGORIES[0];
+                const isDemo = activity.id.startsWith('demo-');
+                const linkedGroup = activity.group_id ? (groupMap[activity.group_id] || null) : null;
 
                 return (
                   <motion.div key={activity.id}
                     initial={{ opacity: 0, y: 16 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.3, delay: i * 0.05 }}
-                    className="group rounded-2xl border-2 overflow-hidden hover:shadow-lg transition-all cursor-pointer bg-white"
-                    style={{ borderColor: 'rgba(26,122,74,0.10)' }}
-                    onClick={() => navigate(`/player/events/${activity.id}`)}>
+                    className={`group rounded-2xl border-2 overflow-hidden hover:shadow-lg transition-all cursor-pointer ${isDemo ? 'opacity-60 border-dashed' : 'bg-white'}`}
+                    style={{ borderColor: isDemo ? '#ccc' : 'rgba(26,122,74,0.10)', background: isDemo ? '#f5f5f5' : undefined }}
+                    onClick={() => !isDemo && navigate(`/player/events/${activity.id}`)}>
                     <div className="relative h-44 overflow-hidden bg-muted">
                       <img src={getEventPhoto(activity.sport, activity.image_url)} alt={activity.title}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"

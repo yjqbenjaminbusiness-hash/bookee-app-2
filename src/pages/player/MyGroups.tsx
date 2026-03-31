@@ -87,9 +87,14 @@ export default function GroupsPage() {
             </div>
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {joinedGroups.map(group => (
-                <Card key={group.id} className="p-6 hover:shadow-xl transition-all cursor-pointer border-2 border-primary/5 group"
+                <Card key={group.id} className="overflow-hidden hover:shadow-xl transition-all cursor-pointer border-2 border-primary/5 group"
                   onClick={() => navigate(`/player/groups/${group.id}`)}>
-                  <div className="flex flex-col gap-4">
+                  {group.image_url && (
+                    <div className="h-28 overflow-hidden">
+                      <img src={group.image_url} alt={group.name} className="w-full h-full object-cover" />
+                    </div>
+                  )}
+                  <div className="p-6 flex flex-col gap-4">
                     <div className="flex items-start justify-between">
                       <div className="space-y-1">
                         <h3 className="font-bold text-xl group-hover:text-primary transition-colors">{group.name}</h3>

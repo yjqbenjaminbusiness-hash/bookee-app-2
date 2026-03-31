@@ -4,7 +4,7 @@ import { dataService, type Activity, type ActivitySession, type Group } from '..
 import { useAuth } from '../../hooks/useAuth';
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
-import { Search, ArrowRight, Users, Star, Calendar, MapPin, ChevronRight, Clock, UserPlus, Check, Loader2 } from 'lucide-react';
+import { Search, ArrowRight, Users, Star, Calendar, MapPin, ChevronRight, Clock, UserPlus, Check, Loader2, Eye, EyeOff } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 
@@ -43,9 +43,11 @@ export default function PlayerEvents() {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [sessions, setSessions] = useState<Record<string, ActivitySession[]>>({});
   const [groups, setGroups] = useState<Group[]>([]);
+  const [groupMap, setGroupMap] = useState<Record<string, Group>>({});
   const [joiningGroupId, setJoiningGroupId] = useState<string | null>(null);
   const [joinedGroupIds, setJoinedGroupIds] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState(true);
+  const [showDemo, setShowDemo] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -60,6 +62,11 @@ export default function PlayerEvents() {
         ]);
         setActivities(acts);
         setGroups(grps);
+
+        // Build group lookup map
+        const gMap: Record<string, Group> = {};
+        grps.forEach(g => { gMap[g.id] = g; });
+        setGroupMap(gMap);
 
         // Load sessions for all activities
         const sessMap: Record<string, ActivitySession[]> = {};
@@ -99,7 +106,14 @@ export default function PlayerEvents() {
     }
   };
 
-  const filteredActivities = activities.filter(a => {
+  // Demo data
+  const demoActivity = dataService.getDemoActivity();
+  const demoGroup = dataService.getDemoGroup();
+
+  const allActivities = showDemo ? [...activities, demoActivity] : activities;
+  const allGroups = showDemo ? [...groups, demoGroup] : groups;
+
+  const filteredActivities = allActivities.filter(a => {
     const matchesSport = selectedSport === 'all' || a.sport === selectedSport;
     const matchesSearch = !search ||
       a.title.toLowerCase().includes(search.toLowerCase()) ||
@@ -125,14 +139,22 @@ export default function PlayerEvents() {
             <h1 className="text-2xl font-bold" style={{ color: '#111' }}>Explore</h1>
             <p className="text-sm text-muted-foreground">Discover public sessions & community groups</p>
           </div>
-          <div className="relative w-full sm:w-80">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <input
-              placeholder="Search by venue or sport..."
-              className="w-full pl-10 pr-4 py-2 rounded-full border bg-muted/40 text-sm outline-none focus:border-primary/50 transition-colors"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-            />
+          <div className="flex items-center gap-3">
+            <button onClick={() => setShowDemo(!showDemo)}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-bold transition-all hover:bg-muted"
+              style={{ color: showDemo ? '#888' : '#1A7A4A' }}>
+              {showDemo ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+              {showDemo ? 'Hide Demo' : 'Show Demo'}
+            </button>
+            <div className="relative w-full sm:w-64">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <input
+                placeholder="Search by venue or sport..."
+                className="w-full pl-10 pr-4 py-2 rounded-full border bg-muted/40 text-sm outline-none focus:border-primary/50 transition-colors"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -183,15 +205,17 @@ export default function PlayerEvents() {
                 const takenSpots = actSessions.reduce((a, s) => a + s.filled_slots, 0);
                 const fillPct = totalSpots > 0 ? (takenSpots / totalSpots) * 100 : 0;
                 const sportCat = SPORT_CATEGORIES.find(c => c.id === activity.sport) || SPORT_CATEGORIES[0];
+                const isDemo = activity.id.startsWith('demo-');
+                const linkedGroup = activity.group_id ? (groupMap[activity.group_id] || null) : null;
 
                 return (
                   <motion.div key={activity.id}
                     initial={{ opacity: 0, y: 16 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.3, delay: i * 0.05 }}
-                    className="group rounded-2xl border-2 overflow-hidden hover:shadow-lg transition-all cursor-pointer bg-white"
-                    style={{ borderColor: 'rgba(26,122,74,0.10)' }}
-                    onClick={() => navigate(`/player/events/${activity.id}`)}>
+                    className={`group rounded-2xl border-2 overflow-hidden hover:shadow-lg transition-all cursor-pointer ${isDemo ? 'opacity-60 border-dashed' : 'bg-white'}`}
+                    style={{ borderColor: isDemo ? '#ccc' : 'rgba(26,122,74,0.10)', background: isDemo ? '#f5f5f5' : undefined }}
+                    onClick={() => !isDemo && navigate(`/player/events/${activity.id}`)}>
                     <div className="relative h-44 overflow-hidden bg-muted">
                       <img src={getEventPhoto(activity.sport, activity.image_url)} alt={activity.title}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
@@ -200,13 +224,18 @@ export default function PlayerEvents() {
                       <span className="absolute top-3 left-3 text-[10px] font-bold px-2.5 py-1 rounded-full" style={{ background: sportCat.bg, color: sportCat.color }}>
                         {sportCat.emoji} {activity.sport}
                       </span>
-                      <span className="absolute top-3 right-3 text-[10px] font-bold px-2.5 py-1 rounded-full" style={{ background: 'rgba(255,255,255,0.92)', color: '#1A7A4A' }}>
-                        🌐 Public
+                      <span className="absolute top-3 right-3 text-[10px] font-bold px-2.5 py-1 rounded-full" style={{ background: isDemo ? '#666' : 'rgba(255,255,255,0.92)', color: isDemo ? '#fff' : '#1A7A4A' }}>
+                        {isDemo ? 'DEMO' : '🌐 Public'}
                       </span>
                     </div>
                     <div className="p-4 space-y-3">
                       <div>
-                        <h3 className="font-bold text-base leading-snug" style={{ color: '#111' }}>{activity.title}</h3>
+                        <h3 className="font-bold text-base leading-snug" style={{ color: isDemo ? '#555' : '#111' }}>{activity.title}</h3>
+                        {linkedGroup && (
+                          <p className="text-[10px] font-bold mt-0.5 px-2 py-0.5 rounded-full inline-block" style={{ background: '#E8F7EF', color: '#1A7A4A' }}>
+                            {linkedGroup.name}
+                          </p>
+                        )}
                         <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
                           <MapPin className="h-3 w-3" /> {activity.venue}
                         </p>
@@ -263,7 +292,7 @@ export default function PlayerEvents() {
             <h2 className="text-xl font-bold" style={{ color: '#111' }}>Groups</h2>
           </div>
 
-          {groups.length === 0 ? (
+          {allGroups.length === 0 ? (
             <div className="text-center py-12 rounded-2xl border-2 border-dashed bg-muted/10">
               <Users className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
               <p className="font-bold" style={{ color: '#111' }}>No groups yet</p>
@@ -271,18 +300,25 @@ export default function PlayerEvents() {
             </div>
           ) : (
             <div className="space-y-5">
-              {groups.map((group, i) => {
+              {allGroups.map((group, i) => {
                 const sportCat = SPORT_CATEGORIES.find(c => c.id === group.sport) || SPORT_CATEGORIES[0];
+                const isDemo = group.id.startsWith('demo-');
                 return (
                   <motion.div key={group.id}
                     initial={{ opacity: 0, y: 16 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.3, delay: i * 0.08 }}
-                    className="rounded-2xl border-2 overflow-hidden hover:shadow-lg transition-all bg-white"
-                    style={{ borderColor: 'rgba(196,122,0,0.14)' }}>
-                    <div className="p-5 cursor-pointer" onClick={() => navigate(`/player/groups/${group.id}`)}>
+                    className={`rounded-2xl border-2 overflow-hidden hover:shadow-lg transition-all ${isDemo ? 'opacity-60 border-dashed' : 'bg-white'}`}
+                    style={{ borderColor: isDemo ? '#ccc' : 'rgba(196,122,0,0.14)', background: isDemo ? '#f5f5f5' : undefined }}>
+                    {/* Group banner */}
+                    {group.image_url && (
+                      <div className="h-28 overflow-hidden">
+                        <img src={group.image_url} alt={group.name} className="w-full h-full object-cover" />
+                      </div>
+                    )}
+                    <div className="p-5 cursor-pointer" onClick={() => !isDemo && navigate(`/player/groups/${group.id}`)}>
                       <div className="flex items-start gap-4">
-                        <div className="w-16 h-16 rounded-xl overflow-hidden flex-shrink-0 border-2 bg-muted flex items-center justify-center text-2xl font-bold text-primary"
+                        <div className="w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 border-2 bg-muted flex items-center justify-center text-xl font-bold text-primary"
                           style={{ borderColor: `${sportCat.color}33` }}>
                           {group.image_url ? (
                             <img src={group.image_url} alt={group.name} className="w-full h-full object-cover" />
@@ -292,9 +328,9 @@ export default function PlayerEvents() {
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap mb-1">
-                            <h3 className="font-bold text-lg leading-tight" style={{ color: '#111' }}>{group.name}</h3>
-                            <span className="text-[10px] font-bold px-2.5 py-1 rounded-full" style={{ background: sportCat.bg, color: sportCat.color }}>
-                              {sportCat.emoji} {group.sport}
+                            <h3 className="font-bold text-lg leading-tight" style={{ color: isDemo ? '#555' : '#111' }}>{group.name}</h3>
+                            <span className="text-[10px] font-bold px-2.5 py-1 rounded-full" style={{ background: isDemo ? '#ddd' : sportCat.bg, color: isDemo ? '#666' : sportCat.color }}>
+                              {isDemo ? 'DEMO' : `${sportCat.emoji} ${group.sport}`}
                             </span>
                           </div>
                           <p className="text-sm text-muted-foreground line-clamp-1">{group.description}</p>
@@ -304,7 +340,7 @@ export default function PlayerEvents() {
                         </div>
                         <div className="flex flex-col items-end gap-2 flex-shrink-0">
                           <ChevronRight className="h-5 w-5 text-muted-foreground/50" />
-                          {user && !joinedGroupIds.has(group.id) ? (
+                          {!isDemo && user && !joinedGroupIds.has(group.id) ? (
                             <Button size="sm" className="rounded-full font-bold text-xs px-4" style={{ background: '#C47A00', color: '#fff' }}
                               onClick={e => handleJoinGroup(e, group.id)}
                               disabled={joiningGroupId === group.id}>
@@ -314,7 +350,7 @@ export default function PlayerEvents() {
                                 <span className="flex items-center gap-1"><UserPlus className="h-3 w-3" />Join Group</span>
                               )}
                             </Button>
-                          ) : user && joinedGroupIds.has(group.id) ? (
+                          ) : !isDemo && user && joinedGroupIds.has(group.id) ? (
                             <span className="flex items-center gap-1 text-[10px] font-bold px-2.5 py-1 rounded-full" style={{ background: '#E8F7EF', color: '#1A7A4A' }}>
                               <Check className="h-3 w-3" /> Joined
                             </span>

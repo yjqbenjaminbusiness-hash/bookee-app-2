@@ -43,9 +43,11 @@ export default function PlayerEvents() {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [sessions, setSessions] = useState<Record<string, ActivitySession[]>>({});
   const [groups, setGroups] = useState<Group[]>([]);
+  const [groupMap, setGroupMap] = useState<Record<string, Group>>({});
   const [joiningGroupId, setJoiningGroupId] = useState<string | null>(null);
   const [joinedGroupIds, setJoinedGroupIds] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState(true);
+  const [showDemo, setShowDemo] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const { user } = useAuth();

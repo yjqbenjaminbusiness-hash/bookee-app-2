@@ -133,6 +133,7 @@ export default function OrganizerDashboard() {
               const totalCap = actSessions.reduce((a, s) => a + s.max_slots, 0);
               const filledCap = actSessions.reduce((a, s) => a + s.filled_slots, 0);
               const pct = totalCap > 0 ? Math.round((filledCap / totalCap) * 100) : 0;
+              const linkedGroup = activity.group_id ? groups.find(g => g.id === activity.group_id) : null;
 
               return (
                 <Card key={activity.id} className="group overflow-hidden hover:shadow-elegant transition-all bg-white border-2 border-border hover:border-[#C47A00]/30">
@@ -143,9 +144,16 @@ export default function OrganizerDashboard() {
                   )}
                   <CardHeader className="bg-[#C8E8F8]/20 pb-6 relative">
                     <div className="flex justify-between items-start mb-4">
-                      <Badge style={{ background: '#1A7A4A', color: '#fff', border: 'none' }}>
-                        {activity.status?.toUpperCase() || 'ACTIVE'}
-                      </Badge>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Badge style={{ background: '#1A7A4A', color: '#fff', border: 'none' }}>
+                          {activity.status?.toUpperCase() || 'ACTIVE'}
+                        </Badge>
+                        {linkedGroup && (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: '#E8F7EF', color: '#1A7A4A' }}>
+                            {linkedGroup.name}
+                          </span>
+                        )}
+                      </div>
                       <div className="flex flex-col items-end">
                         <span className="text-xl font-bold" style={{ color: '#1A7A4A' }}>{pct}%</span>
                         <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-tighter">Filled</span>

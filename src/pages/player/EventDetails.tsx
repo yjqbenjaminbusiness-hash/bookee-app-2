@@ -34,6 +34,11 @@ export default function EventDetails() {
   const [showFullNumber, setShowFullNumber] = useState(false);
   const [userBookings, setUserBookings] = useState<MockBooking[]>([]);
 
+  // Supabase activity state (for real DB data)
+  const [supabaseActivity, setSupabaseActivity] = useState<Activity | null>(null);
+  const [supabaseSessions, setSupabaseSessions] = useState<ActivitySession[]>([]);
+  const [isLoadingSupabase, setIsLoadingSupabase] = useState(true);
+
   // Review form state
   const [reviewRating, setReviewRating] = useState(5);
   const [reviewComment, setReviewComment] = useState('');
@@ -51,6 +56,7 @@ export default function EventDetails() {
 
   const loadData = () => {
     if (!id) return;
+    // Try mock store first
     const evt = store.getEvent(id);
     setEvent(evt || null);
     if (evt) {
@@ -75,7 +81,29 @@ export default function EventDetails() {
     }
   };
 
-  useEffect(() => { loadData(); }, [id, user]);
+  // Load from Supabase if mock not found
+  useEffect(() => {
+    if (!id) return;
+    loadData();
+
+    // Also try Supabase
+    const loadSupabase = async () => {
+      setIsLoadingSupabase(true);
+      try {
+        const [activity, sessions] = await Promise.all([
+          dataService.getActivity(id),
+          dataService.listSessionsByActivity(id),
+        ]);
+        setSupabaseActivity(activity);
+        setSupabaseSessions(sessions);
+      } catch (err) {
+        console.error('Supabase load error:', err);
+      } finally {
+        setIsLoadingSupabase(false);
+      }
+    };
+    loadSupabase();
+  }, [id, user]);
 
   const hasConfirmedBooking = userBookings.some(b => b.status === 'confirmed');
   const canReview = hasConfirmedBooking && !store.hasReviewed(user?.id || '', id || '');

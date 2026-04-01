@@ -316,10 +316,10 @@ export const dataService = {
   },
 
   async listPublicBallots(): Promise<Ballot[]> {
-    const { data, error } = await supabase
+    const { data, error } = await (supabase
       .from('ballots')
-      .select('*')
-      .eq('visibility' as any, 'public')
+      .select('*') as any)
+      .eq('visibility', 'public')
       .order('created_at', { ascending: false });
     if (error) { console.error('listPublicBallots error:', error); return []; }
     return (data || []) as Ballot[];

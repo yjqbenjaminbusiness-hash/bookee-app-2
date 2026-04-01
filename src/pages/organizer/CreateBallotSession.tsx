@@ -22,6 +22,7 @@ export default function CreateBallotSession() {
   const [location, setLocation] = useState('');
   const [deadline, setDeadline] = useState('');
   const [slots, setSlots] = useState('10');
+  const [visibility, setVisibility] = useState<'public' | 'private'>('public');
 
   if (!isAuthenticated) {
     navigate('/login?redirect=/organizer/create-ballot');

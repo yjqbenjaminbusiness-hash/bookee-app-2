@@ -4,7 +4,7 @@ import { dataService, type Group, type Activity, type ActivitySession } from '..
 import { useAuth } from '../../hooks/useAuth';
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
-import { ArrowLeft, Calendar, Clock, Users, ArrowRight, UserPlus, Check, Loader2, MapPin } from 'lucide-react';
+import { ArrowLeft, Calendar, Clock, Users, ArrowRight, UserPlus, Check, Loader2, MapPin, Share2, Copy, Link } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 

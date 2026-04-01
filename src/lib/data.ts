@@ -51,6 +51,7 @@ export interface Ballot {
   created_by: string;
   group_id: string | null;
   created_at: string;
+  visibility: string;
 }
 
 export const dataService = {

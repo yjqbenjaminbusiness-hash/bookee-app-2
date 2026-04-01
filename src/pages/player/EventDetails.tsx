@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
+import { dataService, type Activity, type ActivitySession } from '../../lib/data';
 import { store, type MockEvent, type MockTimeslot, type MockBooking, type MockWaitlistEntry, getPlayerDisplayName } from '../../lib/mockData';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '../../components/ui/card';
@@ -33,6 +34,11 @@ export default function EventDetails() {
   const [showFullNumber, setShowFullNumber] = useState(false);
   const [userBookings, setUserBookings] = useState<MockBooking[]>([]);
 
+  // Supabase activity state (for real DB data)
+  const [supabaseActivity, setSupabaseActivity] = useState<Activity | null>(null);
+  const [supabaseSessions, setSupabaseSessions] = useState<ActivitySession[]>([]);
+  const [isLoadingSupabase, setIsLoadingSupabase] = useState(true);
+
   // Review form state
   const [reviewRating, setReviewRating] = useState(5);
   const [reviewComment, setReviewComment] = useState('');
@@ -50,6 +56,7 @@ export default function EventDetails() {
 
   const loadData = () => {
     if (!id) return;
+    // Try mock store first
     const evt = store.getEvent(id);
     setEvent(evt || null);
     if (evt) {
@@ -74,7 +81,29 @@ export default function EventDetails() {
     }
   };
 
-  useEffect(() => { loadData(); }, [id, user]);
+  // Load from Supabase if mock not found
+  useEffect(() => {
+    if (!id) return;
+    loadData();
+
+    // Also try Supabase
+    const loadSupabase = async () => {
+      setIsLoadingSupabase(true);
+      try {
+        const [activity, sessions] = await Promise.all([
+          dataService.getActivity(id),
+          dataService.listSessionsByActivity(id),
+        ]);
+        setSupabaseActivity(activity);
+        setSupabaseSessions(sessions);
+      } catch (err) {
+        console.error('Supabase load error:', err);
+      } finally {
+        setIsLoadingSupabase(false);
+      }
+    };
+    loadSupabase();
+  }, [id, user]);
 
   const hasConfirmedBooking = userBookings.some(b => b.status === 'confirmed');
   const canReview = hasConfirmedBooking && !store.hasReviewed(user?.id || '', id || '');
@@ -203,6 +232,101 @@ export default function EventDetails() {
       setIsSubmittingReview(false);
     }, 500);
   };
+
+  // If mock event not found, show Supabase activity details
+  if (!event && supabaseActivity) {
+    return (
+      <div className="container py-10 px-4 max-w-5xl">
+        <Button variant="ghost" className="mb-6 hover:bg-muted" onClick={() => navigate('/player/events')}>
+          <ArrowLeft className="mr-2 h-4 w-4" /> Back to Events
+        </Button>
+
+        <div className="space-y-8">
+          {/* Header */}
+          <section className="relative rounded-3xl overflow-hidden bg-muted" style={{ aspectRatio: '21/9' }}>
+            <img
+              src={supabaseActivity.image_url || 'https://images.unsplash.com/photo-1461896836934-ffe607ba8211?w=2000&q=80'}
+              alt={supabaseActivity.title}
+              className="w-full h-full object-cover"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex items-end p-8">
+              <div>
+                <Badge className="mb-3" style={{ background: '#1A7A4A', color: '#fff', border: 'none' }}>{supabaseActivity.sport}</Badge>
+                <h1 className="text-3xl md:text-4xl font-bold text-white">{supabaseActivity.title}</h1>
+                <div className="flex flex-wrap items-center gap-4 text-sm mt-2 text-white/85">
+                  <span className="flex items-center gap-1.5">
+                    <Calendar className="h-4 w-4" style={{ color: '#7FFFC4' }} />
+                    {new Date(supabaseActivity.date).toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                  </span>
+                  <span className="flex items-center gap-1.5"><MapPin className="h-4 w-4" style={{ color: '#7FFFC4' }} /> {supabaseActivity.venue}</span>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {supabaseActivity.description && (
+            <p className="text-muted-foreground">{supabaseActivity.description}</p>
+          )}
+
+          {/* Sessions */}
+          <section className="space-y-4">
+            <h2 className="text-2xl font-bold" style={{ color: '#111' }}>Available Sessions</h2>
+            {supabaseSessions.length === 0 ? (
+              <div className="text-center py-12 rounded-2xl border-2 border-dashed bg-muted/10">
+                <p className="text-muted-foreground">No sessions available yet.</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {supabaseSessions.map(session => {
+                  const pct = session.max_slots > 0 ? (session.filled_slots / session.max_slots) * 100 : 0;
+                  return (
+                    <div key={session.id} className="p-4 rounded-2xl border-2 bg-white" style={{ borderColor: 'rgba(26,122,74,0.14)' }}>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-bold" style={{ color: '#111' }}>{session.time_label}</p>
+                          <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
+                            <Users className="h-3 w-3" /> {session.filled_slots}/{session.max_slots} booked
+                          </p>
+                          <div className="h-1.5 rounded-full bg-muted overflow-hidden mt-2 w-32">
+                            <div className="h-full rounded-full" style={{ width: `${Math.min(pct, 100)}%`, background: pct >= 90 ? '#B91C1C' : '#1A7A4A' }} />
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-lg font-bold" style={{ color: '#1A7A4A' }}>${session.price}</p>
+                          <Badge variant={pct >= 100 ? 'destructive' : 'secondary'} className="mt-1">
+                            {pct >= 100 ? 'Full' : `${session.max_slots - session.filled_slots} left`}
+                          </Badge>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+
+          {/* Share */}
+          <section className="bg-white p-4 rounded-2xl border flex items-center justify-between gap-3">
+            <span className="text-sm font-bold flex items-center gap-2"><Share2 className="h-4 w-4" /> Share this activity</span>
+            <Button variant="outline" size="sm" className="rounded-full" onClick={() => {
+              navigator.clipboard.writeText(window.location.href);
+              toast.success('Link copied!');
+            }}>
+              <Copy className="mr-1.5 h-3.5 w-3.5" /> Copy Link
+            </Button>
+          </section>
+        </div>
+      </div>
+    );
+  }
+
+  if (!event && isLoadingSupabase) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   if (!event) return <div className="p-20 text-center text-muted-foreground">Event not found.</div>;
 

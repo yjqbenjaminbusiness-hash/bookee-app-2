@@ -4,7 +4,7 @@ import { dataService, type Group, type Activity, type ActivitySession } from '..
 import { useAuth } from '../../hooks/useAuth';
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
-import { ArrowLeft, Calendar, Clock, Users, ArrowRight, UserPlus, Check, Loader2, MapPin } from 'lucide-react';
+import { ArrowLeft, Calendar, Clock, Users, ArrowRight, UserPlus, Check, Loader2, MapPin, Share2, Copy, Link } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 
@@ -140,10 +140,27 @@ export default function GroupPage() {
               </div>
             )}
             {user && isMember && (
-              <div className="mt-3">
+              <div className="mt-3 flex items-center gap-3 flex-wrap">
                 <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold" style={{ background: '#E8F7EF', color: '#1A7A4A' }}>
                   <Check className="h-4 w-4" /> You are a member
                 </span>
+              </div>
+            )}
+            {/* Share button for group owner */}
+            {user && user.id === group.organizer_id && (
+              <div className="mt-3">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="rounded-full font-bold"
+                  onClick={() => {
+                    const url = `${window.location.origin}/player/groups/${group.id}`;
+                    navigator.clipboard.writeText(url);
+                    toast.success('Group link copied to clipboard!');
+                  }}
+                >
+                  <Share2 className="mr-2 h-4 w-4" /> Share Group Link
+                </Button>
               </div>
             )}
           </div>

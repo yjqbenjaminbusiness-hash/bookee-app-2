@@ -7,8 +7,9 @@ import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { toast } from 'sonner';
-import { Shuffle, MapPin, Calendar, Users, ArrowLeft, Loader2 } from 'lucide-react';
+import { Shuffle, MapPin, Calendar, Users, ArrowLeft, Loader2, Globe, Lock } from 'lucide-react';
 import { GroupSelector } from '../../components/GroupSelector';
+import { Label as RadioLabel } from '../../components/ui/label';
 
 export default function CreateBallotSession() {
   const { user, isAuthenticated } = useAuth();
@@ -21,6 +22,7 @@ export default function CreateBallotSession() {
   const [location, setLocation] = useState('');
   const [deadline, setDeadline] = useState('');
   const [slots, setSlots] = useState('10');
+  const [visibility, setVisibility] = useState<'public' | 'private'>('public');
 
   if (!isAuthenticated) {
     navigate('/login?redirect=/organizer/create-ballot');
@@ -47,6 +49,7 @@ export default function CreateBallotSession() {
       slots: parseInt(slots) || 10,
       created_by: user.id,
       group_id: selectedGroupId || null,
+      visibility,
     } as any).select();
 
     setIsLoading(false);
@@ -106,6 +109,38 @@ export default function CreateBallotSession() {
                 <Label className="flex items-center gap-1"><Users className="h-3 w-3" /> Available Slots</Label>
                 <Input type="number" min="1" value={slots} onChange={e => setSlots(e.target.value)} required />
               </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Visibility Setting */}
+        <Card className="shadow-sm border-accent/10">
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              {visibility === 'public' ? <Globe className="h-4 w-4 text-accent" /> : <Lock className="h-4 w-4 text-accent" />} Visibility
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-sm text-muted-foreground">Choose who can see this ballot session.</p>
+            <div className="flex gap-3">
+              {(['public', 'private'] as const).map(v => (
+                <button
+                  key={v}
+                  type="button"
+                  onClick={() => setVisibility(v)}
+                  className={`flex-1 flex items-center gap-3 p-4 rounded-xl border-2 text-left transition-all ${
+                    visibility === v ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/30'
+                  }`}
+                >
+                  {v === 'public' ? <Globe className="h-5 w-5 text-primary" /> : <Lock className="h-5 w-5 text-muted-foreground" />}
+                  <div>
+                    <p className="font-bold text-sm capitalize">{v}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {v === 'public' ? 'Visible in explore & listings' : 'Only accessible via shared link'}
+                    </p>
+                  </div>
+                </button>
+              ))}
             </div>
           </CardContent>
         </Card>

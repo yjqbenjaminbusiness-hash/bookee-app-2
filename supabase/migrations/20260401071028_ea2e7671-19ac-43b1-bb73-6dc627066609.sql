@@ -1,0 +1,1 @@
+ALTER TABLE public.ballots ADD COLUMN IF NOT EXISTS visibility text NOT NULL DEFAULT 'public';

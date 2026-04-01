@@ -51,6 +51,7 @@ export interface Ballot {
   created_by: string;
   group_id: string | null;
   created_at: string;
+  visibility: string;
 }
 
 export const dataService = {
@@ -311,6 +312,16 @@ export const dataService = {
       .select('*')
       .order('created_at', { ascending: false });
     if (error) { console.error('listBallots error:', error); return []; }
+    return (data || []) as Ballot[];
+  },
+
+  async listPublicBallots(): Promise<Ballot[]> {
+    const { data, error } = await (supabase
+      .from('ballots')
+      .select('*') as any)
+      .eq('visibility', 'public')
+      .order('created_at', { ascending: false });
+    if (error) { console.error('listPublicBallots error:', error); return []; }
     return (data || []) as Ballot[];
   },
 

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
+import { dataService, type Activity, type ActivitySession } from '../../lib/data';
 import { store, type MockEvent, type MockTimeslot, type MockBooking, type MockWaitlistEntry, getPlayerDisplayName } from '../../lib/mockData';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '../../components/ui/card';

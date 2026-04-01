@@ -49,6 +49,7 @@ export default function CreateBallotSession() {
       slots: parseInt(slots) || 10,
       created_by: user.id,
       group_id: selectedGroupId || null,
+      visibility,
     } as any).select();
 
     setIsLoading(false);

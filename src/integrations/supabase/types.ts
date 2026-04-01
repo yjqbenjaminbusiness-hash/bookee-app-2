@@ -178,6 +178,7 @@ export type Database = {
           location: string
           slots: number
           sport: string
+          visibility: string
         }
         Insert: {
           activity_name: string
@@ -189,6 +190,7 @@ export type Database = {
           location: string
           slots?: number
           sport: string
+          visibility?: string
         }
         Update: {
           activity_name?: string
@@ -200,6 +202,7 @@ export type Database = {
           location?: string
           slots?: number
           sport?: string
+          visibility?: string
         }
         Relationships: [
           {

@@ -21,6 +21,11 @@ export default function GroupPage() {
   const [sessions, setSessions] = useState<Record<string, ActivitySession[]>>({});
   const [memberCount, setMemberCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [showManagement, setShowManagement] = useState(false);
+  const [selectedActivities, setSelectedActivities] = useState<Set<string>>(new Set());
+  const [announcementText, setAnnouncementText] = useState('');
+
+  const isOwner = !!(user && group && user.id === group.organizer_id);
 
   useEffect(() => {
     if (!groupId) return;

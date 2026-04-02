@@ -110,12 +110,6 @@ export default function CreateEvent() {
     setIsLoading(true);
 
     try {
-      // Upload image if provided
-      let imageUrl: string | null = null;
-      if (imageFile) {
-        imageUrl = await dataService.uploadActivityImage(imageFile, crypto.randomUUID());
-      }
-
       // Create activity in database
       const activity = await dataService.createActivity({
         organizer_id: user.id,

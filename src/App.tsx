@@ -35,7 +35,7 @@ import GroupPage from "./pages/player/GroupPage";
 import MyGroups from "./pages/player/MyGroups";
 
 // Organizer Pages
-import OrganizerDashboard from "./pages/organizer/Dashboard";
+// OrganizerDashboard merged into OrganizeLanding — route redirects to /organize
 import CreateEventPage from "./pages/organizer/CreateEvent";
 // CreateEventType removed — OrganizeLanding now goes directly to Activity/Ballot
 import CreateBallotSessionPage from "./pages/organizer/CreateBallotSession";
@@ -109,9 +109,7 @@ const App = () => (
             <Route path="/organize" element={
               <ProtectedRoute><OrganizeLandingPage /></ProtectedRoute>
             } />
-            <Route path="/organizer/dashboard" element={
-              <ProtectedRoute><OrganizerDashboard /></ProtectedRoute>
-            } />
+            <Route path="/organizer/dashboard" element={<Navigate to="/organize" replace />} />
             <Route path="/organizer/create-event-type" element={<Navigate to="/organize" replace />} />
             <Route path="/organizer/create-event" element={
               <ProtectedRoute><CreateEventPage /></ProtectedRoute>

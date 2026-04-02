@@ -408,7 +408,7 @@ async function handleOrganizeFlow(chatId: number, text: string, supabase: any) {
         await sendMessage(chatId, "❌ Please enter a valid price.");
         return;
       }
-      data.price = Math.round(price * 100);
+      data.price = price;
       
       if (data.type === "multi") {
         data.sessions = data.sessions || [];
@@ -498,7 +498,7 @@ async function showOrganizeConfirmation(chatId: number, data: any) {
     msg += `<b>Sessions (${data.sessions.length}):</b>\n`;
     for (let i = 0; i < data.sessions.length; i++) {
       const s = data.sessions[i];
-      const price = s.price > 0 ? `SGD $${(s.price / 100).toFixed(2)}` : "Free";
+      const price = s.price > 0 ? `SGD $${Number(s.price).toFixed(2)}` : "Free";
       msg += `  ${i+1}. ⏰ ${s.time_label} — 👥 ${s.max_slots} slots — ${price}\n`;
     }
   }

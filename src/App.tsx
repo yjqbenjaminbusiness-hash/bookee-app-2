@@ -35,7 +35,7 @@ import GroupPage from "./pages/player/GroupPage";
 import MyGroups from "./pages/player/MyGroups";
 
 // Organizer Pages
-import OrganizerDashboard from "./pages/organizer/Dashboard";
+// OrganizerDashboard merged into OrganizeLanding — route redirects to /organize
 import CreateEventPage from "./pages/organizer/CreateEvent";
 // CreateEventType removed — OrganizeLanding now goes directly to Activity/Ballot
 import CreateBallotSessionPage from "./pages/organizer/CreateBallotSession";

@@ -408,7 +408,7 @@ async function handleOrganizeFlow(chatId: number, text: string, supabase: any) {
         await sendMessage(chatId, "❌ Please enter a valid price.");
         return;
       }
-      data.price = Math.round(price * 100);
+      data.price = price;
       
       if (data.type === "multi") {
         data.sessions = data.sessions || [];

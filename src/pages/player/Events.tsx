@@ -316,7 +316,7 @@ export default function PlayerEvents() {
                         <img src={group.image_url} alt={group.name} className="w-full h-full object-cover" />
                       </div>
                     )}
-                    <div className="p-5 cursor-pointer" onClick={() => !isDemo && navigate(`/player/groups/${group.id}`)}>
+                    <div className="p-5 cursor-pointer" onClick={() => navigate(`/player/groups/${group.id}`)}>
                       <div className="flex items-start gap-4">
                         <div className="w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 border-2 bg-muted flex items-center justify-center text-xl font-bold text-primary"
                           style={{ borderColor: `${sportCat.color}33` }}>

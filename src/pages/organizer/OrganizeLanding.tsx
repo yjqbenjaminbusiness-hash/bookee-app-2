@@ -18,10 +18,11 @@ export default function OrganizeLanding() {
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState(true);
 
-  if (!isAuthenticated) {
-    navigate('/login?redirect=/organize');
-    return null;
-  }
+  useEffect(() => {
+    if (!isAuthenticated) {
+      navigate('/login?redirect=/organize');
+    }
+  }, [isAuthenticated, navigate]);
 
   useEffect(() => {
     if (!user) return;

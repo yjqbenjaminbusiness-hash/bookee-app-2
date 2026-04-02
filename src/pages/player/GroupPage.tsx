@@ -143,6 +143,11 @@ export default function GroupPage() {
               <span className="text-xs font-bold px-3 py-1 rounded-full" style={{ background: '#E8F7EF', color: '#1A7A4A' }}>
                 {group.sport}
               </span>
+              {isOwner && (
+                <span className="text-xs font-bold px-3 py-1 rounded-full inline-flex items-center gap-1" style={{ background: '#FEF9EC', color: '#C47A00' }}>
+                  <Shield className="h-3 w-3" /> Owner
+                </span>
+              )}
             </div>
             {group.description && (
               <p className="text-muted-foreground text-sm mt-1">{group.description}</p>

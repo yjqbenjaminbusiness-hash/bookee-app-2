@@ -66,8 +66,8 @@ export default function CreateEvent() {
   const [collectPhone, setCollectPhone] = useState(true);
 
   const [timeslots, setTimeslots] = useState<TimeslotForm[]>([
-    { startHour: '5', startPeriod: 'pm', endHour: '9', endPeriod: 'pm', price: '80', maxCapacity: '8' },
-    { startHour: '7', startPeriod: 'pm', endHour: '9', endPeriod: 'pm', price: '40', maxCapacity: '4' },
+    { startHour: '5', startPeriod: 'pm', endHour: '9', endPeriod: 'pm', price: '12', maxCapacity: '8' },
+    { startHour: '7', startPeriod: 'pm', endHour: '9', endPeriod: 'pm', price: '10', maxCapacity: '4' },
   ]);
 
   const addTimeslot = () => {

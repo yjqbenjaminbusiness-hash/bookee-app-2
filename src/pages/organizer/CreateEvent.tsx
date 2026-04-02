@@ -193,20 +193,6 @@ export default function CreateEvent() {
               </div>
             </div>
 
-            {/* Image Upload */}
-            <div className="space-y-2">
-              <Label className="flex items-center gap-1"><ImagePlus className="h-3 w-3" /> Banner Image (Optional)</Label>
-              <div className="flex items-center gap-4">
-                <label className="flex items-center gap-2 px-4 py-2 rounded-full border-2 border-dashed border-accent/20 hover:border-accent/40 cursor-pointer transition-colors">
-                  <ImagePlus className="h-4 w-4 text-accent" />
-                  <span className="text-sm text-muted-foreground">{imageFile ? imageFile.name : 'Upload image'}</span>
-                  <input type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
-                </label>
-                {imagePreview && (
-                  <img src={imagePreview} alt="Preview" className="h-16 w-24 object-cover rounded-lg border" />
-                )}
-              </div>
-            </div>
           </CardContent>
         </Card>
 

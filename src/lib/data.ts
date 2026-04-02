@@ -388,7 +388,7 @@ export const dataService = {
       sport: 'Badminton',
       venue: 'Demo Sports Hall',
       location: 'Demo Location',
-      date: '2033-12-31',
+      date: '2030-12-31',
       description: 'This is a demo activity to showcase the platform. Not a real session.',
       status: 'active',
       group_id: 'demo-group-001',

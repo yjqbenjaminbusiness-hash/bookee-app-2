@@ -109,9 +109,7 @@ const App = () => (
             <Route path="/organize" element={
               <ProtectedRoute><OrganizeLandingPage /></ProtectedRoute>
             } />
-            <Route path="/organizer/dashboard" element={
-              <ProtectedRoute><OrganizerDashboard /></ProtectedRoute>
-            } />
+            <Route path="/organizer/dashboard" element={<Navigate to="/organize" replace />} />
             <Route path="/organizer/create-event-type" element={<Navigate to="/organize" replace />} />
             <Route path="/organizer/create-event" element={
               <ProtectedRoute><CreateEventPage /></ProtectedRoute>

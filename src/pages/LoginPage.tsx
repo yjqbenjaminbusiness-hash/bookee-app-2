@@ -70,7 +70,7 @@ export default function LoginPage() {
     if (mockUser) {
       toast.success(`Welcome back, ${mockUser.displayName}!`);
       if (returnToTelegram && telegramChatId) {
-        window.location.href = 'https://t.me/BookeeAssistBot?start=linked';
+        window.location.href = 'https://t.me/BookeeAppBot?start=linked';
         return;
       }
       const from = redirectPath || (location.state as any)?.from?.pathname;

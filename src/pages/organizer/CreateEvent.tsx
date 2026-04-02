@@ -8,7 +8,7 @@ import { Label } from '../../components/ui/label';
 import { Textarea } from '../../components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { toast } from 'sonner';
-import { Plus, Trash2, MapPin, Clock, DollarSign, Users, Loader2, Eye, Globe, Lock, CreditCard, Phone, ImagePlus } from 'lucide-react';
+import { Plus, Trash2, MapPin, Clock, DollarSign, Users, Loader2, Eye, Globe, Lock, CreditCard, Phone } from 'lucide-react';
 import { Progress } from '../../components/ui/progress';
 import { GroupSelector } from '../../components/GroupSelector';
 import { supabase } from '@/integrations/supabase/client';
@@ -59,8 +59,6 @@ export default function CreateEvent() {
   const [date, setDate] = useState('');
   const [description, setDescription] = useState('');
   const [phone, setPhone] = useState(user?.phone || '+65 ');
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string>('');
 
   const [participantVisibility, setParticipantVisibility] = useState<'public' | 'private'>('public');
   const [paymentPolicyType, setPaymentPolicyType] = useState<'immediate' | 'before' | 'after' | 'optional'>('immediate');
@@ -87,13 +85,6 @@ export default function CreateEvent() {
     setTimeslots(updated);
   };
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setImageFile(file);
-      setImagePreview(URL.createObjectURL(file));
-    }
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -110,12 +101,6 @@ export default function CreateEvent() {
     setIsLoading(true);
 
     try {
-      // Upload image if provided
-      let imageUrl: string | null = null;
-      if (imageFile) {
-        imageUrl = await dataService.uploadActivityImage(imageFile, crypto.randomUUID());
-      }
-
       // Create activity in database
       const activity = await dataService.createActivity({
         organizer_id: user.id,
@@ -126,7 +111,7 @@ export default function CreateEvent() {
         date,
         description: description.trim() || undefined,
         group_id: selectedGroupId || undefined,
-        image_url: imageUrl || undefined,
+        
       });
 
       if (!activity) {
@@ -208,20 +193,6 @@ export default function CreateEvent() {
               </div>
             </div>
 
-            {/* Image Upload */}
-            <div className="space-y-2">
-              <Label className="flex items-center gap-1"><ImagePlus className="h-3 w-3" /> Banner Image (Optional)</Label>
-              <div className="flex items-center gap-4">
-                <label className="flex items-center gap-2 px-4 py-2 rounded-full border-2 border-dashed border-accent/20 hover:border-accent/40 cursor-pointer transition-colors">
-                  <ImagePlus className="h-4 w-4 text-accent" />
-                  <span className="text-sm text-muted-foreground">{imageFile ? imageFile.name : 'Upload image'}</span>
-                  <input type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
-                </label>
-                {imagePreview && (
-                  <img src={imagePreview} alt="Preview" className="h-16 w-24 object-cover rounded-lg border" />
-                )}
-              </div>
-            </div>
           </CardContent>
         </Card>
 

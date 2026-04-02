@@ -100,7 +100,7 @@ const App = () => (
             <Route path="/player/special-request" element={
               <ProtectedRoute allowedRoles={['player']}><SpecialRequestPage /></ProtectedRoute>
             } />
-            <Route path="/player/groups/:id" element={<GroupPage />} />
+            <Route path="/player/groups/:groupId" element={<GroupPage />} />
             <Route path="/player/groups" element={
               <ProtectedRoute allowedRoles={['player']}><MyGroups /></ProtectedRoute>
             } />

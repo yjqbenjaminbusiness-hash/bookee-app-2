@@ -61,7 +61,7 @@ const IN_PROGRESS_ITEMS = [
   },
   {
     title: 'Telegram Bot Launch',
-    description: 'Manage your bookings, organize activities, and join ballot sessions all from @BookeeAssistBot on Telegram.',
+    description: 'Manage your bookings, organize activities, and join ballot sessions all from @BookeeAppBot on Telegram.',
     tag: 'Launch',
     tagColor: 'hsl(260 60% 55%)',
   },

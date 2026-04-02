@@ -32,7 +32,7 @@ export function Navbar() {
     { to: '/demo', label: 'Demo', icon: <Play className="h-4 w-4" /> },
     { to: '/player/events', label: 'Explore', icon: <Calendar className="h-4 w-4" /> },
     { to: dashboardPath, label: 'My Bookee', icon: <LayoutDashboard className="h-4 w-4" /> },
-    { to: isAuthenticated ? '/organize' : '/login?redirect=/organize', label: 'Create', icon: <Plus className="h-4 w-4" /> },
+    { to: isAuthenticated ? '/organize' : '/login?redirect=/organize', label: 'Organize', icon: <Plus className="h-4 w-4" /> },
     { to: '/announcements', label: 'Announcements', icon: <BookOpen className="h-4 w-4" /> },
     { to: '/help', label: 'Help', icon: <HelpCircle className="h-4 w-4" /> },
   ];

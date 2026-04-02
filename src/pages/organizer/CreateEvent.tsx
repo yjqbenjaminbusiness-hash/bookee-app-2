@@ -59,8 +59,6 @@ export default function CreateEvent() {
   const [date, setDate] = useState('');
   const [description, setDescription] = useState('');
   const [phone, setPhone] = useState(user?.phone || '+65 ');
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string>('');
 
   const [participantVisibility, setParticipantVisibility] = useState<'public' | 'private'>('public');
   const [paymentPolicyType, setPaymentPolicyType] = useState<'immediate' | 'before' | 'after' | 'optional'>('immediate');

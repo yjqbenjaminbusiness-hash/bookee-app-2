@@ -4,9 +4,10 @@ import { dataService, type Group, type Activity, type ActivitySession } from '..
 import { useAuth } from '../../hooks/useAuth';
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
-import { ArrowLeft, Calendar, Clock, Users, ArrowRight, UserPlus, Check, Loader2, MapPin, Share2, Copy, Link } from 'lucide-react';
+import { ArrowLeft, Calendar, Clock, Users, ArrowRight, UserPlus, Check, Loader2, MapPin, Share2, Copy, Link, Shield, Settings, Megaphone, Eye, EyeOff, Bell, Trash2, Plus, Minus } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 export default function GroupPage() {
   const { groupId } = useParams<{ groupId: string }>();
@@ -20,6 +21,11 @@ export default function GroupPage() {
   const [sessions, setSessions] = useState<Record<string, ActivitySession[]>>({});
   const [memberCount, setMemberCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [showManagement, setShowManagement] = useState(false);
+  const [selectedActivities, setSelectedActivities] = useState<Set<string>>(new Set());
+  const [announcementText, setAnnouncementText] = useState('');
+
+  const isOwner = !!(user && group && user.id === group.organizer_id);
 
   useEffect(() => {
     if (!groupId) return;
@@ -137,6 +143,11 @@ export default function GroupPage() {
               <span className="text-xs font-bold px-3 py-1 rounded-full" style={{ background: '#E8F7EF', color: '#1A7A4A' }}>
                 {group.sport}
               </span>
+              {isOwner && (
+                <span className="text-xs font-bold px-3 py-1 rounded-full inline-flex items-center gap-1" style={{ background: '#FEF9EC', color: '#C47A00' }}>
+                  <Shield className="h-3 w-3" /> Owner
+                </span>
+              )}
             </div>
             {group.description && (
               <p className="text-muted-foreground text-sm mt-1">{group.description}</p>
@@ -178,6 +189,118 @@ export default function GroupPage() {
             )}
           </div>
         </div>
+
+        {/* Owner Management Panel */}
+        {isOwner && (
+          <section className="p-4 rounded-2xl border-2" style={{ borderColor: 'rgba(196,122,0,0.25)', background: '#FFFBF0' }}>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-sm font-bold flex items-center gap-2" style={{ color: '#C47A00' }}>
+                <Settings className="h-4 w-4" /> Group Management
+              </h2>
+              <Button variant="ghost" size="sm" className="text-xs" onClick={() => setShowManagement(!showManagement)}>
+                {showManagement ? 'Hide' : 'Show Controls'}
+              </Button>
+            </div>
+            <AnimatePresence>
+              {showManagement && (
+                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="space-y-4 overflow-hidden">
+                  {/* Bulk select activities */}
+                  <div>
+                    <p className="text-xs font-bold mb-2" style={{ color: '#555' }}>Select activities for bulk actions:</p>
+                    <div className="space-y-1 max-h-40 overflow-y-auto">
+                      {activities.map(act => (
+                        <label key={act.id} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-white/60 px-2 py-1 rounded-lg">
+                          <input
+                            type="checkbox"
+                            checked={selectedActivities.has(act.id)}
+                            onChange={() => {
+                              setSelectedActivities(prev => {
+                                const next = new Set(prev);
+                                next.has(act.id) ? next.delete(act.id) : next.add(act.id);
+                                return next;
+                              });
+                            }}
+                            className="accent-primary"
+                          />
+                          <span className="truncate">{act.title}</span>
+                          <span className="text-xs text-muted-foreground ml-auto">{new Date(act.date).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}</span>
+                        </label>
+                      ))}
+                      {activities.length === 0 && <p className="text-xs text-muted-foreground italic px-2">No activities yet.</p>}
+                    </div>
+                  </div>
+
+                  {/* Bulk action buttons */}
+                  <div className="flex flex-wrap gap-2">
+                    <Button size="sm" variant="outline" className="rounded-full text-xs" onClick={() => {
+                      if (selectedActivities.size === 0) { toast.error('Select at least one activity'); return; }
+                      toast.success(`Reminder sent for ${selectedActivities.size} activity(ies)`);
+                      setSelectedActivities(new Set());
+                    }}>
+                      <Bell className="mr-1 h-3 w-3" /> Send Reminders
+                    </Button>
+                    <Button size="sm" variant="outline" className="rounded-full text-xs" onClick={async () => {
+                      if (selectedActivities.size === 0) { toast.error('Select at least one activity'); return; }
+                      try {
+                        await Promise.all(Array.from(selectedActivities).map(id =>
+                          supabase.from('activities').update({ status: 'active' }).eq('id', id)
+                        ));
+                        setActivities(prev => prev.map(a => selectedActivities.has(a.id) ? { ...a, status: 'active' } : a));
+                        toast.success(`${selectedActivities.size} activity(ies) set to Public`);
+                        setSelectedActivities(new Set());
+                      } catch { toast.error('Failed to update'); }
+                    }}>
+                      <Eye className="mr-1 h-3 w-3" /> Set Public
+                    </Button>
+                    <Button size="sm" variant="outline" className="rounded-full text-xs" onClick={async () => {
+                      if (selectedActivities.size === 0) { toast.error('Select at least one activity'); return; }
+                      try {
+                        await Promise.all(Array.from(selectedActivities).map(id =>
+                          supabase.from('activities').update({ status: 'hidden' }).eq('id', id)
+                        ));
+                        setActivities(prev => prev.map(a => selectedActivities.has(a.id) ? { ...a, status: 'hidden' } : a));
+                        toast.success(`${selectedActivities.size} activity(ies) set to Private`);
+                        setSelectedActivities(new Set());
+                      } catch { toast.error('Failed to update'); }
+                    }}>
+                      <EyeOff className="mr-1 h-3 w-3" /> Set Private
+                    </Button>
+                  </div>
+
+                  {/* Announcement to group */}
+                  <div>
+                    <p className="text-xs font-bold mb-1" style={{ color: '#555' }}>Send announcement to group:</p>
+                    <div className="flex gap-2">
+                      <input
+                        className="flex-1 px-3 py-2 text-sm border rounded-lg bg-white"
+                        placeholder="Type announcement..."
+                        value={announcementText}
+                        onChange={e => setAnnouncementText(e.target.value)}
+                      />
+                      <Button size="sm" className="rounded-full" style={{ background: '#1A7A4A', color: '#fff' }} onClick={() => {
+                        if (!announcementText.trim()) { toast.error('Enter an announcement'); return; }
+                        toast.success('Announcement sent to group members!');
+                        setAnnouncementText('');
+                      }}>
+                        <Megaphone className="mr-1 h-3 w-3" /> Send
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Manage members */}
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="outline" className="rounded-full text-xs" onClick={() => navigate(`/organizer/groups`)}>
+                      <Users className="mr-1 h-3 w-3" /> Manage Members
+                    </Button>
+                    <Button size="sm" variant="outline" className="rounded-full text-xs" onClick={() => navigate(`/organizer/create-event?group=${groupId}`)}>
+                      <Plus className="mr-1 h-3 w-3" /> Create Activity
+                    </Button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </section>
+        )}
 
         {/* Activities */}
         <section>

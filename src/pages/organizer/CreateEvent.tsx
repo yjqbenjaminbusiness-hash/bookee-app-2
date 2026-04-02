@@ -8,7 +8,7 @@ import { Label } from '../../components/ui/label';
 import { Textarea } from '../../components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { toast } from 'sonner';
-import { Plus, Trash2, MapPin, Clock, DollarSign, Users, Loader2, Eye, Globe, Lock, CreditCard, Phone, ImagePlus } from 'lucide-react';
+import { Plus, Trash2, MapPin, Clock, DollarSign, Users, Loader2, Eye, Globe, Lock, CreditCard, Phone } from 'lucide-react';
 import { Progress } from '../../components/ui/progress';
 import { GroupSelector } from '../../components/GroupSelector';
 import { supabase } from '@/integrations/supabase/client';

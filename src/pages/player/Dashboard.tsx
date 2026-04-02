@@ -127,7 +127,7 @@ export default function PlayerDashboard() {
                   key={group.id}
                   className={`flex-shrink-0 w-64 rounded-2xl border-2 overflow-hidden cursor-pointer transition-all hover:shadow-lg ${isDemo ? 'opacity-60 border-dashed' : 'border-primary/10'}`}
                   style={isDemo ? { background: '#f5f5f5' } : {}}
-                  onClick={() => !isDemo && navigate(`/player/groups/${group.id}`)}
+                  onClick={() => navigate(`/player/groups/${group.id}`)}
                 >
                   {/* Banner */}
                   <div className="h-24 overflow-hidden bg-muted relative">

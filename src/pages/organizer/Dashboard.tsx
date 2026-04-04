@@ -189,7 +189,7 @@ export default function OrganizerDashboard() {
                   </CardContent>
                   <CardFooter className="p-4 border-t bg-white">
                     <Button size="sm" className="w-full rounded-full font-bold shadow-sm" style={{ background: '#C47A00', color: '#fff' }}
-                      onClick={() => navigate(`/organizer/events/${activity.id}/manage`)}>
+                      onClick={() => navigate(`/organizer/events/${activity.id}`)}>
                       Manage
                     </Button>
                   </CardFooter>

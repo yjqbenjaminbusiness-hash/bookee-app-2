@@ -1,12 +1,15 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { store, getPlayerDisplayName } from '../../lib/mockData';
+import { dataService, type Activity, type ActivitySession } from '../../lib/data';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '../../hooks/useAuth';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/table';
 import { Badge } from '../../components/ui/badge';
 import { toast } from 'sonner';
-import { MapPin, Calendar, ArrowLeft, CheckCircle2, XCircle, Clock, DollarSign, ChevronDown, ChevronUp, UserMinus, List, MessageCircle, Unlock, Plus, Trash2, Star, MessageSquare, Minus, AlertTriangle, Globe, Lock, CheckSquare, Square, Send, Bell, Users } from 'lucide-react';
+import { MapPin, Calendar, ArrowLeft, CheckCircle2, XCircle, Clock, DollarSign, ChevronDown, ChevronUp, UserMinus, List, MessageCircle, Unlock, Plus, Trash2, Star, MessageSquare, Minus, AlertTriangle, Globe, Lock, CheckSquare, Square, Send, Bell, Users, Loader2 } from 'lucide-react';
 import { Progress } from '../../components/ui/progress';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';

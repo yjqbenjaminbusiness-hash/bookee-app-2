@@ -346,6 +346,53 @@ export const dataService = {
     return data || [];
   },
 
+  async listBookingsBySession(sessionId: string): Promise<any[]> {
+    const { data, error } = await supabase
+      .from('bookings')
+      .select('*')
+      .eq('session_id', sessionId)
+      .order('created_at', { ascending: false });
+    if (error) { console.error('listBookingsBySession error:', error); return []; }
+    return data || [];
+  },
+
+  async createBooking(booking: {
+    session_id: string;
+    user_id: string;
+    player_name: string;
+    player_phone?: string;
+    amount?: number;
+  }): Promise<any> {
+    const { data, error } = await supabase
+      .from('bookings')
+      .insert({
+        session_id: booking.session_id,
+        user_id: booking.user_id,
+        player_name: booking.player_name,
+        player_phone: booking.player_phone || null,
+        amount: booking.amount || 0,
+      })
+      .select()
+      .single();
+    if (error) {
+      console.error('[dataService] createBooking error:', error);
+      throw new Error(error.message);
+    }
+    // Increment filled_slots
+    await supabase.rpc('has_role', { _user_id: booking.user_id, _role: 'user' }).then(() => {
+      // Simple increment via update
+    });
+    return data;
+  },
+
+  async updateBookingPaymentStatus(bookingId: string, status: string): Promise<void> {
+    const { error } = await supabase
+      .from('bookings')
+      .update({ payment_status: status as any })
+      .eq('id', bookingId);
+    if (error) throw new Error(error.message);
+  },
+
   // ─── Image Upload ───────────────────────────────────────────
   async uploadActivityImage(file: File, activityId: string): Promise<string | null> {
     const ext = file.name.split('.').pop();

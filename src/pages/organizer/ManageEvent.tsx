@@ -112,7 +112,7 @@ export default function ManageEvent() {
   };
 
   const event = id ? store.getEvent(id) : undefined;
-  if (!event) return <div className="p-10 text-center">Event not found.</div>;
+  if (!event) return <SupabaseManageView activityId={id} navigate={navigate} />;
 
   // Ensure array fields are always defined (backwards compat with old localStorage data)
   if (!Array.isArray(event.publicAnnouncements)) event.publicAnnouncements = [];

@@ -694,3 +694,193 @@ export default function ManageEvent() {
     </div>
   );
 }
+
+// ─── Supabase Fallback Manage View ──────────────────────────────
+function SupabaseManageView({ activityId, navigate }: { activityId: string | undefined; navigate: ReturnType<typeof import('react-router-dom').useNavigate> }) {
+  const { user } = useAuth();
+  const [activity, setActivity] = useState<Activity | null>(null);
+  const [sessions, setSessions] = useState<ActivitySession[]>([]);
+  const [bookingsBySession, setBookingsBySession] = useState<Record<string, any[]>>({});
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    if (!activityId) return;
+    const load = async () => {
+      setIsLoading(true);
+      const act = await dataService.getActivity(activityId);
+      setActivity(act);
+      if (act) {
+        const sess = await dataService.listSessionsByActivity(act.id);
+        setSessions(sess);
+        const bMap: Record<string, any[]> = {};
+        await Promise.all(sess.map(async (s) => {
+          bMap[s.id] = await dataService.listBookingsBySession(s.id);
+        }));
+        setBookingsBySession(bMap);
+      }
+      setIsLoading(false);
+    };
+    load();
+  }, [activityId]);
+
+  const handleConfirmBooking = async (bookingId: string) => {
+    const { error } = await supabase.from('bookings').update({ reservation_status: 'confirmed' as any }).eq('id', bookingId);
+    if (error) { toast.error('Failed to confirm'); return; }
+    toast.success('Player confirmed');
+    // Reload bookings
+    reloadBookings();
+  };
+
+  const handleRejectBooking = async (bookingId: string) => {
+    const { error } = await supabase.from('bookings').update({ reservation_status: 'rejected' as any }).eq('id', bookingId);
+    if (error) { toast.error('Failed to reject'); return; }
+    toast.success('Player removed');
+    reloadBookings();
+  };
+
+  const handleMarkPaid = async (bookingId: string) => {
+    const { error } = await supabase.from('bookings').update({ payment_status: 'paid' as any }).eq('id', bookingId);
+    if (error) { toast.error('Failed to update payment'); return; }
+    toast.success('Marked as paid');
+    reloadBookings();
+  };
+
+  const reloadBookings = async () => {
+    const bMap: Record<string, any[]> = {};
+    await Promise.all(sessions.map(async (s) => {
+      bMap[s.id] = await dataService.listBookingsBySession(s.id);
+    }));
+    setBookingsBySession(bMap);
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center py-20">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!activity) {
+    return (
+      <div className="container py-10 px-4 max-w-4xl text-center">
+        <p className="text-muted-foreground text-lg">Activity not found.</p>
+        <Button variant="ghost" className="mt-4" onClick={() => navigate('/organize')}>
+          <ArrowLeft className="mr-2 h-4 w-4" /> Back to Organize
+        </Button>
+      </div>
+    );
+  }
+
+  const isPast = activity.date < new Date().toISOString().split('T')[0];
+  const totalSlots = sessions.reduce((a, s) => a + s.max_slots, 0);
+  const filledSlots = Object.values(bookingsBySession).reduce((a, arr) => a + arr.filter(b => b.reservation_status !== 'rejected' && b.reservation_status !== 'cancelled').length, 0);
+
+  return (
+    <div className="container py-10 px-4 max-w-5xl">
+      <Button variant="ghost" className="mb-6" onClick={() => navigate('/organize')}>
+        <ArrowLeft className="mr-2 h-4 w-4" /> Back to Organize
+      </Button>
+
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold text-foreground">{activity.title}</h1>
+        <div className="flex items-center gap-4 text-sm text-muted-foreground mt-2">
+          <span className="flex items-center gap-1"><Calendar className="h-4 w-4" /> {new Date(activity.date).toLocaleDateString()}</span>
+          <span className="flex items-center gap-1"><MapPin className="h-4 w-4" /> {activity.venue}</span>
+          <Badge variant={isPast ? 'secondary' : 'default'}>{isPast ? 'Past' : 'Active'}</Badge>
+        </div>
+        {activity.description && <p className="text-sm text-muted-foreground mt-2">{activity.description}</p>}
+      </div>
+
+      {/* Stats */}
+      <div className="grid grid-cols-3 gap-4 mb-8">
+        <Card><CardContent className="p-4 text-center">
+          <p className="text-xs text-muted-foreground uppercase font-bold">Sessions</p>
+          <p className="text-2xl font-bold">{sessions.length}</p>
+        </CardContent></Card>
+        <Card><CardContent className="p-4 text-center">
+          <p className="text-xs text-muted-foreground uppercase font-bold">Players</p>
+          <p className="text-2xl font-bold">{filledSlots}/{totalSlots}</p>
+        </CardContent></Card>
+        <Card><CardContent className="p-4 text-center">
+          <p className="text-xs text-muted-foreground uppercase font-bold">Revenue</p>
+          <p className="text-2xl font-bold text-primary">${sessions.reduce((acc, s) => {
+            const bookings = bookingsBySession[s.id] || [];
+            return acc + bookings.filter(b => b.reservation_status !== 'rejected').length * Number(s.price);
+          }, 0)}</p>
+        </CardContent></Card>
+      </div>
+
+      {/* Sessions & Bookings */}
+      <h2 className="text-lg font-bold mb-4 flex items-center gap-2"><List className="h-5 w-5 text-primary" /> Sessions & Participants</h2>
+      {sessions.length === 0 ? (
+        <Card><CardContent className="p-6 text-center text-muted-foreground">No sessions for this activity.</CardContent></Card>
+      ) : sessions.map(session => {
+        const bookings = bookingsBySession[session.id] || [];
+        const activeBookings = bookings.filter(b => b.reservation_status !== 'rejected' && b.reservation_status !== 'cancelled');
+
+        return (
+          <Card key={session.id} className="mb-4">
+            <CardHeader className="pb-3 bg-muted/20">
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-base">{session.time_label}</CardTitle>
+                  <CardDescription>${Number(session.price)} / player · {activeBookings.length}/{session.max_slots} slots</CardDescription>
+                </div>
+                <Progress value={(activeBookings.length / session.max_slots) * 100} className="w-24 h-2" />
+              </div>
+            </CardHeader>
+            <CardContent className="p-0">
+              {activeBookings.length === 0 ? (
+                <p className="p-4 text-sm text-muted-foreground italic">No participants yet.</p>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Player</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Payment</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {activeBookings.map(booking => (
+                      <TableRow key={booking.id}>
+                        <TableCell className="font-medium">{booking.player_name}</TableCell>
+                        <TableCell>
+                          <Badge variant={booking.reservation_status === 'confirmed' ? 'default' : 'secondary'} className="text-xs">
+                            {booking.reservation_status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={booking.payment_status === 'paid' ? 'default' : booking.payment_status === 'pending' ? 'secondary' : 'outline'} className="text-xs">
+                            {booking.payment_status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right space-x-1">
+                          {booking.reservation_status !== 'confirmed' && (
+                            <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => handleConfirmBooking(booking.id)}>
+                              <CheckCircle2 className="h-3 w-3 mr-1" /> Confirm
+                            </Button>
+                          )}
+                          {booking.payment_status !== 'paid' && (
+                            <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => handleMarkPaid(booking.id)}>
+                              <DollarSign className="h-3 w-3 mr-1" /> Paid
+                            </Button>
+                          )}
+                          <Button size="sm" variant="ghost" className="h-7 text-xs text-destructive" onClick={() => handleRejectBooking(booking.id)}>
+                            <XCircle className="h-3 w-3 mr-1" /> Remove
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        );
+      })}
+    </div>
+  );
+}

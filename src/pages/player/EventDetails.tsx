@@ -944,3 +944,255 @@ export default function EventDetails() {
     </div>
   );
 }
+
+// ─── Supabase Activity View (real DB data) ────────────────────────
+function SupabaseActivityView({
+  activity,
+  sessions,
+  user,
+  navigate,
+}: {
+  activity: Activity;
+  sessions: ActivitySession[];
+  user: any;
+  navigate: ReturnType<typeof import('react-router-dom').useNavigate>;
+}) {
+  const [selectedSession, setSelectedSession] = useState<string | null>(null);
+  const [bookingsBySession, setBookingsBySession] = useState<Record<string, any[]>>({});
+  const [userBookingIds, setUserBookingIds] = useState<Set<string>>(new Set());
+  const [isJoining, setIsJoining] = useState(false);
+  const [expandedSession, setExpandedSession] = useState<string | null>(null);
+  const [markingPaid, setMarkingPaid] = useState<string | null>(null);
+
+  useEffect(() => {
+    const loadBookings = async () => {
+      const bMap: Record<string, any[]> = {};
+      await Promise.all(sessions.map(async (s) => {
+        bMap[s.id] = await dataService.listBookingsBySession(s.id);
+      }));
+      setBookingsBySession(bMap);
+
+      if (user) {
+        const userBIds = new Set<string>();
+        Object.values(bMap).flat().forEach(b => {
+          if (b.user_id === user.id) userBIds.add(b.session_id);
+        });
+        setUserBookingIds(userBIds);
+      }
+    };
+    loadBookings();
+  }, [sessions, user]);
+
+  const handleJoin = async (sessionId: string) => {
+    if (!user) { toast.error('Please log in to join'); return; }
+    const session = sessions.find(s => s.id === sessionId);
+    if (!session) return;
+    if (session.filled_slots >= session.max_slots) { toast.error('This session is full'); return; }
+    if (userBookingIds.has(sessionId)) { toast.info('You already have a booking for this session'); return; }
+
+    setIsJoining(true);
+    try {
+      await dataService.createBooking({
+        session_id: sessionId,
+        user_id: user.id,
+        player_name: user.displayName || user.email || 'Player',
+        amount: session.price,
+      });
+      toast.success('You have joined this session!');
+      // Reload bookings
+      const bks = await dataService.listBookingsBySession(sessionId);
+      setBookingsBySession(prev => ({ ...prev, [sessionId]: bks }));
+      setUserBookingIds(prev => new Set([...prev, sessionId]));
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to join');
+    } finally {
+      setIsJoining(false);
+    }
+  };
+
+  const handleMarkPaid = async (bookingId: string) => {
+    setMarkingPaid(bookingId);
+    try {
+      await dataService.updateBookingPaymentStatus(bookingId, 'pending');
+      toast.success('Payment marked — organizer will be notified');
+      // Reload all
+      const bMap: Record<string, any[]> = {};
+      await Promise.all(sessions.map(async (s) => {
+        bMap[s.id] = await dataService.listBookingsBySession(s.id);
+      }));
+      setBookingsBySession(bMap);
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to update');
+    } finally {
+      setMarkingPaid(null);
+    }
+  };
+
+  return (
+    <div className="container py-10 px-4 max-w-5xl">
+      <Button variant="ghost" className="mb-6 hover:bg-muted" onClick={() => navigate('/player/events')}>
+        <ArrowLeft className="mr-2 h-4 w-4" /> Back to Events
+      </Button>
+
+      <div className="space-y-8">
+        {/* Header */}
+        <section className="relative rounded-3xl overflow-hidden bg-muted" style={{ aspectRatio: '21/9' }}>
+          <img
+            src={activity.image_url || 'https://images.unsplash.com/photo-1461896836934-ffe607ba8211?w=2000&q=80'}
+            alt={activity.title}
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex items-end p-8">
+            <div>
+              <Badge className="mb-3 bg-primary text-primary-foreground border-none">{activity.sport}</Badge>
+              <h1 className="text-3xl md:text-4xl font-bold text-white">{activity.title}</h1>
+              <div className="flex flex-wrap items-center gap-4 text-sm mt-2 text-white/85">
+                <span className="flex items-center gap-1.5">
+                  <Calendar className="h-4 w-4 text-green-300" />
+                  {new Date(activity.date).toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                </span>
+                <span className="flex items-center gap-1.5"><MapPin className="h-4 w-4 text-green-300" /> {activity.venue}</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {activity.description && (
+          <p className="text-muted-foreground">{activity.description}</p>
+        )}
+
+        {/* Sessions with join & participants */}
+        <section className="space-y-4">
+          <h2 className="text-2xl font-bold text-foreground">Available Sessions</h2>
+          {sessions.length === 0 ? (
+            <div className="text-center py-12 rounded-2xl border-2 border-dashed bg-muted/10">
+              <p className="text-muted-foreground">No sessions available yet.</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {sessions.map(session => {
+                const pct = session.max_slots > 0 ? (session.filled_slots / session.max_slots) * 100 : 0;
+                const isFull = session.filled_slots >= session.max_slots;
+                const hasBooked = userBookingIds.has(session.id);
+                const sessionBookings = bookingsBySession[session.id] || [];
+                const isExpanded = expandedSession === session.id;
+
+                return (
+                  <div key={session.id} className="rounded-2xl border-2 bg-card overflow-hidden" style={{ borderColor: hasBooked ? 'hsl(var(--primary) / 0.4)' : 'hsl(var(--border))' }}>
+                    <div className="p-4">
+                      <div className="flex items-center justify-between gap-4">
+                        <div className="flex-1">
+                          <p className="font-bold text-foreground">{session.time_label}</p>
+                          <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
+                            <Users className="h-3 w-3" /> {session.filled_slots}/{session.max_slots} booked
+                          </p>
+                          <div className="h-1.5 rounded-full bg-muted overflow-hidden mt-2 w-32">
+                            <div className="h-full rounded-full bg-primary" style={{ width: `${Math.min(pct, 100)}%`, background: pct >= 90 ? 'hsl(var(--destructive))' : undefined }} />
+                          </div>
+                        </div>
+                        <div className="flex flex-col items-end gap-2">
+                          <p className="text-lg font-bold text-primary">${session.price}</p>
+                          {hasBooked ? (
+                            <Badge className="bg-primary text-primary-foreground">✓ Joined</Badge>
+                          ) : isFull ? (
+                            <Badge variant="destructive">Full</Badge>
+                          ) : (
+                            <Button
+                              size="sm"
+                              className="rounded-full font-bold bg-primary text-primary-foreground hover:bg-primary/90"
+                              onClick={() => handleJoin(session.id)}
+                              disabled={isJoining}
+                            >
+                              {isJoining ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <UserPlus className="h-3 w-3 mr-1" />}
+                              Sign Up
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Expand participants */}
+                      <button
+                        onClick={() => setExpandedSession(isExpanded ? null : session.id)}
+                        className="flex items-center gap-1.5 mt-3 text-xs font-bold text-primary hover:underline"
+                      >
+                        {isExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                        {isExpanded ? 'Hide' : 'View'} Participants ({sessionBookings.length})
+                      </button>
+                    </div>
+
+                    {/* Participant list */}
+                    <AnimatePresence>
+                      {isExpanded && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: 'auto', opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          className="overflow-hidden"
+                        >
+                          <div className="border-t px-4 py-3 bg-muted/10 space-y-2">
+                            {sessionBookings.length === 0 ? (
+                              <p className="text-sm text-muted-foreground text-center py-3">No participants yet. Be the first to join!</p>
+                            ) : (
+                              sessionBookings.map((b, i) => {
+                                const isMe = user && b.user_id === user.id;
+                                return (
+                                  <div key={b.id} className="flex items-center justify-between p-2 rounded-lg bg-background border">
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-xs font-bold text-muted-foreground w-5">{i + 1}.</span>
+                                      <span className="text-sm font-medium text-foreground">
+                                        {b.player_name || 'Player'}
+                                        {isMe && <Badge variant="secondary" className="ml-2 text-[9px]">You</Badge>}
+                                      </span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <Badge
+                                        variant="outline"
+                                        className="text-[10px]"
+                                        style={{
+                                          color: b.payment_status === 'paid' ? '#1A7A4A' : b.payment_status === 'pending' ? '#C47A00' : undefined,
+                                          borderColor: b.payment_status === 'paid' ? '#1A7A4A' : b.payment_status === 'pending' ? '#C47A00' : undefined,
+                                        }}
+                                      >
+                                        {b.payment_status === 'paid' ? '✓ Paid' : b.payment_status === 'pending' ? '⏳ Payment Sent' : '○ Unpaid'}
+                                      </Badge>
+                                      {isMe && b.payment_status === 'unpaid' && (
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          className="h-7 text-[10px] rounded-full font-bold"
+                                          onClick={() => handleMarkPaid(b.id)}
+                                          disabled={markingPaid === b.id}
+                                        >
+                                          {markingPaid === b.id ? <Loader2 className="h-3 w-3 animate-spin" /> : 'I Have Paid'}
+                                        </Button>
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                              })
+                            )}
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
+
+        {/* Share */}
+        <section className="p-4 rounded-2xl border bg-card flex items-center justify-between gap-3">
+          <span className="text-sm font-bold flex items-center gap-2 text-foreground"><Share2 className="h-4 w-4" /> Share this activity</span>
+          <Button variant="outline" size="sm" className="rounded-full" onClick={() => {
+            navigator.clipboard.writeText(window.location.href);
+            toast.success('Link copied!');
+          }}>
+            <Copy className="mr-1.5 h-3.5 w-3.5" /> Copy Link
+          </Button>
+        </section>
+      </div>
+    </div>
+  );
+}

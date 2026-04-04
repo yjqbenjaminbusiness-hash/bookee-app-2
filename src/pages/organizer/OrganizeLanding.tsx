@@ -319,7 +319,7 @@ export default function OrganizeLanding() {
       <div
         key={act.id}
         className="flex items-center gap-3 p-3 rounded-xl border bg-background hover:shadow-sm transition-all cursor-pointer"
-        onClick={() => navigate(`/organizer/events/${act.id}/manage`)}
+        onClick={() => navigate(`/organizer/events/${act.id}`)}
       >
         <div className="p-2 rounded-lg flex-shrink-0 bg-primary/10">
           <Calendar className="h-4 w-4 text-primary" style={isPast ? { opacity: 0.4 } : undefined} />

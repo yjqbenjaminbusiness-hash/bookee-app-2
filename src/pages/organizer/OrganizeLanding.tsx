@@ -164,11 +164,11 @@ export default function OrganizeLanding() {
             return (
               <Button
                 key={opt.title}
-                variant="outline"
-                className="rounded-full"
+                className="rounded-full shadow-sm font-bold bg-primary text-primary-foreground hover:bg-primary/90"
                 onClick={() => navigate(opt.route)}
               >
-                <Icon className="mr-2 h-4 w-4" /> {opt.title}
+                <Plus className="mr-1.5 h-4 w-4" />
+                <Icon className="mr-1.5 h-4 w-4" /> {opt.title}
               </Button>
             );
           })}
@@ -228,19 +228,24 @@ export default function OrganizeLanding() {
                       {group.member_count || 0} members · {upcoming.length} upcoming
                     </p>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-3">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-xs rounded-full px-4"
+                      onClick={(e) => { e.stopPropagation(); navigate(`/player/groups/${group.id}`); }}
+                    >
+                      View More
+                    </Button>
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="text-xs rounded-full"
-                      onClick={(e) => { e.stopPropagation(); navigate(`/player/groups/${group.id}`); }}
+                      className="text-xs rounded-full gap-1.5 font-bold text-primary"
+                      onClick={(e) => { e.stopPropagation(); toggleGroup(group.id); }}
                     >
-                      View Page
+                      {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                      {isExpanded ? 'Collapse' : 'Expand'}
                     </Button>
-                    {isExpanded
-                      ? <ChevronDown className="h-5 w-5 text-muted-foreground" />
-                      : <ChevronRight className="h-5 w-5 text-muted-foreground" />
-                    }
                   </div>
                 </div>
 

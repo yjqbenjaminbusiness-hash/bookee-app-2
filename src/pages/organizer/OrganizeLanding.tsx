@@ -164,11 +164,11 @@ export default function OrganizeLanding() {
             return (
               <Button
                 key={opt.title}
-                variant="outline"
-                className="rounded-full"
+                className="rounded-full shadow-sm font-bold bg-primary text-primary-foreground hover:bg-primary/90"
                 onClick={() => navigate(opt.route)}
               >
-                <Icon className="mr-2 h-4 w-4" /> {opt.title}
+                <Plus className="mr-1.5 h-4 w-4" />
+                <Icon className="mr-1.5 h-4 w-4" /> {opt.title}
               </Button>
             );
           })}

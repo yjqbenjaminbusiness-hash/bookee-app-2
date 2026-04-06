@@ -82,10 +82,12 @@ export default function OrganizeLanding() {
   }
 
   const today = new Date().toISOString().split('T')[0];
-  const upcomingActivities = allActivities.filter(a => a.date >= today);
+  const displayedGroups = showDemo ? groups : groups.filter(g => !dataService.isDemoItem(g.id));
+  const displayedActivities = showDemo ? allActivities : allActivities.filter(a => !dataService.isDemoItem(a.id));
+  const upcomingActivities = displayedActivities.filter(a => a.date >= today);
   const totalParticipants = Object.values(sessionsByActivity).flat().reduce((acc, s) => acc + s.filled_slots, 0);
   const totalSessions = Object.values(sessionsByActivity).flat().length;
-  const unlinkedActivities = allActivities.filter(a => !a.group_id).sort((a, b) => a.date.localeCompare(b.date));
+  const unlinkedActivities = displayedActivities.filter(a => !a.group_id).sort((a, b) => a.date.localeCompare(b.date));
 
   return (
     <div className="container py-8 px-4 max-w-5xl">
@@ -196,15 +198,18 @@ export default function OrganizeLanding() {
         </div>
       ) : (
         <div className="space-y-3">
-          {groups.length > 0 && (
+          {displayedGroups.length > 0 && (
             <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">
-              Your Groups ({groups.length})
+              Your Groups ({displayedGroups.length})
             </p>
           )}
-          {groups.map((group) => {
+          {displayedGroups.map((group) => {
             const isExpanded = expandedGroups.has(group.id);
-            const groupActivities = activitiesByGroup[group.id] || [];
-            const upcoming = groupActivities.filter(a => a.date >= today);
+            const groupActs = showDemo
+              ? (activitiesByGroup[group.id] || [])
+              : (activitiesByGroup[group.id] || []).filter(a => !dataService.isDemoItem(a.id));
+            const upcoming = groupActs.filter(a => a.date >= today);
+            const isDemo = dataService.isDemoItem(group.id);
 
             return (
               <motion.div

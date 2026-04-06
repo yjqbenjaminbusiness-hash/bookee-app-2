@@ -705,6 +705,17 @@ function SupabaseManageView({ activityId, navigate }: { activityId: string | und
   const [selectedBookings, setSelectedBookings] = useState<Set<string>>(new Set());
   const [expandedSessions, setExpandedSessions] = useState<Set<string>>(new Set());
 
+  // Announcements state (must be before any conditional returns)
+  const [announcements, setAnnouncements] = useState<any[]>([]);
+  const [announcementInput, setAnnouncementInput] = useState('');
+  const [isSendingAnn, setIsSendingAnn] = useState(false);
+
+  useEffect(() => {
+    if (activity) {
+      dataService.listAnnouncementsByActivity(activity.id).then(setAnnouncements);
+    }
+  }, [activity]);
+
   useEffect(() => {
     if (!activityId) return;
     const load = async () => {
@@ -864,16 +875,6 @@ function SupabaseManageView({ activityId, navigate }: { activityId: string | und
   const totalSlots = sessions.reduce((a, s) => a + s.max_slots, 0);
   const filledSlots = Object.values(bookingsBySession).reduce((a, arr) => a + arr.filter((b: any) => b.reservation_status !== 'rejected' && b.reservation_status !== 'cancelled').length, 0);
 
-  // Announcements state
-  const [announcements, setAnnouncements] = useState<any[]>([]);
-  const [announcementInput, setAnnouncementInput] = useState('');
-  const [isSendingAnn, setIsSendingAnn] = useState(false);
-
-  useEffect(() => {
-    if (activity) {
-      dataService.listAnnouncementsByActivity(activity.id).then(setAnnouncements);
-    }
-  }, [activity]);
 
   const handlePostAnnouncement = async () => {
     if (!announcementInput.trim() || !user || !activity) return;

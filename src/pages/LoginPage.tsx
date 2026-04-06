@@ -190,8 +190,8 @@ export default function LoginPage() {
 
           <p className="text-xs text-center text-muted-foreground">
             By continuing, you agree to our{' '}
-            <a href="#" className="underline">Terms</a> and{' '}
-            <a href="#" className="underline">PDPA policy</a>.
+            <a href="/terms" className="underline">Terms</a> and{' '}
+            <a href="/terms" className="underline">PDPA policy</a>.
           </p>
 
           <div className="text-center text-sm">

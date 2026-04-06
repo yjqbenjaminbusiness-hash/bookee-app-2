@@ -18,6 +18,7 @@ import OurStoryPage from "./pages/OurStoryPage";
 import AnnouncementsPage from "./pages/AnnouncementsPage";
 import OrganizerInfoPage from "./pages/organizer/OrganizerInfoPage";
 import HelpPage from "./pages/HelpPage";
+import TermsPage from "./pages/TermsPage";
 
 // Demo Pages
 import OrganizerDemo from "./pages/demo/OrganizerDemo";
@@ -79,6 +80,7 @@ const App = () => (
             <Route path="/announcements" element={<AnnouncementsPage />} />
             <Route path="/organizer/info" element={<OrganizerInfoPage />} />
             <Route path="/help" element={<HelpPage />} />
+            <Route path="/terms" element={<TermsPage />} />
 
             {/* Settings Route */}
             <Route path="/settings" element={

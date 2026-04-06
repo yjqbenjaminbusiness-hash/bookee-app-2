@@ -111,7 +111,8 @@ export default function CreateEvent() {
         date,
         description: description.trim() || undefined,
         group_id: selectedGroupId || undefined,
-        visibility: participantVisibility,
+        visibility: 'public',
+        participant_visibility: participantVisibility,
       });
 
       if (!activity) {

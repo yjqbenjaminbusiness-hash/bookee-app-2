@@ -434,8 +434,8 @@ export default function LandingPage() {
               © 2026 Bookee. Built for the sports community in Singapore.
             </p>
             <div className="flex gap-6 text-xs" style={{ color: 'rgba(255,255,255,0.35)' }}>
-              <span>Privacy Policy</span>
-              <span>Terms of Use</span>
+              <a href="/terms" className="hover:underline cursor-pointer">Privacy Policy</a>
+              <a href="/terms" className="hover:underline cursor-pointer">Terms of Use</a>
             </div>
           </div>
         </div>

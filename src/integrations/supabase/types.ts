@@ -446,6 +446,45 @@ export type Database = {
         }
         Relationships: []
       }
+      special_requests: {
+        Row: {
+          activity_id: string | null
+          created_at: string
+          end_time: string
+          id: string
+          note: string | null
+          preferred_date: string
+          start_time: string
+          status: string
+          user_id: string
+          venue: string
+        }
+        Insert: {
+          activity_id?: string | null
+          created_at?: string
+          end_time: string
+          id?: string
+          note?: string | null
+          preferred_date: string
+          start_time: string
+          status?: string
+          user_id: string
+          venue: string
+        }
+        Update: {
+          activity_id?: string | null
+          created_at?: string
+          end_time?: string
+          id?: string
+          note?: string | null
+          preferred_date?: string
+          start_time?: string
+          status?: string
+          user_id?: string
+          venue?: string
+        }
+        Relationships: []
+      }
       telegram_bot_state: {
         Row: {
           conversation_states: Json | null

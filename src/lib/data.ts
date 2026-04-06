@@ -27,6 +27,7 @@ export interface ActivitySession {
   max_slots: number;
   filled_slots: number;
   price: number;
+  released_details: string | null;
   created_at: string;
 }
 

@@ -91,6 +91,7 @@ export type Database = {
           id: string
           max_slots: number
           price: number
+          released_details: string | null
           start_time: string | null
           time_label: string
         }
@@ -102,6 +103,7 @@ export type Database = {
           id?: string
           max_slots?: number
           price?: number
+          released_details?: string | null
           start_time?: string | null
           time_label: string
         }
@@ -113,6 +115,7 @@ export type Database = {
           id?: string
           max_slots?: number
           price?: number
+          released_details?: string | null
           start_time?: string | null
           time_label?: string
         }

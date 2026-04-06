@@ -95,7 +95,15 @@ export default function OrganizeLanding() {
           <h1 className="text-3xl font-bold text-foreground">Organize</h1>
           <p className="text-muted-foreground mt-1">Welcome back, {user?.displayName}. Manage your communities.</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center">
+          <button
+            onClick={() => setShowDemo(!showDemo)}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-bold transition-all hover:bg-muted"
+            style={{ color: showDemo ? 'hsl(var(--muted-foreground))' : 'hsl(var(--primary))' }}
+          >
+            {showDemo ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+            {showDemo ? 'Hide Demo' : 'Show Demo'}
+          </button>
           <Button
             variant="outline"
             onClick={() => navigate('/organizer/groups')}

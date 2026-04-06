@@ -107,10 +107,11 @@ export default function OrganizeLanding() {
             {showDemo ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
             {showDemo ? 'Hide Demo' : 'Show Demo'}
           </button>
+          <FeedbackDialog />
           <Button
             variant="outline"
             onClick={() => navigate('/organizer/groups')}
-            className="rounded-full"
+            className="rounded-full border-primary/40 text-primary font-bold"
           >
             <Settings className="mr-2 h-4 w-4" /> Manage Groups
           </Button>
@@ -135,14 +136,14 @@ export default function OrganizeLanding() {
             <div className="text-3xl font-bold text-primary">{groups.length}</div>
           </CardContent>
         </Card>
-        <Card className="border-2 bg-accent/30 border-accent/30">
+        <Card className="border-2 bg-amber-50 border-amber-200/60">
           <CardHeader className="pb-2">
-            <CardTitle className="text-xs font-bold uppercase tracking-widest text-accent-foreground flex items-center gap-1.5">
+            <CardTitle className="text-xs font-bold uppercase tracking-widest text-amber-700 flex items-center gap-1.5">
               <ActivityIcon className="h-3.5 w-3.5" /> Upcoming
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-accent-foreground">{upcomingActivities.length}</div>
+            <div className="text-3xl font-bold text-amber-700">{upcomingActivities.length}</div>
           </CardContent>
         </Card>
         <Card className="border-2 bg-secondary/50 border-secondary/50">

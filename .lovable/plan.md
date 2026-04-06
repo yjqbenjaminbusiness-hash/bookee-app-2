@@ -1,106 +1,63 @@
 
 
-# Enhance Organizer, Guest, Privacy, Telegram & Platform Features
+# Feedback System + Button Visibility + Color Fixes
+
+## What We're Building
+
+1. A reusable **FeedbackDialog** component (dialog with message + optional category)
+2. Feedback buttons on My Bookee and Organize pages
+3. Submission sends email via the existing email infrastructure
+4. Visual fixes for button contrast and the "Upcoming" card color on Organize page
 
 ## Diagnosis
 
-### Current State
-1. **Organizer-Added Guests**: No mechanism exists. Bookings require `user_id` (authenticated). Organizer can only manage existing bookings.
-2. **Participant List Privacy**: `activities.visibility` column is overloaded — used for both listing visibility AND participant visibility in CreateEvent. ManageEvent toggles it for listing. The Supabase EventDetails path does NOT enforce participant list hiding.
-3. **Terms & Conditions**: Login and Landing pages have placeholder links (`href="#"`) — no actual T&C page exists.
-4. **Telegram**: Explore lists up to 8 activities (no limit to top 3, no location filter, no demo filtering, no "View more on web" link). Domain is `bookee-app.lovable.app`.
-5. **Domain**: `SITE_URL` in telegram-poll is `https://bookee-app.lovable.app`. Need to confirm target domain.
-
-### Conflicts
-- The `visibility` column cannot serve both "listing privacy" and "participant list privacy" without a schema change.
-- Guest bookings need `user_id = NULL` but the booking RLS requires `auth.uid() = user_id` for INSERT. Organizer-added guests must be inserted by the organizer, so we need an RLS policy allowing organizers to insert bookings for their activity sessions.
+- **Email**: The project has Lovable email infrastructure set up (`notify.bookee-app.com`). We can use `send-transactional-email` to deliver feedback to the support email.
+- **Support email**: `yjqbenjaminbusiness@gmail.com` (already shown on Help page).
+- **Button visibility issue**: On OrganizeLanding, buttons like "Manage Groups", "View More", "Expand" use `variant="outline"` or `variant="ghost"` which blend into the light background. Need stronger borders/colors.
+- **"Upcoming" card color**: Uses `bg-accent/30` with accent being mustard (`40 95% 40%`). The resulting yellow-brown is unappealing. Need a softer, lighter yellow.
 
 ## Plan
 
-### 1. Database Migration — Add `participant_visibility` column + Guest booking support
+### 1. New Component: `src/components/FeedbackDialog.tsx`
+- Dialog with:
+  - Category select (Bug, Feature Request, Payment Issue, Other) — optional
+  - Message textarea (required)
+  - Support email shown at bottom: "Or email us: yjqbenjaminbusiness@gmail.com"
+- On submit: call `supabase.functions.invoke('send-transactional-email', ...)` with a `feedback` template
+- Include user ID, page context (current path), timestamp in the email body
+- Show toast on success/failure
 
-```sql
--- Separate participant list visibility from activity listing visibility
-ALTER TABLE activities ADD COLUMN participant_visibility text NOT NULL DEFAULT 'public';
+### 2. New Email Template: `supabase/functions/_shared/transactional-email-templates/feedback.tsx`
+- Simple template showing: category, message, user info, page context, timestamp
+- Recipient: `yjqbenjaminbusiness@gmail.com`
+- Register in `registry.ts`
 
--- Allow organizers to insert bookings (for adding guests)
-CREATE POLICY "Organizers can add guests" ON bookings
-  FOR INSERT TO authenticated
-  WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM activity_sessions s
-      JOIN activities a ON s.activity_id = a.id
-      WHERE s.id = bookings.session_id AND a.organizer_id = auth.uid()
-    )
-  );
+### 3. Add Feedback Button to Pages
+- **Player Dashboard** (`src/pages/player/Dashboard.tsx`): Add a "Feedback" button in the header area next to "Find a Game"
+- **Organize Landing** (`src/pages/organizer/OrganizeLanding.tsx`): Add a "Feedback" button in the header area
 
--- Allow organizers to delete bookings (for removing guests)  
-CREATE POLICY "Organizers can delete bookings" ON bookings
-  FOR DELETE TO authenticated
-  USING (
-    EXISTS (
-      SELECT 1 FROM activity_sessions s
-      JOIN activities a ON s.activity_id = a.id
-      WHERE s.id = bookings.session_id AND a.organizer_id = auth.uid()
-    )
-  );
-```
+### 4. Visual Fixes — Button Contrast (OrganizeLanding.tsx)
+- "Manage Groups" button (line 109-115): Add stronger border color `border-primary text-primary`
+- "View More" button (line 247-254): Add `border-primary/40 text-primary` styling
+- Quick create inner buttons (line 283-291): Add `border-primary/30 text-primary` styling
 
-### 2. CreateEvent.tsx — Save `participant_visibility` separately
-- Change `visibility: participantVisibility` to `participant_visibility: participantVisibility`
-- Keep the existing `visibility` field as the default `'public'` for listing
-
-### 3. ManageEvent.tsx — Add Guest feature + Participant Visibility toggle
-- Add "Add Guest" form per session (name + optional note)
-- Insert guest as booking with `user_id: null`, `player_name: "Guest - {name}"`, `reservation_status: 'confirmed'`
-- Organizer can remove guests (delete booking)
-- Add participant visibility toggle (separate from listing visibility) reading/writing `participant_visibility`
-
-### 4. EventDetails.tsx (Supabase path) — Enforce participant list privacy
-- Read `participant_visibility` from activity
-- If `private`: hide participant list for non-organizer users (show only "X/Y booked" count + user's own booking status)
-
-### 5. Terms & Conditions Page
-- Create `src/pages/TermsPage.tsx` with basic terms content (no unlawful activities, no harmful events, no prohibited content)
-- Add route `/terms` in App.tsx
-- Update LoginPage and LandingPage placeholder links to point to `/terms`
-
-### 6. Telegram Bot Improvements
-In `supabase/functions/telegram-poll/index.ts`:
-
-**A. Explore — Top 3 + "View more"**
-- Change activity limit from 8 to 3
-- Filter out demo activities (IDs ending in `0001`/`0002` pattern)
-- Add "🌐 View more on web" button linking to web app `/player/events`
-
-**B. Browse by location**
-- Add "📍 Browse by Location" button in explore
-- When clicked, query distinct venues, show as buttons
-- Filter activities by selected venue
-
-**C. Domain update**
-- Change `SITE_URL` from `https://bookee-app.lovable.app` to the published domain
-
-### 7. Data Service Update
-- Update `dataService.createActivity` to accept `participant_visibility`
+### 5. Visual Fix — "Upcoming" Card Color (OrganizeLanding.tsx)
+- Change the "Upcoming" metrics card (line 137-146) from `bg-accent/30 border-accent/30` to a softer yellow: `bg-amber-50 border-amber-200/60` with `text-amber-700` for the text
 
 ## Files Modified
 
 | File | Changes |
 |------|---------|
-| Migration SQL | Add `participant_visibility` column, guest INSERT/DELETE policies |
-| `src/pages/organizer/CreateEvent.tsx` | Save `participant_visibility` separately |
-| `src/pages/organizer/ManageEvent.tsx` | Add guest form, participant visibility toggle |
-| `src/pages/player/EventDetails.tsx` | Enforce participant list privacy |
-| `src/pages/TermsPage.tsx` | New — basic T&C page |
-| `src/App.tsx` | Add `/terms` route |
-| `src/pages/LoginPage.tsx` | Link to `/terms` |
-| `src/pages/LandingPage.tsx` | Link to `/terms` |
-| `src/lib/data.ts` | Accept `participant_visibility` in createActivity |
-| `supabase/functions/telegram-poll/index.ts` | Top 3 activities, location browse, demo filter, domain update, "view more" link |
+| `src/components/FeedbackDialog.tsx` | New — reusable feedback dialog component |
+| `supabase/functions/_shared/transactional-email-templates/feedback.tsx` | New — feedback email template |
+| `supabase/functions/_shared/transactional-email-templates/registry.ts` | Register feedback template |
+| `src/pages/player/Dashboard.tsx` | Add feedback button |
+| `src/pages/organizer/OrganizeLanding.tsx` | Add feedback button + fix button contrast + fix Upcoming card color |
 
-## Risk Assessment
-- New `participant_visibility` column is additive — no existing data affected, defaults to `public`
-- Guest INSERT policy is additive — existing booking flow unchanged since authenticated users still use the existing policy
-- Telegram changes are self-contained in the edge function
+Deploy `send-transactional-email` after template changes.
+
+## Notes
+- No database changes needed
+- No ticket system, no dashboards — just email delivery
+- Feedback works for both logged-in and logged-out users (logged-in includes user context)
 

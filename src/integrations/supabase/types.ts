@@ -32,6 +32,7 @@ export type Database = {
           title: string
           updated_at: string
           venue: string
+          visibility: string
         }
         Insert: {
           auto_post_count?: number
@@ -50,6 +51,7 @@ export type Database = {
           title: string
           updated_at?: string
           venue: string
+          visibility?: string
         }
         Update: {
           auto_post_count?: number
@@ -68,6 +70,7 @@ export type Database = {
           title?: string
           updated_at?: string
           venue?: string
+          visibility?: string
         }
         Relationships: [
           {
@@ -122,6 +125,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      announcements: {
+        Row: {
+          activity_id: string
+          created_at: string
+          id: string
+          message: string
+          organizer_id: string
+        }
+        Insert: {
+          activity_id: string
+          created_at?: string
+          id?: string
+          message: string
+          organizer_id: string
+        }
+        Update: {
+          activity_id?: string
+          created_at?: string
+          id?: string
+          message?: string
+          organizer_id?: string
+        }
+        Relationships: []
       }
       ballot_participants: {
         Row: {
@@ -259,6 +286,7 @@ export type Database = {
           reservation_status: Database["public"]["Enums"]["reservation_status"]
           reserved_until: string | null
           session_id: string
+          special_request: string | null
           stripe_payment_id: string | null
           updated_at: string
           user_id: string | null
@@ -274,6 +302,7 @@ export type Database = {
           reservation_status?: Database["public"]["Enums"]["reservation_status"]
           reserved_until?: string | null
           session_id: string
+          special_request?: string | null
           stripe_payment_id?: string | null
           updated_at?: string
           user_id?: string | null
@@ -289,6 +318,7 @@ export type Database = {
           reservation_status?: Database["public"]["Enums"]["reservation_status"]
           reserved_until?: string | null
           session_id?: string
+          special_request?: string | null
           stripe_payment_id?: string | null
           updated_at?: string
           user_id?: string | null
@@ -378,6 +408,7 @@ export type Database = {
           telegram_chat_id: number | null
           updated_at: string
           user_id: string
+          username: string | null
           verification_status: Database["public"]["Enums"]["verification_status"]
         }
         Insert: {
@@ -392,6 +423,7 @@ export type Database = {
           telegram_chat_id?: number | null
           updated_at?: string
           user_id: string
+          username?: string | null
           verification_status?: Database["public"]["Enums"]["verification_status"]
         }
         Update: {
@@ -406,6 +438,7 @@ export type Database = {
           telegram_chat_id?: number | null
           updated_at?: string
           user_id?: string
+          username?: string | null
           verification_status?: Database["public"]["Enums"]["verification_status"]
         }
         Relationships: []

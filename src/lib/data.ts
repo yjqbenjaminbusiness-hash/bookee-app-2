@@ -437,8 +437,6 @@ export const dataService = {
            id === '00000000-0000-0000-0000-000000000003';
   },
 };
-      title: 'Demo Activity – Weekend Badminton',
-      sport: 'Badminton',
       venue: 'Demo Sports Hall',
       location: 'Demo Location',
       date: '2030-12-31',

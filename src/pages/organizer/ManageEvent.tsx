@@ -975,14 +975,24 @@ function SupabaseManageView({ activityId, navigate }: { activityId: string | und
               <Badge variant={isPast ? 'secondary' : 'default'}>{isPast ? 'Past' : 'Active'}</Badge>
             </div>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            className="rounded-full"
-            onClick={handleToggleVisibility}
-          >
-            {(activity as any).visibility === 'private' ? <><Lock className="h-3 w-3 mr-1" /> Private</> : <><Globe className="h-3 w-3 mr-1" /> Public</>}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-full"
+              onClick={handleToggleParticipantVisibility}
+            >
+              {(activity as any).participant_visibility === 'private' ? <><Lock className="h-3 w-3 mr-1" /> Players Hidden</> : <><Users className="h-3 w-3 mr-1" /> Players Visible</>}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-full"
+              onClick={handleToggleVisibility}
+            >
+              {(activity as any).visibility === 'private' ? <><Lock className="h-3 w-3 mr-1" /> Private</> : <><Globe className="h-3 w-3 mr-1" /> Public</>}
+            </Button>
+          </div>
         </div>
         {activity.description && <p className="text-sm text-muted-foreground mt-2">{activity.description}</p>}
       </div>

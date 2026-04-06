@@ -1246,6 +1246,83 @@ function SupabaseManageView({ activityId, navigate }: { activityId: string | und
           </Card>
         );
       })}
+
+      {/* Special Requests Section */}
+      {specialRequests.length > 0 && (
+        <Card className="border-2 border-primary/10">
+          <CardHeader className="cursor-pointer pb-3">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <MessageSquare className="h-5 w-5 text-primary" />
+              Custom Slot Requests ({specialRequests.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Player</TableHead>
+                  <TableHead>Date & Time</TableHead>
+                  <TableHead>Note</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {specialRequests.map((req: any) => (
+                  <TableRow key={req.id}>
+                    <TableCell className="font-medium text-sm">{req.user_id?.slice(0, 8)}...</TableCell>
+                    <TableCell className="text-sm">
+                      <div>{new Date(req.preferred_date).toLocaleDateString()}</div>
+                      <div className="text-xs text-muted-foreground">{req.start_time} – {req.end_time}</div>
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate">{req.note || '—'}</TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={req.status === 'approved' ? 'default' : req.status === 'rejected' ? 'destructive' : 'secondary'}
+                        className="text-xs"
+                      >
+                        {req.status === 'approved' ? '✓ Approved' : req.status === 'rejected' ? '✕ Rejected' : '⏳ Pending'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {req.status === 'pending' && (
+                        <div className="flex items-center justify-end gap-1">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 text-xs text-primary"
+                            onClick={async () => {
+                              const { error } = await supabase.from('special_requests' as any).update({ status: 'approved' }).eq('id', req.id);
+                              if (error) { toast.error('Failed'); return; }
+                              toast.success('Request approved');
+                              setSpecialRequests(prev => prev.map(r => r.id === req.id ? { ...r, status: 'approved' } : r));
+                            }}
+                          >
+                            <CheckCircle2 className="h-3 w-3 mr-1" /> Approve
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 text-xs text-destructive"
+                            onClick={async () => {
+                              const { error } = await supabase.from('special_requests' as any).update({ status: 'rejected' }).eq('id', req.id);
+                              if (error) { toast.error('Failed'); return; }
+                              toast.info('Request rejected');
+                              setSpecialRequests(prev => prev.map(r => r.id === req.id ? { ...r, status: 'rejected' } : r));
+                            }}
+                          >
+                            <XCircle className="h-3 w-3 mr-1" /> Reject
+                          </Button>
+                        </div>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

@@ -1,112 +1,68 @@
 
 
-# Fix Plan: Special Request as Standalone Option + Status Bug Fixes + Edge Function Imports
+# Fix Plan: Participant Status Badge, Contact Buttons, Special Request Visibility
 
-## What You Asked For
+## Diagnosis
 
-You want a **"Request Different Timeslot"** option visible on the activity/session page itself — not just the inline special request field inside the join dialog. Players should be able to submit a request for a custom time without needing to pick an existing slot first.
-
-## Current State
-
-- A standalone `SpecialRequestPage` exists at `/player/special-request` but it uses **mock data only** (`store.createSpecialRequest`), not Supabase. It also has hardcoded venues unrelated to the activity being viewed.
-- The join dialog already has a "Special Request" textarea — this stays as-is.
-- The existing `SpecialRequestPage` and the organizer's `SpecialRequests` page both use mock data, not the database.
-
-## Plan
-
-### 1. Add "Request Different Timeslot" Button on EventDetails Page
-
-In `src/pages/player/EventDetails.tsx`, below the sessions list, add a visible button/link:
-
+### 1. Participant Status Bug — Participant List Badge (Line 1329-1333)
+**Root cause found**: In the **participant list** (not `getMyStatus` — that's already fixed), the badge rendering at line 1333 does NOT check for `reservation_status === 'rejected'`. The logic is:
 ```
-Can't find a suitable time? → Request a Custom Slot
+confirmed → "✓ Going"
+payment_status === 'pending' → "⏳ Payment Sent"
+payment_status === 'paid' → "✓ Paid"
+else → "○ Pending"
 ```
+A rejected participant whose booking somehow remains in `activeBookings` (or is rendered elsewhere) will show "Payment Sent" or "Pending" instead of "Rejected".
 
-Clicking it opens a dialog (not a page navigation) pre-filled with the activity's venue and sport. The dialog collects:
-- Preferred date
-- Preferred start/end time
-- Optional note
+Additionally, `activeBookings` at line 1236 already filters out `rejected` bookings, so rejected users should NOT appear in the participant list at all. However, the `hasBooked` check at line 1239 uses `userBookingIds` which already correctly excludes rejected (line 1015). The user's own status badge via `getMyStatus()` at line 1121-1129 already handles rejected correctly.
 
-On submit, it creates a **special request record in Supabase** (not mock store).
+**The remaining bug**: The participant list badge (line 1333) lacks a `rejected` guard. While `activeBookings` filters them out, defense-in-depth is needed. Also, the **user's own status display** at line 1256 shows `hasBooked && myStatus` — if a user is rejected, `hasBooked` is false (excluded at line 1015), so the rejected badge won't show. The user simply sees the "Sign Up" button again, which is correct behavior.
 
-### 2. Database: Create `special_requests` Table
+**Actual issue**: The user reports seeing "pending payment" for a rejected participant. This could happen if the booking data hasn't refreshed after rejection. The real fix is ensuring the participant badge always checks `reservation_status` before `payment_status`.
 
-Since the current special request system is mock-only, we need a real table:
+### 2. Special Request — Already Present
+The join dialog (line 1456-1463) has the special request textarea. The organizer sees it at line 1112-1116 with the 📝 icon. **Working correctly.**
 
-```sql
-CREATE TABLE public.special_requests (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id uuid NOT NULL,
-  activity_id uuid,
-  venue text NOT NULL,
-  preferred_date date NOT NULL,
-  start_time text NOT NULL,
-  end_time text NOT NULL,
-  note text,
-  status text NOT NULL DEFAULT 'pending',
-  created_at timestamptz NOT NULL DEFAULT now()
-);
+### 3. Contact Buttons — Already Present
+WhatsApp (line 1201-1208) and Telegram (line 1210-1219) buttons exist and are clickable. **Working correctly.**
 
-ALTER TABLE public.special_requests ENABLE ROW LEVEL SECURITY;
+### 4. Organizer View — Already Correct
+ManageEvent line 1118-1121 shows rejected status with destructive badge. **Working correctly.**
 
--- Players can create their own requests
-CREATE POLICY "Users can create own requests" ON public.special_requests
-  FOR INSERT TO authenticated WITH CHECK (auth.uid() = user_id);
+## Remaining Fix
 
--- Players can view own requests
-CREATE POLICY "Users can view own requests" ON public.special_requests
-  FOR SELECT TO authenticated USING (auth.uid() = user_id);
+The only actual bug is the **participant list badge** in EventDetails.tsx at line 1333. It needs to check `reservation_status` before `payment_status` to prevent a rejected booking from ever showing "Payment Sent".
 
--- Organizers can view requests for their activities
-CREATE POLICY "Organizers can view activity requests" ON public.special_requests
-  FOR SELECT TO authenticated USING (
-    EXISTS (SELECT 1 FROM activities WHERE activities.id = special_requests.activity_id AND activities.organizer_id = auth.uid())
-  );
+### Fix in `src/pages/player/EventDetails.tsx`
 
--- Organizers can update request status
-CREATE POLICY "Organizers can update request status" ON public.special_requests
-  FOR UPDATE TO authenticated USING (
-    EXISTS (SELECT 1 FROM activities WHERE activities.id = special_requests.activity_id AND activities.organizer_id = auth.uid())
-  );
+**Line 1333** — Update the badge text logic to add rejected check:
+```
+{b.reservation_status === 'rejected' ? '✕ Rejected' :
+ b.reservation_status === 'confirmed' ? '✓ Going' :
+ b.payment_status === 'pending' ? '⏳ Payment Sent' :
+ b.payment_status === 'paid' ? '✓ Paid' : '○ Pending'}
 ```
 
-### 3. Update Organizer ManageEvent to Show Special Requests
-
-In `src/pages/organizer/ManageEvent.tsx` (SupabaseManageView), add a section that fetches and displays special requests for the activity from the new table. Show: player name, preferred date/time, note, status, and Approve/Reject buttons.
-
-### 4. Fix Participant Status Bug
-
-In `src/pages/player/EventDetails.tsx`:
-- Add `rejected` check as first condition in `getMyStatus()`
-- Add `rejected` case to `statusBadge()`
-- Exclude rejected bookings from `userBookingIds` so rejected users can re-sign up
-- Add `rejected` badge to participant list
-
-In `src/pages/organizer/ManageEvent.tsx`:
-- Add `rejected` status to the participant table badge
-
-### 5. Fix Edge Function Build Errors
-
-In all 6 edge function files, change:
+And update the badge styling at lines 1329-1331 to handle rejected:
 ```
-import { createClient } from "npm:@supabase/supabase-js@2.57.2"
+color: b.reservation_status === 'rejected' ? 'hsl(var(--destructive))' :
+       b.reservation_status === 'confirmed' ? 'hsl(var(--primary))' :
+       b.payment_status === 'pending' ? '#C47A00' : undefined,
+borderColor: b.reservation_status === 'rejected' ? 'hsl(var(--destructive))' :
+             b.reservation_status === 'confirmed' ? 'hsl(var(--primary))' :
+             b.payment_status === 'pending' ? '#C47A00' : undefined,
 ```
-to:
+
+Also hide the "I Have Paid" button for rejected bookings (line 1335):
 ```
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
+{isMe && b.payment_status === 'unpaid' && b.reservation_status !== 'rejected' && (
 ```
 
 ## Files Modified
 
-| File | Changes |
-|------|---------|
-| Migration SQL | Create `special_requests` table with RLS |
-| `src/pages/player/EventDetails.tsx` | Add "Request Custom Slot" dialog; fix `getMyStatus()` and `statusBadge()` for rejected; exclude rejected from `userBookingIds` |
-| `src/pages/organizer/ManageEvent.tsx` | Add special requests section from DB; fix rejected badge in participant table |
-| 6 edge function `index.ts` files | Fix `npm:` import to `https://esm.sh/` |
+| File | Change |
+|------|--------|
+| `src/pages/player/EventDetails.tsx` | Fix participant list badge to check `reservation_status` before `payment_status`; hide "I Have Paid" for rejected |
 
-## Risk Assessment
-- New `special_requests` table is fully additive — no existing data affected
-- Status fix only adds new cases, no existing logic removed
-- Edge function import is a direct swap
+No database changes needed. No other files affected.
 

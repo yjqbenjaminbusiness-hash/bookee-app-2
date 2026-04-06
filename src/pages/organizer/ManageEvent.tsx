@@ -1107,8 +1107,8 @@ function SupabaseManageView({ activityId, navigate }: { activityId: string | und
                               )}
                             </TableCell>
                             <TableCell>
-                              <Badge variant={booking.reservation_status === 'confirmed' ? 'default' : 'secondary'} className="text-xs">
-                                {booking.reservation_status === 'confirmed' ? '✓ Confirmed' : '⏳ Pending'}
+                              <Badge variant={booking.reservation_status === 'confirmed' ? 'default' : booking.reservation_status === 'rejected' ? 'destructive' : 'secondary'} className="text-xs">
+                                {booking.reservation_status === 'confirmed' ? '✓ Confirmed' : booking.reservation_status === 'rejected' ? '✕ Rejected' : '⏳ Pending'}
                               </Badge>
                             </TableCell>
                             <TableCell>

@@ -971,6 +971,25 @@ function SupabaseActivityView({
   const [joinSessionId, setJoinSessionId] = useState<string | null>(null);
   const [specialRequest, setSpecialRequest] = useState('');
 
+  // Guest sign-up
+  const [addGuest, setAddGuest] = useState(false);
+  const [guestNameInput, setGuestNameInput] = useState('');
+
+  // Organizer contact
+  const [organizerProfile, setOrganizerProfile] = useState<any>(null);
+
+  useEffect(() => {
+    const loadOrgProfile = async () => {
+      const { data } = await (await import('@/integrations/supabase/client')).supabase
+        .from('profiles')
+        .select('phone, username, display_name, telegram_chat_id')
+        .eq('user_id', activity.organizer_id)
+        .maybeSingle();
+      if (data) setOrganizerProfile(data);
+    };
+    loadOrgProfile();
+  }, [activity.organizer_id]);
+
   useEffect(() => {
     const loadBookings = async () => {
       const bMap: Record<string, any[]> = {};
@@ -1005,6 +1024,8 @@ function SupabaseActivityView({
     if (userBookingIds.has(sessionId)) { toast.info('You already have a booking for this session'); return; }
     setJoinSessionId(sessionId);
     setSpecialRequest('');
+    setAddGuest(false);
+    setGuestNameInput('');
     setShowJoinDialog(true);
   };
 

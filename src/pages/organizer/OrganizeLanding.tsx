@@ -292,12 +292,12 @@ export default function OrganizeLanding() {
                           })}
                         </div>
 
-                        {groupActivities.length === 0 ? (
+                        {groupActs.length === 0 ? (
                           <div className="text-center py-6 rounded-xl border border-dashed bg-background">
                             <p className="text-sm text-muted-foreground">No activities in this group yet</p>
                           </div>
                         ) : (
-                          groupActivities.map((act) => renderActivityRow(act, today))
+                          groupActs.map((act) => renderActivityRow(act, today))
                         )}
                       </div>
                     </motion.div>

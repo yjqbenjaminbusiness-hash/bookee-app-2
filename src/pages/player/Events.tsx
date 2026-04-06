@@ -106,12 +106,9 @@ export default function PlayerEvents() {
     }
   };
 
-  // Demo data
-  const demoActivity = dataService.getDemoActivity();
-  const demoGroup = dataService.getDemoGroup();
-
-  const allActivities = showDemo ? [...activities, demoActivity] : activities;
-  const allGroups = showDemo ? [...groups, demoGroup] : groups;
+  // Filter demo items based on toggle
+  const allActivities = showDemo ? activities : activities.filter(a => !dataService.isDemoItem(a.id));
+  const allGroups = showDemo ? groups : groups.filter(g => !dataService.isDemoItem(g.id));
 
   const filteredActivities = allActivities.filter(a => {
     const matchesSport = selectedSport === 'all' || a.sport === selectedSport;
@@ -205,7 +202,7 @@ export default function PlayerEvents() {
                 const takenSpots = actSessions.reduce((a, s) => a + s.filled_slots, 0);
                 const fillPct = totalSpots > 0 ? (takenSpots / totalSpots) * 100 : 0;
                 const sportCat = SPORT_CATEGORIES.find(c => c.id === activity.sport) || SPORT_CATEGORIES[0];
-                const isDemo = activity.id.startsWith('demo-');
+                const isDemo = dataService.isDemoItem(activity.id);
                 const linkedGroup = activity.group_id ? (groupMap[activity.group_id] || null) : null;
 
                 return (
@@ -302,7 +299,7 @@ export default function PlayerEvents() {
             <div className="space-y-5">
               {allGroups.map((group, i) => {
                 const sportCat = SPORT_CATEGORIES.find(c => c.id === group.sport) || SPORT_CATEGORIES[0];
-                const isDemo = group.id.startsWith('demo-');
+                const isDemo = dataService.isDemoItem(group.id);
                 return (
                   <motion.div key={group.id}
                     initial={{ opacity: 0, y: 16 }}

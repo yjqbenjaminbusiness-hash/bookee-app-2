@@ -168,28 +168,6 @@ export default function PlayerDashboard() {
           </div>
         </div>
 
-        {/* Demo activity card */}
-        {showDemo && activeTab === 'upcoming' && (
-          <div className="mb-4 p-5 rounded-2xl border-2 border-dashed opacity-50" style={{ background: '#f9f9f9' }}>
-            <div className="flex justify-between items-center gap-4">
-              <div className="flex gap-4 items-center">
-                <div className="p-3 rounded-2xl" style={{ background: '#e5e5e5' }}>
-                  <Calendar className="h-5 w-5 text-muted-foreground" />
-                </div>
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-bold text-base" style={{ color: '#555' }}>{demoActivity.title}</h3>
-                    <Badge className="text-[9px]" style={{ background: '#888', color: '#fff', border: 'none' }}>DEMO</Badge>
-                  </div>
-                  <p className="text-xs text-muted-foreground flex items-center gap-1.5">
-                    <MapPin className="h-3 w-3" /> {demoActivity.venue} • <Calendar className="h-3 w-3" /> 31 Dec 2033
-                  </p>
-                  <p className="text-xs text-muted-foreground">Group: {demoGroup.name}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Horizontal scroll for activities */}
         {displayedGames.length === 0 && !showDemo ? (

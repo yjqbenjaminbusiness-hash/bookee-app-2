@@ -427,39 +427,13 @@ export const dataService = {
   },
 
   // ─── Demo Data ──────────────────────────────────────────────
-  DEMO_GROUP_ID: '00000000-0000-0000-0000-000000000001',
-  DEMO_ACTIVITY_ID: '00000000-0000-0000-0000-000000000002',
-  DEMO_SESSION_ID: '00000000-0000-0000-0000-000000000003',
+  DEMO_GROUP_ID: '00000000-0000-0000-0000-000000000001' as string,
+  DEMO_ACTIVITY_ID: '00000000-0000-0000-0000-000000000002' as string,
+  DEMO_SESSION_ID: '00000000-0000-0000-0000-000000000003' as string,
 
   isDemoItem(id: string): boolean {
     return id === '00000000-0000-0000-0000-000000000001' ||
            id === '00000000-0000-0000-0000-000000000002' ||
            id === '00000000-0000-0000-0000-000000000003';
-  },
-};
-      venue: 'Demo Sports Hall',
-      location: 'Demo Location',
-      date: '2030-12-31',
-      description: 'This is a demo activity to showcase the platform. Not a real session.',
-      status: 'active',
-      group_id: 'demo-group-001',
-      image_url: null,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    };
-  },
-
-  getDemoGroup(): Group {
-    return {
-      id: 'demo-group-001',
-      organizer_id: 'demo-user',
-      name: 'Demo Group – Badminton Club',
-      description: 'This is a demo group to showcase the platform features.',
-      sport: 'Badminton',
-      image_url: null,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      member_count: 25,
-    };
   },
 };

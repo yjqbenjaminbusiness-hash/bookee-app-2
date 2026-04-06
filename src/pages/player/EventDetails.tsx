@@ -9,7 +9,9 @@ import { Badge } from '../../components/ui/badge';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { toast } from 'sonner';
-import { MapPin, Calendar, Users, Clock, ArrowLeft, Check, ChevronDown, ChevronUp, Info, Loader2, UserPlus, List, MessageCircle, Phone, Lock, Unlock, Copy, Star, MessageSquare, Share2, Send, UserCheck, X } from 'lucide-react';
+import { MapPin, Calendar, Users, Clock, ArrowLeft, Check, ChevronDown, ChevronUp, Info, Loader2, UserPlus, List, MessageCircle, Phone, Lock, Unlock, Copy, Star, MessageSquare, Share2, Send, UserCheck, X, Sparkles } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { Textarea } from '../../components/ui/textarea';
 import { motion, AnimatePresence } from 'framer-motion';
 import MemoriesCarousel from '../../components/MemoriesCarousel';
 
@@ -978,6 +980,14 @@ function SupabaseActivityView({
   // Organizer contact
   const [organizerProfile, setOrganizerProfile] = useState<any>(null);
 
+  // Custom slot request dialog
+  const [showCustomSlotDialog, setShowCustomSlotDialog] = useState(false);
+  const [customSlotDate, setCustomSlotDate] = useState('');
+  const [customSlotStart, setCustomSlotStart] = useState('17:00');
+  const [customSlotEnd, setCustomSlotEnd] = useState('20:00');
+  const [customSlotNote, setCustomSlotNote] = useState('');
+  const [isSubmittingCustomSlot, setIsSubmittingCustomSlot] = useState(false);
+
   useEffect(() => {
     const loadOrgProfile = async () => {
       const { data } = await (await import('@/integrations/supabase/client')).supabase
@@ -1002,7 +1012,7 @@ function SupabaseActivityView({
         const userBIds = new Set<string>();
         const uBookings: Record<string, any> = {};
         Object.values(bMap).flat().forEach(b => {
-          if (b.user_id === user.id) {
+          if (b.user_id === user.id && b.reservation_status !== 'rejected') {
             userBIds.add(b.session_id);
             uBookings[b.session_id] = b;
           }
@@ -1111,6 +1121,7 @@ function SupabaseActivityView({
   const getMyStatus = (sessionId: string) => {
     const booking = userBookings[sessionId];
     if (!booking) return null;
+    if (booking.reservation_status === 'rejected') return 'rejected';
     if (booking.reservation_status === 'cancelled') return 'waitlisted';
     if (booking.reservation_status === 'confirmed' && booking.payment_status === 'paid') return 'confirmed-paid';
     if (booking.reservation_status === 'confirmed') return 'confirmed';
@@ -1125,6 +1136,7 @@ function SupabaseActivityView({
       case 'pending-payment': return <Badge variant="secondary" className="text-[10px] text-amber-600">⏳ Pending Payment</Badge>;
       case 'pending': return <Badge variant="secondary" className="text-[10px]">⏳ Pending</Badge>;
       case 'waitlisted': return <Badge variant="outline" className="text-[10px] text-amber-600 border-amber-600">📋 Waitlisted</Badge>;
+      case 'rejected': return <Badge variant="destructive" className="text-[10px]">✕ Rejected</Badge>;
       default: return null;
     }
   };
@@ -1374,6 +1386,34 @@ function SupabaseActivityView({
           )}
         </section>
 
+        {/* Request Custom Slot */}
+        {user && (
+          <section className="p-4 rounded-2xl border-2 border-dashed border-primary/20 bg-primary/5">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+              <div>
+                <h3 className="font-bold text-foreground flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-primary" /> Can't find a suitable time?
+                </h3>
+                <p className="text-xs text-muted-foreground">Request a custom timeslot and the organizer will review it.</p>
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                className="rounded-full font-bold border-primary/30 text-primary hover:bg-primary hover:text-primary-foreground"
+                onClick={() => {
+                  setCustomSlotDate('');
+                  setCustomSlotStart('17:00');
+                  setCustomSlotEnd('20:00');
+                  setCustomSlotNote('');
+                  setShowCustomSlotDialog(true);
+                }}
+              >
+                <Sparkles className="mr-1.5 h-3.5 w-3.5" /> Request Custom Slot
+              </Button>
+            </div>
+          </section>
+        )}
+
         {/* Share */}
         <section className="p-4 rounded-2xl border bg-card flex items-center justify-between gap-3">
           <span className="text-sm font-bold flex items-center gap-2 text-foreground"><Share2 className="h-4 w-4" /> Share this activity</span>
@@ -1458,6 +1498,108 @@ function SupabaseActivityView({
                     const active = (bookingsBySession[joinSessionId || ''] || []).filter((b: any) => b.reservation_status !== 'rejected' && b.reservation_status !== 'cancelled');
                     return s && active.length >= s.max_slots ? 'Join Waitlist' : 'Join';
                   })()}
+                </Button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Custom Slot Request Dialog */}
+      <AnimatePresence>
+        {showCustomSlotDialog && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+            onClick={() => setShowCustomSlotDialog(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-background rounded-2xl p-6 w-full max-w-md border shadow-lg space-y-4"
+              onClick={e => e.stopPropagation()}
+            >
+              <h3 className="text-lg font-bold text-foreground flex items-center gap-2">
+                <Sparkles className="h-5 w-5 text-primary" /> Request Custom Slot
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                Requesting for <strong>{activity.title}</strong> at {activity.venue}
+              </p>
+
+              <div className="space-y-2">
+                <Label className="text-sm font-bold">Preferred Date</Label>
+                <Input
+                  type="date"
+                  value={customSlotDate}
+                  onChange={e => setCustomSlotDate(e.target.value)}
+                  className="rounded-xl"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label className="text-sm font-bold">Start Time</Label>
+                  <Input
+                    type="time"
+                    value={customSlotStart}
+                    onChange={e => setCustomSlotStart(e.target.value)}
+                    className="rounded-xl"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm font-bold">End Time</Label>
+                  <Input
+                    type="time"
+                    value={customSlotEnd}
+                    onChange={e => setCustomSlotEnd(e.target.value)}
+                    className="rounded-xl"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-sm font-bold">Note (optional)</Label>
+                <Textarea
+                  placeholder="e.g. Number of courts, group size, specific needs..."
+                  value={customSlotNote}
+                  onChange={e => setCustomSlotNote(e.target.value)}
+                  className="rounded-xl min-h-[70px]"
+                />
+              </div>
+
+              <div className="flex gap-2 justify-end">
+                <Button variant="outline" className="rounded-full" onClick={() => setShowCustomSlotDialog(false)}>Cancel</Button>
+                <Button
+                  className="rounded-full bg-primary text-primary-foreground"
+                  disabled={!customSlotDate || !customSlotStart || !customSlotEnd || isSubmittingCustomSlot}
+                  onClick={async () => {
+                    if (!user) return;
+                    setIsSubmittingCustomSlot(true);
+                    try {
+                      const { error } = await supabase.from('special_requests' as any).insert({
+                        user_id: user.id,
+                        activity_id: activity.id,
+                        venue: activity.venue,
+                        preferred_date: customSlotDate,
+                        start_time: customSlotStart,
+                        end_time: customSlotEnd,
+                        note: customSlotNote.trim() || null,
+                      });
+                      if (error) throw error;
+                      toast.success('Custom slot request submitted! The organizer will review it.');
+                      setShowCustomSlotDialog(false);
+                    } catch (err: any) {
+                      toast.error(err.message || 'Failed to submit request');
+                    } finally {
+                      setIsSubmittingCustomSlot(false);
+                    }
+                  }}
+                >
+                  {isSubmittingCustomSlot ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Send className="h-4 w-4 mr-1" />}
+                  Submit Request
                 </Button>
               </div>
             </motion.div>

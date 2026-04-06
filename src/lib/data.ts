@@ -427,9 +427,16 @@ export const dataService = {
   },
 
   // ─── Demo Data ──────────────────────────────────────────────
-  getDemoActivity(): Activity {
-    return {
-      id: 'demo-activity-001',
+  DEMO_GROUP_ID: '00000000-0000-0000-0000-000000000001',
+  DEMO_ACTIVITY_ID: '00000000-0000-0000-0000-000000000002',
+  DEMO_SESSION_ID: '00000000-0000-0000-0000-000000000003',
+
+  isDemoItem(id: string): boolean {
+    return id === '00000000-0000-0000-0000-000000000001' ||
+           id === '00000000-0000-0000-0000-000000000002' ||
+           id === '00000000-0000-0000-0000-000000000003';
+  },
+};
       organizer_id: 'demo-user',
       title: 'Demo Activity – Weekend Badminton',
       sport: 'Badminton',

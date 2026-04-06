@@ -1751,7 +1751,7 @@ async function handleCallback(chatId: number, data: string, supabase: any) {
     return;
   }
 
-  if (data === "my_bookee" || data === "explore" || data === "my_reservations" || data === "my_ballot_status" || data.startsWith("cancel_booking_") || data.startsWith("join_") || data.startsWith("book_session_")) {
+  if (data === "my_bookee" || data === "explore" || data === "browse_location" || data.startsWith("loc_") || data === "my_reservations" || data === "my_ballot_status" || data.startsWith("cancel_booking_") || data.startsWith("join_") || data.startsWith("book_session_")) {
     await handleMyBookeeCallback(chatId, data, supabase);
     return;
   }

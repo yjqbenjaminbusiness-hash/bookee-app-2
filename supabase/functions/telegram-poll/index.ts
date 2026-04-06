@@ -3,7 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const GATEWAY_URL = "https://connector-gateway.lovable.dev/telegram";
 const MAX_RUNTIME_MS = 55_000;
 const MIN_REMAINING_MS = 5_000;
-const SITE_URL = "https://bookee-app.lovable.app";
+const SITE_URL = "https://bookee-app.com";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

@@ -88,6 +88,7 @@ export default function PlayerDashboard() {
             {showDemo ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
             {showDemo ? 'Hide Demo' : 'Show Demo'}
           </button>
+          <FeedbackDialog />
           <Button size="lg" className="rounded-full shadow-elegant px-8 font-bold" style={{ background: '#1A7A4A', color: '#fff' }}
             onClick={() => navigate('/player/events')}>
             <Zap className="mr-2 h-5 w-5" /> Find a Game

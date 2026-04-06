@@ -6,6 +6,7 @@ import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
 import { Clock, Shuffle, CalendarDays, Plus, ChevronDown, ChevronRight, Users, MapPin, Calendar, ArrowRight, Loader2, Settings, Activity as ActivityIcon, UsersRound, Eye, EyeOff } from 'lucide-react';
+import FeedbackDialog from '../../components/FeedbackDialog';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 

@@ -1340,6 +1340,33 @@ function SupabaseActivityView({
                         </motion.div>
                       )}
                     </AnimatePresence>
+
+                    {/* Session-level unlock: released details */}
+                    {hasBooked && (
+                      <div className="border-t px-4 py-3 bg-muted/5">
+                        {myStatus === 'confirmed' || myStatus === 'confirmed-paid' ? (
+                          (session as any).released_details ? (
+                            <div className="flex items-start gap-2 text-sm">
+                              <Unlock className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                              <div>
+                                <p className="font-bold text-foreground text-xs uppercase tracking-wider mb-0.5">Session Details</p>
+                                <p className="text-foreground">{(session as any).released_details}</p>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                              <Clock className="h-4 w-4" />
+                              <span>Details not yet released by organizer</span>
+                            </div>
+                          )
+                        ) : (
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <Lock className="h-4 w-4" />
+                            <span>Details available after confirmation</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -1390,10 +1417,37 @@ function SupabaseActivityView({
                 <textarea
                   id="special-request"
                   className="w-full rounded-xl border bg-background p-3 text-sm min-h-[80px] focus:outline-none focus:ring-2 focus:ring-ring"
-                  placeholder="e.g. Bringing a guest, preferred position, notes to organizer..."
+                  placeholder="e.g. Preferred position, notes to organizer..."
                   value={specialRequest}
                   onChange={e => setSpecialRequest(e.target.value)}
                 />
+              </div>
+
+              {/* Guest sign-up */}
+              <div className="space-y-2">
+                {!addGuest ? (
+                  <button
+                    type="button"
+                    className="text-sm font-bold text-primary hover:underline flex items-center gap-1"
+                    onClick={() => setAddGuest(true)}
+                  >
+                    <UserPlus className="h-3.5 w-3.5" /> + Add Guest
+                  </button>
+                ) : (
+                  <div className="space-y-2 p-3 rounded-xl border bg-muted/20">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-sm font-bold">Guest Name</Label>
+                      <button type="button" className="text-xs text-destructive hover:underline" onClick={() => { setAddGuest(false); setGuestNameInput(''); }}>Remove</button>
+                    </div>
+                    <Input
+                      placeholder="Guest's full name"
+                      value={guestNameInput}
+                      onChange={e => setGuestNameInput(e.target.value)}
+                      className="rounded-xl"
+                    />
+                    <p className="text-[10px] text-muted-foreground">Guest requires organizer approval and counts toward the slot limit.</p>
+                  </div>
+                )}
               </div>
               <div className="flex gap-2 justify-end">
                 <Button variant="outline" className="rounded-full" onClick={() => setShowJoinDialog(false)}>Cancel</Button>

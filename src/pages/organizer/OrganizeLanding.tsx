@@ -5,7 +5,7 @@ import { dataService, type Group, type Activity, type ActivitySession } from '..
 import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
-import { Clock, Shuffle, CalendarDays, Plus, ChevronDown, ChevronRight, Users, MapPin, Calendar, ArrowRight, Loader2, Settings, Activity as ActivityIcon, UsersRound } from 'lucide-react';
+import { Clock, Shuffle, CalendarDays, Plus, ChevronDown, ChevronRight, Users, MapPin, Calendar, ArrowRight, Loader2, Settings, Activity as ActivityIcon, UsersRound, Eye, EyeOff } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 
@@ -18,6 +18,7 @@ export default function OrganizeLanding() {
   const [sessionsByActivity, setSessionsByActivity] = useState<Record<string, ActivitySession[]>>({});
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState(true);
+  const [showDemo, setShowDemo] = useState(true);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -81,10 +82,12 @@ export default function OrganizeLanding() {
   }
 
   const today = new Date().toISOString().split('T')[0];
-  const upcomingActivities = allActivities.filter(a => a.date >= today);
+  const displayedGroups = showDemo ? groups : groups.filter(g => !dataService.isDemoItem(g.id));
+  const displayedActivities = showDemo ? allActivities : allActivities.filter(a => !dataService.isDemoItem(a.id));
+  const upcomingActivities = displayedActivities.filter(a => a.date >= today);
   const totalParticipants = Object.values(sessionsByActivity).flat().reduce((acc, s) => acc + s.filled_slots, 0);
   const totalSessions = Object.values(sessionsByActivity).flat().length;
-  const unlinkedActivities = allActivities.filter(a => !a.group_id).sort((a, b) => a.date.localeCompare(b.date));
+  const unlinkedActivities = displayedActivities.filter(a => !a.group_id).sort((a, b) => a.date.localeCompare(b.date));
 
   return (
     <div className="container py-8 px-4 max-w-5xl">
@@ -94,7 +97,15 @@ export default function OrganizeLanding() {
           <h1 className="text-3xl font-bold text-foreground">Organize</h1>
           <p className="text-muted-foreground mt-1">Welcome back, {user?.displayName}. Manage your communities.</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center">
+          <button
+            onClick={() => setShowDemo(!showDemo)}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-bold transition-all hover:bg-muted"
+            style={{ color: showDemo ? 'hsl(var(--muted-foreground))' : 'hsl(var(--primary))' }}
+          >
+            {showDemo ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+            {showDemo ? 'Hide Demo' : 'Show Demo'}
+          </button>
           <Button
             variant="outline"
             onClick={() => navigate('/organizer/groups')}
@@ -187,23 +198,26 @@ export default function OrganizeLanding() {
         </div>
       ) : (
         <div className="space-y-3">
-          {groups.length > 0 && (
+          {displayedGroups.length > 0 && (
             <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">
-              Your Groups ({groups.length})
+              Your Groups ({displayedGroups.length})
             </p>
           )}
-          {groups.map((group) => {
+          {displayedGroups.map((group) => {
             const isExpanded = expandedGroups.has(group.id);
-            const groupActivities = activitiesByGroup[group.id] || [];
-            const upcoming = groupActivities.filter(a => a.date >= today);
+            const groupActs = showDemo
+              ? (activitiesByGroup[group.id] || [])
+              : (activitiesByGroup[group.id] || []).filter(a => !dataService.isDemoItem(a.id));
+            const upcoming = groupActs.filter(a => a.date >= today);
+            const isDemo = dataService.isDemoItem(group.id);
 
             return (
               <motion.div
                 key={group.id}
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="rounded-2xl border-2 overflow-hidden bg-card transition-all"
-                style={{ borderColor: isExpanded ? 'hsl(var(--primary) / 0.3)' : 'hsl(var(--border))' }}
+                className={`rounded-2xl border-2 overflow-hidden transition-all ${isDemo ? 'opacity-60 border-dashed' : 'bg-card'}`}
+                style={{ borderColor: isDemo ? 'hsl(var(--muted-foreground) / 0.3)' : isExpanded ? 'hsl(var(--primary) / 0.3)' : 'hsl(var(--border))', background: isDemo ? 'hsl(var(--muted))' : undefined }}
               >
                 {/* Group Row */}
                 <div
@@ -223,6 +237,7 @@ export default function OrganizeLanding() {
                     <div className="flex items-center gap-2">
                       <p className="font-bold text-foreground truncate">{group.name}</p>
                       <Badge variant="secondary" className="text-xs">{group.sport}</Badge>
+                      {isDemo && <Badge className="text-[9px] bg-muted-foreground/60 text-white border-none">DEMO</Badge>}
                     </div>
                     <p className="text-xs text-muted-foreground mt-0.5">
                       {group.member_count || 0} members · {upcoming.length} upcoming
@@ -278,12 +293,12 @@ export default function OrganizeLanding() {
                           })}
                         </div>
 
-                        {groupActivities.length === 0 ? (
+                        {groupActs.length === 0 ? (
                           <div className="text-center py-6 rounded-xl border border-dashed bg-background">
                             <p className="text-sm text-muted-foreground">No activities in this group yet</p>
                           </div>
                         ) : (
-                          groupActivities.map((act) => renderActivityRow(act, today))
+                          groupActs.map((act) => renderActivityRow(act, today))
                         )}
                       </div>
                     </motion.div>
@@ -310,6 +325,7 @@ export default function OrganizeLanding() {
   );
 
   function renderActivityRow(act: Activity, today: string) {
+    const isDemo = dataService.isDemoItem(act.id);
     const actSessions = sessionsByActivity[act.id] || [];
     const totalSlots = actSessions.reduce((a, s) => a + s.max_slots, 0);
     const filledSlots = actSessions.reduce((a, s) => a + s.filled_slots, 0);
@@ -318,7 +334,8 @@ export default function OrganizeLanding() {
     return (
       <div
         key={act.id}
-        className="flex items-center gap-3 p-3 rounded-xl border bg-background hover:shadow-sm transition-all cursor-pointer"
+        className={`flex items-center gap-3 p-3 rounded-xl border hover:shadow-sm transition-all cursor-pointer ${isDemo ? 'opacity-60 border-dashed' : 'bg-background'}`}
+        style={isDemo ? { background: 'hsl(var(--muted))' } : undefined}
         onClick={() => navigate(`/organizer/events/${act.id}`)}
       >
         <div className="p-2 rounded-lg flex-shrink-0 bg-primary/10">
@@ -340,6 +357,7 @@ export default function OrganizeLanding() {
           </div>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
+          {isDemo && <Badge className="text-[9px] bg-muted-foreground/60 text-white border-none">DEMO</Badge>}
           <Badge variant={isPast ? 'secondary' : 'default'} className="text-xs">
             {isPast ? 'Past' : act.status === 'active' ? 'Active' : act.status}
           </Badge>

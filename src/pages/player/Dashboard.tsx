@@ -68,12 +68,8 @@ export default function PlayerDashboard() {
   const pastGames = enriched.filter(b => b.isPast);
   const displayedGames = activeTab === 'upcoming' ? upcomingGames : pastGames;
 
-  // Demo data
-  const demoGroup = dataService.getDemoGroup();
-  const demoActivity = dataService.getDemoActivity();
-
-  // All groups including demo
-  const allGroups = showDemo ? [...groups, demoGroup] : groups;
+  // Filter demo items based on toggle
+  const allGroups = showDemo ? groups : groups.filter(g => !dataService.isDemoItem(g.id));
 
   return (
     <div className="container py-10 px-4 max-w-6xl">
@@ -121,14 +117,14 @@ export default function PlayerDashboard() {
         ) : (
           <div className="flex gap-4 overflow-x-auto pb-3 scrollbar-none" style={{ scrollbarWidth: 'none' }}>
             {allGroups.map(group => {
-              const isDemo = group.id === 'demo-group-001';
+              const isDemo = dataService.isDemoItem(group.id);
               return (
                 <div
                   key={group.id}
-                  className={`flex-shrink-0 w-64 rounded-2xl border-2 overflow-hidden cursor-pointer transition-all hover:shadow-lg ${isDemo ? 'border-dashed border-accent/30' : 'border-primary/10'}`}
+                  className={`flex-shrink-0 w-64 rounded-2xl border-2 overflow-hidden cursor-pointer transition-all hover:shadow-lg ${isDemo ? 'border-dashed border-muted opacity-60' : 'border-primary/10'}`}
+                  style={isDemo ? { background: 'hsl(var(--muted))' } : undefined}
                   onClick={() => navigate(`/player/groups/${group.id}`)}
                 >
-                  {/* Banner */}
                   <div className="h-24 overflow-hidden bg-muted relative">
                     {group.image_url ? (
                       <img src={group.image_url} alt={group.name} className="w-full h-full object-cover" />
@@ -138,11 +134,11 @@ export default function PlayerDashboard() {
                       </div>
                     )}
                     {isDemo && (
-                      <span className="absolute top-2 right-2 text-[9px] font-bold px-2 py-0.5 rounded-full bg-black/50 text-white">DEMO</span>
+                      <span className="absolute top-2 right-2 text-[9px] font-bold px-2 py-0.5 rounded-full bg-muted-foreground/60 text-white">DEMO</span>
                     )}
                   </div>
                   <div className="p-3">
-                    <h3 className="font-bold text-sm truncate" style={{ color: '#111' }}>{group.name}</h3>
+                    <h3 className="font-bold text-sm truncate text-foreground">{group.name}</h3>
                     <p className="text-xs text-muted-foreground mt-0.5">{group.sport} • {group.member_count || 0} members</p>
                   </div>
                 </div>
@@ -172,28 +168,6 @@ export default function PlayerDashboard() {
           </div>
         </div>
 
-        {/* Demo activity card */}
-        {showDemo && activeTab === 'upcoming' && (
-          <div className="mb-4 p-5 rounded-2xl border-2 border-dashed opacity-50" style={{ background: '#f9f9f9' }}>
-            <div className="flex justify-between items-center gap-4">
-              <div className="flex gap-4 items-center">
-                <div className="p-3 rounded-2xl" style={{ background: '#e5e5e5' }}>
-                  <Calendar className="h-5 w-5 text-muted-foreground" />
-                </div>
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-bold text-base" style={{ color: '#555' }}>{demoActivity.title}</h3>
-                    <Badge className="text-[9px]" style={{ background: '#888', color: '#fff', border: 'none' }}>DEMO</Badge>
-                  </div>
-                  <p className="text-xs text-muted-foreground flex items-center gap-1.5">
-                    <MapPin className="h-3 w-3" /> {demoActivity.venue} • <Calendar className="h-3 w-3" /> 31 Dec 2033
-                  </p>
-                  <p className="text-xs text-muted-foreground">Group: {demoGroup.name}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Horizontal scroll for activities */}
         {displayedGames.length === 0 && !showDemo ? (

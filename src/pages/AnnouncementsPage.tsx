@@ -182,7 +182,7 @@ export default function AnnouncementsPage() {
             <p className="text-muted-foreground text-sm mt-1">Features currently being built.</p>
           </div>
 
-          <div className="grid sm:grid-cols-2 gap-4 max-w-2xl mx-auto">
+          <div className="grid sm:grid-cols-1 gap-4 max-w-2xl mx-auto">
             {IN_PROGRESS_ITEMS.map((item, i) => (
               <motion.div
                 key={i}

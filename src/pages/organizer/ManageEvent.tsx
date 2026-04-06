@@ -702,6 +702,8 @@ function SupabaseManageView({ activityId, navigate }: { activityId: string | und
   const [sessions, setSessions] = useState<ActivitySession[]>([]);
   const [bookingsBySession, setBookingsBySession] = useState<Record<string, any[]>>({});
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedBookings, setSelectedBookings] = useState<Set<string>>(new Set());
+  const [expandedSessions, setExpandedSessions] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (!activityId) return;
@@ -717,17 +719,32 @@ function SupabaseManageView({ activityId, navigate }: { activityId: string | und
           bMap[s.id] = await dataService.listBookingsBySession(s.id);
         }));
         setBookingsBySession(bMap);
+        // Auto-expand all sessions
+        setExpandedSessions(new Set(sess.map(s => s.id)));
       }
       setIsLoading(false);
     };
     load();
   }, [activityId]);
 
+  const reloadBookings = async () => {
+    const bMap: Record<string, any[]> = {};
+    await Promise.all(sessions.map(async (s) => {
+      bMap[s.id] = await dataService.listBookingsBySession(s.id);
+    }));
+    setBookingsBySession(bMap);
+  };
+
+  const reloadSessions = async () => {
+    if (!activityId) return;
+    const sess = await dataService.listSessionsByActivity(activityId);
+    setSessions(sess);
+  };
+
   const handleConfirmBooking = async (bookingId: string) => {
     const { error } = await supabase.from('bookings').update({ reservation_status: 'confirmed' as any }).eq('id', bookingId);
     if (error) { toast.error('Failed to confirm'); return; }
     toast.success('Player confirmed');
-    // Reload bookings
     reloadBookings();
   };
 
@@ -745,12 +762,83 @@ function SupabaseManageView({ activityId, navigate }: { activityId: string | und
     reloadBookings();
   };
 
-  const reloadBookings = async () => {
-    const bMap: Record<string, any[]> = {};
-    await Promise.all(sessions.map(async (s) => {
-      bMap[s.id] = await dataService.listBookingsBySession(s.id);
-    }));
-    setBookingsBySession(bMap);
+  const handleMoveToWaitlist = async (bookingId: string) => {
+    const { error } = await supabase.from('bookings').update({ reservation_status: 'cancelled' as any }).eq('id', bookingId);
+    if (error) { toast.error('Failed to move to waitlist'); return; }
+    toast.success('Moved to waitlist');
+    reloadBookings();
+  };
+
+  // Bulk actions
+  const toggleSelect = (id: string) => {
+    setSelectedBookings(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
+  const handleBulkConfirm = async () => {
+    if (selectedBookings.size === 0) { toast.error('Select at least one player'); return; }
+    const ids = Array.from(selectedBookings);
+    const { error } = await supabase.from('bookings').update({ reservation_status: 'confirmed' as any }).in('id', ids);
+    if (error) { toast.error('Failed to bulk confirm'); return; }
+    toast.success(`${ids.length} player(s) confirmed`);
+    setSelectedBookings(new Set());
+    reloadBookings();
+  };
+
+  const handleBulkMarkPaid = async () => {
+    if (selectedBookings.size === 0) { toast.error('Select at least one player'); return; }
+    const ids = Array.from(selectedBookings);
+    const { error } = await supabase.from('bookings').update({ payment_status: 'paid' as any }).in('id', ids);
+    if (error) { toast.error('Failed to bulk mark paid'); return; }
+    toast.success(`${ids.length} player(s) marked paid`);
+    setSelectedBookings(new Set());
+    reloadBookings();
+  };
+
+  const handleBulkRemind = () => {
+    if (selectedBookings.size === 0) { toast.error('Select at least one player'); return; }
+    toast.success(`Reminder sent to ${selectedBookings.size} player(s)`);
+    setSelectedBookings(new Set());
+  };
+
+  const handleBulkWaitlist = async () => {
+    if (selectedBookings.size === 0) { toast.error('Select at least one player'); return; }
+    const ids = Array.from(selectedBookings);
+    const { error } = await supabase.from('bookings').update({ reservation_status: 'cancelled' as any }).in('id', ids);
+    if (error) { toast.error('Failed to move to waitlist'); return; }
+    toast.success(`${ids.length} player(s) moved to waitlist`);
+    setSelectedBookings(new Set());
+    reloadBookings();
+  };
+
+  // Slot adjustment per session
+  const handleAdjustSlots = async (sessionId: string, delta: number) => {
+    const session = sessions.find(s => s.id === sessionId);
+    if (!session) return;
+    const newMax = session.max_slots + delta;
+    if (newMax < 1) { toast.error('Cannot reduce below 1 slot'); return; }
+    const activeBookings = (bookingsBySession[sessionId] || []).filter(
+      (b: any) => b.reservation_status !== 'rejected' && b.reservation_status !== 'cancelled'
+    );
+    if (newMax < activeBookings.length) {
+      toast.error(`Cannot reduce below ${activeBookings.length} active participants`);
+      return;
+    }
+    const { error } = await supabase.from('activity_sessions').update({ max_slots: newMax }).eq('id', sessionId);
+    if (error) { toast.error('Failed to update slots'); return; }
+    toast.success(`Slots ${delta > 0 ? 'increased' : 'decreased'} to ${newMax}`);
+    reloadSessions();
+  };
+
+  const toggleSession = (id: string) => {
+    setExpandedSessions(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
   };
 
   if (isLoading) {
@@ -774,7 +862,7 @@ function SupabaseManageView({ activityId, navigate }: { activityId: string | und
 
   const isPast = activity.date < new Date().toISOString().split('T')[0];
   const totalSlots = sessions.reduce((a, s) => a + s.max_slots, 0);
-  const filledSlots = Object.values(bookingsBySession).reduce((a, arr) => a + arr.filter(b => b.reservation_status !== 'rejected' && b.reservation_status !== 'cancelled').length, 0);
+  const filledSlots = Object.values(bookingsBySession).reduce((a, arr) => a + arr.filter((b: any) => b.reservation_status !== 'rejected' && b.reservation_status !== 'cancelled').length, 0);
 
   return (
     <div className="container py-10 px-4 max-w-5xl">
@@ -806,7 +894,7 @@ function SupabaseManageView({ activityId, navigate }: { activityId: string | und
           <p className="text-xs text-muted-foreground uppercase font-bold">Revenue</p>
           <p className="text-2xl font-bold text-primary">${sessions.reduce((acc, s) => {
             const bookings = bookingsBySession[s.id] || [];
-            return acc + bookings.filter(b => b.reservation_status !== 'rejected').length * Number(s.price);
+            return acc + bookings.filter((b: any) => b.reservation_status !== 'rejected').length * Number(s.price);
           }, 0)}</p>
         </CardContent></Card>
       </div>
@@ -817,67 +905,178 @@ function SupabaseManageView({ activityId, navigate }: { activityId: string | und
         <Card><CardContent className="p-6 text-center text-muted-foreground">No sessions for this activity.</CardContent></Card>
       ) : sessions.map(session => {
         const bookings = bookingsBySession[session.id] || [];
-        const activeBookings = bookings.filter(b => b.reservation_status !== 'rejected' && b.reservation_status !== 'cancelled');
+        const activeBookings = bookings.filter((b: any) => b.reservation_status !== 'rejected' && b.reservation_status !== 'cancelled');
+        const waitlistBookings = bookings.filter((b: any) => b.reservation_status === 'cancelled');
+        const pct = session.max_slots > 0 ? (activeBookings.length / session.max_slots) * 100 : 0;
+        const isExpanded = expandedSessions.has(session.id);
+        const isFull = activeBookings.length >= session.max_slots;
 
         return (
-          <Card key={session.id} className="mb-4">
+          <Card key={session.id} className={`mb-4 overflow-hidden ${isExpanded ? 'ring-1 ring-primary/20' : ''}`}>
             <CardHeader className="pb-3 bg-muted/20">
-              <div className="flex items-center justify-between">
-                <div>
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="flex flex-col gap-1">
                   <CardTitle className="text-base">{session.time_label}</CardTitle>
-                  <CardDescription>${Number(session.price)} / player · {activeBookings.length}/{session.max_slots} slots</CardDescription>
+                  <CardDescription className="flex items-center gap-2">
+                    <DollarSign className="h-3 w-3" /> ${Number(session.price)} / player
+                    {isFull && <Badge variant="destructive" className="text-[9px] ml-2">FULL</Badge>}
+                  </CardDescription>
                 </div>
-                <Progress value={(activeBookings.length / session.max_slots) * 100} className="w-24 h-2" />
+                <div className="flex items-center gap-4 flex-1 max-w-md">
+                  <div className="flex-1 space-y-1">
+                    <div className="flex justify-between text-xs mb-1">
+                      <span className="font-medium">Players: <strong>{activeBookings.length}</strong></span>
+                      <span className="font-medium">Slots: <strong>{session.max_slots}</strong></span>
+                    </div>
+                    <Progress value={pct} className="h-2" />
+                    {/* Slot controls */}
+                    <div className="flex items-center gap-2 pt-2">
+                      <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">Adjust:</span>
+                      <div className="flex items-center gap-0 rounded-lg border overflow-hidden">
+                        <button
+                          className="px-2.5 py-1 text-sm font-bold transition-colors hover:bg-destructive/10 text-destructive"
+                          onClick={() => handleAdjustSlots(session.id, -1)}
+                          title="Reduce slots"
+                        >
+                          <Minus className="h-3.5 w-3.5" />
+                        </button>
+                        <span className="px-2 py-1 text-sm font-bold border-x min-w-[32px] text-center">{session.max_slots}</span>
+                        <button
+                          className="px-2.5 py-1 text-sm font-bold transition-colors hover:bg-primary/10 text-primary"
+                          onClick={() => handleAdjustSlots(session.id, 1)}
+                          title="Increase slots"
+                        >
+                          <Plus className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                      <span className="text-[10px] text-muted-foreground">{session.max_slots - activeBookings.length} remaining</span>
+                    </div>
+                  </div>
+                  <Button variant="ghost" size="sm" onClick={() => toggleSession(session.id)}>
+                    {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                    <span className="ml-1">{isExpanded ? 'Collapse' : 'Players'}</span>
+                  </Button>
+                </div>
               </div>
             </CardHeader>
-            <CardContent className="p-0">
-              {activeBookings.length === 0 ? (
-                <p className="p-4 text-sm text-muted-foreground italic">No participants yet.</p>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Player</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Payment</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {activeBookings.map(booking => (
-                      <TableRow key={booking.id}>
-                        <TableCell className="font-medium">{booking.player_name}</TableCell>
-                        <TableCell>
-                          <Badge variant={booking.reservation_status === 'confirmed' ? 'default' : 'secondary'} className="text-xs">
-                            {booking.reservation_status}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={booking.payment_status === 'paid' ? 'default' : booking.payment_status === 'pending' ? 'secondary' : 'outline'} className="text-xs">
-                            {booking.payment_status}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-right space-x-1">
-                          {booking.reservation_status !== 'confirmed' && (
-                            <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => handleConfirmBooking(booking.id)}>
-                              <CheckCircle2 className="h-3 w-3 mr-1" /> Confirm
-                            </Button>
-                          )}
-                          {booking.payment_status !== 'paid' && (
-                            <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => handleMarkPaid(booking.id)}>
-                              <DollarSign className="h-3 w-3 mr-1" /> Paid
-                            </Button>
-                          )}
-                          <Button size="sm" variant="ghost" className="h-7 text-xs text-destructive" onClick={() => handleRejectBooking(booking.id)}>
-                            <XCircle className="h-3 w-3 mr-1" /> Remove
-                          </Button>
-                        </TableCell>
+            {isExpanded && (
+              <CardContent className="p-0 border-t">
+                {/* Bulk actions bar */}
+                {activeBookings.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-2 px-4 py-2 bg-muted/30 border-b">
+                    <span className="text-xs text-muted-foreground font-bold">
+                      {selectedBookings.size > 0 ? `${selectedBookings.size} selected` : 'Bulk actions:'}
+                    </span>
+                    <Button size="sm" variant="outline" className="h-7 text-xs rounded-full text-primary border-primary/30" onClick={handleBulkConfirm}>
+                      <CheckCircle2 className="mr-1 h-3 w-3" /> Confirm
+                    </Button>
+                    <Button size="sm" variant="outline" className="h-7 text-xs rounded-full" onClick={handleBulkMarkPaid}>
+                      <DollarSign className="mr-1 h-3 w-3" /> Mark Paid
+                    </Button>
+                    <Button size="sm" variant="outline" className="h-7 text-xs rounded-full" onClick={handleBulkRemind}>
+                      <Bell className="mr-1 h-3 w-3" /> Remind
+                    </Button>
+                    <Button size="sm" variant="outline" className="h-7 text-xs rounded-full text-amber-600 border-amber-600/30" onClick={handleBulkWaitlist}>
+                      <List className="mr-1 h-3 w-3" /> Waitlist
+                    </Button>
+                  </div>
+                )}
+
+                {activeBookings.length === 0 ? (
+                  <p className="p-4 text-sm text-muted-foreground italic">No participants yet.</p>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-8"></TableHead>
+                        <TableHead>Player</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Payment</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
-            </CardContent>
+                    </TableHeader>
+                    <TableBody>
+                      {activeBookings.map((booking: any) => {
+                        const isSelected = selectedBookings.has(booking.id);
+                        return (
+                          <TableRow key={booking.id} className={isSelected ? 'bg-primary/5' : ''}>
+                            <TableCell>
+                              <button onClick={() => toggleSelect(booking.id)} className="text-muted-foreground hover:text-primary transition-colors">
+                                {isSelected ? <CheckSquare className="h-4 w-4 text-primary" /> : <Square className="h-4 w-4" />}
+                              </button>
+                            </TableCell>
+                            <TableCell className="font-medium">{booking.player_name}</TableCell>
+                            <TableCell>
+                              <Badge variant={booking.reservation_status === 'confirmed' ? 'default' : 'secondary'} className="text-xs">
+                                {booking.reservation_status === 'confirmed' ? '✓ Confirmed' : '⏳ Pending'}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant={booking.payment_status === 'paid' ? 'default' : booking.payment_status === 'pending' ? 'secondary' : 'outline'} className="text-xs">
+                                {booking.payment_status === 'paid' ? '💰 Paid' : booking.payment_status === 'pending' ? '⏳ Pending' : 'Unpaid'}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex items-center justify-end gap-1">
+                                {booking.reservation_status !== 'confirmed' && (
+                                  <Button size="sm" variant="ghost" className="h-7 text-xs text-primary" onClick={() => handleConfirmBooking(booking.id)}>
+                                    <CheckCircle2 className="h-3 w-3 mr-1" /> Confirm
+                                  </Button>
+                                )}
+                                {booking.payment_status !== 'paid' && (
+                                  <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => handleMarkPaid(booking.id)}>
+                                    <DollarSign className="h-3 w-3 mr-1" /> Paid
+                                  </Button>
+                                )}
+                                <Button size="sm" variant="ghost" className="h-7 text-xs text-amber-600" onClick={() => handleMoveToWaitlist(booking.id)}>
+                                  <List className="h-3 w-3 mr-1" /> Waitlist
+                                </Button>
+                                <Button size="sm" variant="ghost" className="h-7 text-xs text-destructive" onClick={() => handleRejectBooking(booking.id)}>
+                                  <XCircle className="h-3 w-3 mr-1" /> Remove
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                )}
+
+                {/* Waitlist Section */}
+                {waitlistBookings.length > 0 && (
+                  <div className="border-t p-4 bg-amber-50/30">
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground font-bold uppercase tracking-wider mb-3">
+                      <List className="h-3 w-3" /> Waitlist ({waitlistBookings.length})
+                    </div>
+                    <div className="space-y-2">
+                      {waitlistBookings.map((entry: any, idx: number) => (
+                        <div key={entry.id} className="flex items-center justify-between text-sm px-2 py-1.5 rounded-lg bg-background border">
+                          <div className="flex items-center gap-2">
+                            <span className="w-5 text-right text-muted-foreground font-mono">#{idx + 1}</span>
+                            <div className="h-2 w-2 rounded-full bg-amber-400" />
+                            <span className="font-medium">{entry.player_name}</span>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 text-xs text-primary"
+                            onClick={async () => {
+                              const { error } = await supabase.from('bookings').update({ reservation_status: 'pending' as any }).eq('id', entry.id);
+                              if (error) { toast.error('Failed'); return; }
+                              toast.success('Moved back to active');
+                              reloadBookings();
+                            }}
+                          >
+                            <Plus className="h-3 w-3 mr-1" /> Restore
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            )}
           </Card>
         );
       })}

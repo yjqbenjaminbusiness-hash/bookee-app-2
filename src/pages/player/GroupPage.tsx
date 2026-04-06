@@ -32,18 +32,7 @@ export default function GroupPage() {
     const load = async () => {
       setIsLoading(true);
       try {
-        // Handle demo data locally
-        if (groupId === 'demo-group-001') {
-          const demoGroup = dataService.getDemoGroup();
-          const demoActivity = dataService.getDemoActivity();
-          setGroup(demoGroup);
-          setActivities([demoActivity]);
-          setMemberCount(demoGroup.member_count || 0);
-          setSessions({});
-          setIsMember(false);
-          setIsLoading(false);
-          return;
-        }
+        // Demo group is now in DB — no special handling needed
 
         const [grp, acts, members] = await Promise.all([
           dataService.getGroup(groupId),

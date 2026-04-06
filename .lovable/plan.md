@@ -1,91 +1,112 @@
 
 
-# Enhance Session Functionality: Guest Sign-Up, Session Unlock, Contact Organizer
+# Fix Plan: Special Request as Standalone Option + Status Bug Fixes + Edge Function Imports
 
-## Diagnosis
+## What You Asked For
 
-**What already exists:**
-- Special request field during join -- DONE (join dialog with textarea in EventDetails.tsx)
-- Waitlist auto-join when full -- DONE
-- Participant status system (Confirmed/Pending/Waitlisted) -- DONE
-- Slot adjustment per session -- DONE (ManageEvent.tsx)
-- Bulk actions per session -- DONE
+You want a **"Request Different Timeslot"** option visible on the activity/session page itself — not just the inline special request field inside the join dialog. Players should be able to submit a request for a custom time without needing to pick an existing slot first.
 
-**What is missing:**
-1. **Guest sign-up**: No "+ Add Guest" option in the join dialog. No guest booking concept tied to a main user.
-2. **Session-level unlock**: No locked/unlocked details per session. No `details_released` flag on `activity_sessions`. The `location` field on activities is always visible.
-3. **Organizer "Release Details" control**: No toggle per session to release court/location info.
-4. **Contact Organizer button**: No button in the player's session view to contact the organizer via Telegram or WhatsApp.
+## Current State
 
-## Schema Change Required
+- A standalone `SpecialRequestPage` exists at `/player/special-request` but it uses **mock data only** (`store.createSpecialRequest`), not Supabase. It also has hardcoded venues unrelated to the activity being viewed.
+- The join dialog already has a "Special Request" textarea — this stays as-is.
+- The existing `SpecialRequestPage` and the organizer's `SpecialRequests` page both use mock data, not the database.
 
-Add one column to `activity_sessions`:
+## Plan
 
-```sql
-ALTER TABLE activity_sessions ADD COLUMN IF NOT EXISTS
-  released_details text;  -- nullable; when set, contains unlocked info (court number, notes, etc.)
+### 1. Add "Request Different Timeslot" Button on EventDetails Page
+
+In `src/pages/player/EventDetails.tsx`, below the sessions list, add a visible button/link:
+
+```
+Can't find a suitable time? → Request a Custom Slot
 ```
 
-This avoids a boolean flag and instead stores the actual details to release. When `NULL`, details are locked; when set, they are shown to confirmed participants only.
+Clicking it opens a dialog (not a page navigation) pre-filled with the activity's venue and sport. The dialog collects:
+- Preferred date
+- Preferred start/end time
+- Optional note
 
-No other schema changes needed -- guest bookings will reuse the existing `bookings` table with a naming convention (`player_name = "Guest of [user]"`).
+On submit, it creates a **special request record in Supabase** (not mock store).
 
-## Implementation Plan
+### 2. Database: Create `special_requests` Table
 
-### 1. Guest Sign-Up (EventDetails.tsx join dialog)
+Since the current special request system is mock-only, we need a real table:
 
-In the existing join dialog (`showJoinDialog` modal):
-- Add a "+ Add Guest" button below the special request textarea
-- When clicked, show a guest name input field
-- On submit, create TWO bookings: one for the user, one for the guest
-  - Guest booking: `player_name = "Guest of [username]"`, `user_id = same user`, `player_username = null`
-  - Guest `reservation_status` = `'pending'` (requires organizer approval)
-- Guest counts toward slot limit
-- If session is full after user booking, guest goes to waitlist
+```sql
+CREATE TABLE public.special_requests (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  activity_id uuid,
+  venue text NOT NULL,
+  preferred_date date NOT NULL,
+  start_time text NOT NULL,
+  end_time text NOT NULL,
+  note text,
+  status text NOT NULL DEFAULT 'pending',
+  created_at timestamptz NOT NULL DEFAULT now()
+);
 
-### 2. Organizer Guest Approval (ManageEvent.tsx)
+ALTER TABLE public.special_requests ENABLE ROW LEVEL SECURITY;
 
-- In the participant table, guest bookings are identifiable by `player_name` starting with "Guest of"
-- Show a "Guest" badge next to these entries
-- Existing Confirm/Reject buttons already work for approval
-- No additional code needed beyond the badge indicator
+-- Players can create their own requests
+CREATE POLICY "Users can create own requests" ON public.special_requests
+  FOR INSERT TO authenticated WITH CHECK (auth.uid() = user_id);
 
-### 3. Session-Level Unlock (EventDetails.tsx player view)
+-- Players can view own requests
+CREATE POLICY "Users can view own requests" ON public.special_requests
+  FOR SELECT TO authenticated USING (auth.uid() = user_id);
 
-- After the migration adds `released_details` to `activity_sessions`, update the `ActivitySession` type in `data.ts`
-- In the player's session card, show a locked section:
-  - If user is NOT confirmed: show lock icon + "Details available after confirmation"
-  - If user IS confirmed AND `released_details` is set: show the details
-  - If user IS confirmed AND `released_details` is null: show "Details not yet released"
+-- Organizers can view requests for their activities
+CREATE POLICY "Organizers can view activity requests" ON public.special_requests
+  FOR SELECT TO authenticated USING (
+    EXISTS (SELECT 1 FROM activities WHERE activities.id = special_requests.activity_id AND activities.organizer_id = auth.uid())
+  );
 
-### 4. Organizer Release Details Control (ManageEvent.tsx)
+-- Organizers can update request status
+CREATE POLICY "Organizers can update request status" ON public.special_requests
+  FOR UPDATE TO authenticated USING (
+    EXISTS (SELECT 1 FROM activities WHERE activities.id = special_requests.activity_id AND activities.organizer_id = auth.uid())
+  );
+```
 
-- Per session card, add an input field + "Release Details" button
-- Organizer types court number / location notes, clicks release
-- Updates `activity_sessions.released_details` via Supabase
-- Shows current released details with option to clear
+### 3. Update Organizer ManageEvent to Show Special Requests
 
-### 5. Contact Organizer Button (EventDetails.tsx)
+In `src/pages/organizer/ManageEvent.tsx` (SupabaseManageView), add a section that fetches and displays special requests for the activity from the new table. Show: player name, preferred date/time, note, status, and Approve/Reject buttons.
 
-- Fetch the organizer's profile (phone, telegram_chat_id) using `activity.organizer_id`
-- Below each session or in the activity header, add a "Contact Organizer" button
-- Opens a dropdown with available options:
-  - WhatsApp: `https://wa.me/[phone]` (if phone exists)
-  - Telegram: `https://t.me/[username]` or deep link (if telegram info exists)
-- Only show if user has joined at least one session
+### 4. Fix Participant Status Bug
+
+In `src/pages/player/EventDetails.tsx`:
+- Add `rejected` check as first condition in `getMyStatus()`
+- Add `rejected` case to `statusBadge()`
+- Exclude rejected bookings from `userBookingIds` so rejected users can re-sign up
+- Add `rejected` badge to participant list
+
+In `src/pages/organizer/ManageEvent.tsx`:
+- Add `rejected` status to the participant table badge
+
+### 5. Fix Edge Function Build Errors
+
+In all 6 edge function files, change:
+```
+import { createClient } from "npm:@supabase/supabase-js@2.57.2"
+```
+to:
+```
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
+```
 
 ## Files Modified
 
 | File | Changes |
 |------|---------|
-| Migration SQL | Add `released_details` column to `activity_sessions` |
-| `src/lib/data.ts` | Update `ActivitySession` interface to include `released_details` |
-| `src/pages/player/EventDetails.tsx` | Add guest field in join dialog, locked details section per session, contact organizer button |
-| `src/pages/organizer/ManageEvent.tsx` | Add guest badge in participant table, release details input per session |
+| Migration SQL | Create `special_requests` table with RLS |
+| `src/pages/player/EventDetails.tsx` | Add "Request Custom Slot" dialog; fix `getMyStatus()` and `statusBadge()` for rejected; exclude rejected from `userBookingIds` |
+| `src/pages/organizer/ManageEvent.tsx` | Add special requests section from DB; fix rejected badge in participant table |
+| 6 edge function `index.ts` files | Fix `npm:` import to `https://esm.sh/` |
 
 ## Risk Assessment
-- Guest bookings reuse existing `bookings` table -- no schema risk
-- `released_details` column is nullable text, additive only
-- Contact button is read-only UI, no data risk
-- Lock/unlock is purely display logic based on existing `reservation_status`
+- New `special_requests` table is fully additive — no existing data affected
+- Status fix only adds new cases, no existing logic removed
+- Edge function import is a direct swap
 

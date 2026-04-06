@@ -334,7 +334,8 @@ export default function OrganizeLanding() {
     return (
       <div
         key={act.id}
-        className="flex items-center gap-3 p-3 rounded-xl border bg-background hover:shadow-sm transition-all cursor-pointer"
+        className={`flex items-center gap-3 p-3 rounded-xl border hover:shadow-sm transition-all cursor-pointer ${isDemo ? 'opacity-60 border-dashed' : 'bg-background'}`}
+        style={isDemo ? { background: 'hsl(var(--muted))' } : undefined}
         onClick={() => navigate(`/organizer/events/${act.id}`)}
       >
         <div className="p-2 rounded-lg flex-shrink-0 bg-primary/10">
@@ -356,6 +357,7 @@ export default function OrganizeLanding() {
           </div>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
+          {isDemo && <Badge className="text-[9px] bg-muted-foreground/60 text-white border-none">DEMO</Badge>}
           <Badge variant={isPast ? 'secondary' : 'default'} className="text-xs">
             {isPast ? 'Past' : act.status === 'active' ? 'Active' : act.status}
           </Badge>

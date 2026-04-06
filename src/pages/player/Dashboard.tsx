@@ -117,14 +117,14 @@ export default function PlayerDashboard() {
         ) : (
           <div className="flex gap-4 overflow-x-auto pb-3 scrollbar-none" style={{ scrollbarWidth: 'none' }}>
             {allGroups.map(group => {
-              const isDemo = group.id === 'demo-group-001';
+              const isDemo = dataService.isDemoItem(group.id);
               return (
                 <div
                   key={group.id}
-                  className={`flex-shrink-0 w-64 rounded-2xl border-2 overflow-hidden cursor-pointer transition-all hover:shadow-lg ${isDemo ? 'border-dashed border-accent/30' : 'border-primary/10'}`}
+                  className={`flex-shrink-0 w-64 rounded-2xl border-2 overflow-hidden cursor-pointer transition-all hover:shadow-lg ${isDemo ? 'border-dashed border-muted opacity-60' : 'border-primary/10'}`}
+                  style={isDemo ? { background: 'hsl(var(--muted))' } : undefined}
                   onClick={() => navigate(`/player/groups/${group.id}`)}
                 >
-                  {/* Banner */}
                   <div className="h-24 overflow-hidden bg-muted relative">
                     {group.image_url ? (
                       <img src={group.image_url} alt={group.name} className="w-full h-full object-cover" />
@@ -134,11 +134,11 @@ export default function PlayerDashboard() {
                       </div>
                     )}
                     {isDemo && (
-                      <span className="absolute top-2 right-2 text-[9px] font-bold px-2 py-0.5 rounded-full bg-black/50 text-white">DEMO</span>
+                      <span className="absolute top-2 right-2 text-[9px] font-bold px-2 py-0.5 rounded-full bg-muted-foreground/60 text-white">DEMO</span>
                     )}
                   </div>
                   <div className="p-3">
-                    <h3 className="font-bold text-sm truncate" style={{ color: '#111' }}>{group.name}</h3>
+                    <h3 className="font-bold text-sm truncate text-foreground">{group.name}</h3>
                     <p className="text-xs text-muted-foreground mt-0.5">{group.sport} • {group.member_count || 0} members</p>
                   </div>
                 </div>

@@ -216,8 +216,8 @@ export default function OrganizeLanding() {
                 key={group.id}
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="rounded-2xl border-2 overflow-hidden bg-card transition-all"
-                style={{ borderColor: isExpanded ? 'hsl(var(--primary) / 0.3)' : 'hsl(var(--border))' }}
+                className={`rounded-2xl border-2 overflow-hidden transition-all ${isDemo ? 'opacity-60 border-dashed' : 'bg-card'}`}
+                style={{ borderColor: isDemo ? 'hsl(var(--muted-foreground) / 0.3)' : isExpanded ? 'hsl(var(--primary) / 0.3)' : 'hsl(var(--border))', background: isDemo ? 'hsl(var(--muted))' : undefined }}
               >
                 {/* Group Row */}
                 <div

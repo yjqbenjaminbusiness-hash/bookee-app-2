@@ -116,6 +116,7 @@ export const dataService = {
     description?: string;
     group_id?: string;
     image_url?: string;
+    visibility?: string;
   }): Promise<Activity | null> {
     console.log('[dataService] Creating activity:', activity);
     const { data, error } = await supabase
@@ -130,6 +131,7 @@ export const dataService = {
         description: activity.description || null,
         group_id: activity.group_id || null,
         image_url: activity.image_url || null,
+        visibility: activity.visibility || 'public',
       })
       .select()
       .single();

@@ -19,6 +19,7 @@ import AnnouncementsPage from "./pages/AnnouncementsPage";
 import OrganizerInfoPage from "./pages/organizer/OrganizerInfoPage";
 import HelpPage from "./pages/HelpPage";
 import TermsPage from "./pages/TermsPage";
+import UnsubscribePage from "./pages/UnsubscribePage";
 
 // Demo Pages
 import OrganizerDemo from "./pages/demo/OrganizerDemo";
@@ -81,6 +82,7 @@ const App = () => (
             <Route path="/organizer/info" element={<OrganizerInfoPage />} />
             <Route path="/help" element={<HelpPage />} />
             <Route path="/terms" element={<TermsPage />} />
+            <Route path="/unsubscribe" element={<UnsubscribePage />} />
 
             {/* Settings Route */}
             <Route path="/settings" element={

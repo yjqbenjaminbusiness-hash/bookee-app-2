@@ -1042,6 +1042,7 @@ function SupabaseActivityView({
     setIsJoining(true);
     setShowJoinDialog(false);
     try {
+      // Create main booking
       await dataService.createBooking({
         session_id: joinSessionId,
         user_id: user.id,
@@ -1051,12 +1052,29 @@ function SupabaseActivityView({
         special_request: specialRequest.trim() || undefined,
         reservation_status: isFull ? 'cancelled' : undefined,
       });
-      toast.success(isFull ? 'Added to waitlist!' : 'You have joined this session!');
+
+      // Create guest booking if requested
+      if (addGuest && guestNameInput.trim()) {
+        const guestActive = activeBookings.length + (isFull ? 0 : 1); // +1 for main booking just created
+        const guestIsFull = guestActive >= session.max_slots;
+        await dataService.createBooking({
+          session_id: joinSessionId,
+          user_id: user.id,
+          player_name: `Guest of ${user.displayName || user.username || 'User'}: ${guestNameInput.trim()}`,
+          player_username: undefined,
+          amount: session.price,
+          reservation_status: guestIsFull ? 'cancelled' : 'pending', // guest always pending for organizer approval
+        });
+        toast.success(isFull ? 'You & guest added to waitlist!' : 'Joined! Guest requires organizer approval.');
+      } else {
+        toast.success(isFull ? 'Added to waitlist!' : 'You have joined this session!');
+      }
+
       // Reload bookings
       const bks = await dataService.listBookingsBySession(joinSessionId);
       setBookingsBySession(prev => ({ ...prev, [joinSessionId]: bks }));
       setUserBookingIds(prev => new Set([...prev, joinSessionId]));
-      const myBooking = bks.find((b: any) => b.user_id === user.id);
+      const myBooking = bks.find((b: any) => b.user_id === user.id && !b.player_name.startsWith('Guest of'));
       if (myBooking) setUserBookings(prev => ({ ...prev, [joinSessionId]: myBooking }));
     } catch (err: any) {
       toast.error(err.message || 'Failed to join');

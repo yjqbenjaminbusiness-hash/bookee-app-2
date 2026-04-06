@@ -13,6 +13,7 @@ export interface Activity {
   status: string;
   group_id: string | null;
   image_url: string | null;
+  visibility: string;
   created_at: string;
   updated_at: string;
 }
@@ -65,6 +66,16 @@ export const dataService = {
     return (data || []) as Activity[];
   },
 
+  async listPublicActivities(): Promise<Activity[]> {
+    const { data, error } = await supabase
+      .from('activities')
+      .select('*')
+      .eq('visibility', 'public')
+      .order('date', { ascending: false });
+    if (error) { console.error('listPublicActivities error:', error); return []; }
+    return (data || []) as Activity[];
+  },
+
   async listActivitiesByOrganizer(organizerId: string): Promise<Activity[]> {
     const { data, error } = await supabase
       .from('activities')
@@ -105,6 +116,7 @@ export const dataService = {
     description?: string;
     group_id?: string;
     image_url?: string;
+    visibility?: string;
   }): Promise<Activity | null> {
     console.log('[dataService] Creating activity:', activity);
     const { data, error } = await supabase
@@ -119,6 +131,7 @@ export const dataService = {
         description: activity.description || null,
         group_id: activity.group_id || null,
         image_url: activity.image_url || null,
+        visibility: activity.visibility || 'public',
       })
       .select()
       .single();
@@ -361,27 +374,29 @@ export const dataService = {
     user_id: string;
     player_name: string;
     player_phone?: string;
+    player_username?: string;
     amount?: number;
+    special_request?: string;
+    reservation_status?: string;
   }): Promise<any> {
+    const insertData: any = {
+      session_id: booking.session_id,
+      user_id: booking.user_id,
+      player_name: booking.player_name,
+      player_phone: booking.player_phone || null,
+      player_username: booking.player_username || null,
+      amount: booking.amount || 0,
+      special_request: booking.special_request || null,
+    };
     const { data, error } = await supabase
       .from('bookings')
-      .insert({
-        session_id: booking.session_id,
-        user_id: booking.user_id,
-        player_name: booking.player_name,
-        player_phone: booking.player_phone || null,
-        amount: booking.amount || 0,
-      })
+      .insert(insertData)
       .select()
       .single();
     if (error) {
       console.error('[dataService] createBooking error:', error);
       throw new Error(error.message);
     }
-    // Increment filled_slots
-    await supabase.rpc('has_role', { _user_id: booking.user_id, _role: 'user' }).then(() => {
-      // Simple increment via update
-    });
     return data;
   },
 
@@ -424,6 +439,32 @@ export const dataService = {
       .from('group-images')
       .getPublicUrl(path);
     return urlData.publicUrl;
+  },
+
+  // ─── Announcements ───────────────────────────────────────────
+  async listAnnouncementsByActivity(activityId: string): Promise<any[]> {
+    const { data, error } = await supabase
+      .from('announcements')
+      .select('*')
+      .eq('activity_id', activityId)
+      .order('created_at', { ascending: false });
+    if (error) { console.error('listAnnouncements error:', error); return []; }
+    return data || [];
+  },
+
+  async createAnnouncement(activityId: string, organizerId: string, message: string): Promise<any> {
+    const { data, error } = await supabase
+      .from('announcements')
+      .insert({ activity_id: activityId, organizer_id: organizerId, message })
+      .select()
+      .single();
+    if (error) throw new Error(error.message);
+    return data;
+  },
+
+  async deleteAnnouncement(id: string): Promise<void> {
+    const { error } = await supabase.from('announcements').delete().eq('id', id);
+    if (error) throw new Error(error.message);
   },
 
   // ─── Demo Data ──────────────────────────────────────────────

@@ -57,7 +57,7 @@ export default function PlayerEvents() {
       setIsLoading(true);
       try {
         const [acts, grps] = await Promise.all([
-          dataService.listActivities(),
+          dataService.listPublicActivities(),
           dataService.listGroups(),
         ]);
         setActivities(acts);

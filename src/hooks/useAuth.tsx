@@ -54,8 +54,9 @@ function supabaseUserToMockUser(profile: any, role: string): MockUser {
     verified: profile.verification_status === 'verified',
     pendingVerification: profile.verification_status === 'pending',
     password: '', // not stored
-    displayName: profile.display_name || profile.email?.split('@')[0] || 'User',
+    displayName: profile.username || profile.display_name || profile.email?.split('@')[0] || 'User',
     phone: profile.phone || undefined,
+    username: profile.username || undefined,
   };
 }
 

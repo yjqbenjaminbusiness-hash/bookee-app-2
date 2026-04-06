@@ -10,6 +10,7 @@ export interface MockUser {
   password: string;
   displayName: string;
   phone?: string;
+  username?: string;
 }
 
 export type PaymentPolicyType = 'immediate' | 'before' | 'after' | 'optional';

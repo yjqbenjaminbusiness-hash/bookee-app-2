@@ -864,6 +864,42 @@ function SupabaseManageView({ activityId, navigate }: { activityId: string | und
   const totalSlots = sessions.reduce((a, s) => a + s.max_slots, 0);
   const filledSlots = Object.values(bookingsBySession).reduce((a, arr) => a + arr.filter((b: any) => b.reservation_status !== 'rejected' && b.reservation_status !== 'cancelled').length, 0);
 
+  // Announcements state
+  const [announcements, setAnnouncements] = useState<any[]>([]);
+  const [announcementInput, setAnnouncementInput] = useState('');
+  const [isSendingAnn, setIsSendingAnn] = useState(false);
+
+  useEffect(() => {
+    if (activity) {
+      dataService.listAnnouncementsByActivity(activity.id).then(setAnnouncements);
+    }
+  }, [activity]);
+
+  const handlePostAnnouncement = async () => {
+    if (!announcementInput.trim() || !user || !activity) return;
+    setIsSendingAnn(true);
+    try {
+      await dataService.createAnnouncement(activity.id, user.id, announcementInput.trim());
+      setAnnouncementInput('');
+      const anns = await dataService.listAnnouncementsByActivity(activity.id);
+      setAnnouncements(anns);
+      toast.success('Announcement posted');
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to post');
+    } finally {
+      setIsSendingAnn(false);
+    }
+  };
+
+  const handleToggleVisibility = async () => {
+    if (!activity) return;
+    const newVis = (activity as any).visibility === 'private' ? 'public' : 'private';
+    const { error } = await supabase.from('activities').update({ visibility: newVis }).eq('id', activity.id);
+    if (error) { toast.error('Failed to update visibility'); return; }
+    setActivity({ ...activity, visibility: newVis } as any);
+    toast.success(`Activity is now ${newVis}`);
+  };
+
   return (
     <div className="container py-10 px-4 max-w-5xl">
       <Button variant="ghost" className="mb-6" onClick={() => navigate('/organize')}>
@@ -871,11 +907,23 @@ function SupabaseManageView({ activityId, navigate }: { activityId: string | und
       </Button>
 
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-foreground">{activity.title}</h1>
-        <div className="flex items-center gap-4 text-sm text-muted-foreground mt-2">
-          <span className="flex items-center gap-1"><Calendar className="h-4 w-4" /> {new Date(activity.date).toLocaleDateString()}</span>
-          <span className="flex items-center gap-1"><MapPin className="h-4 w-4" /> {activity.venue}</span>
-          <Badge variant={isPast ? 'secondary' : 'default'}>{isPast ? 'Past' : 'Active'}</Badge>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">{activity.title}</h1>
+            <div className="flex items-center gap-4 text-sm text-muted-foreground mt-2">
+              <span className="flex items-center gap-1"><Calendar className="h-4 w-4" /> {new Date(activity.date).toLocaleDateString()}</span>
+              <span className="flex items-center gap-1"><MapPin className="h-4 w-4" /> {activity.venue}</span>
+              <Badge variant={isPast ? 'secondary' : 'default'}>{isPast ? 'Past' : 'Active'}</Badge>
+            </div>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="rounded-full"
+            onClick={handleToggleVisibility}
+          >
+            {(activity as any).visibility === 'private' ? <><Lock className="h-3 w-3 mr-1" /> Private</> : <><Globe className="h-3 w-3 mr-1" /> Public</>}
+          </Button>
         </div>
         {activity.description && <p className="text-sm text-muted-foreground mt-2">{activity.description}</p>}
       </div>
@@ -898,6 +946,47 @@ function SupabaseManageView({ activityId, navigate }: { activityId: string | und
           }, 0)}</p>
         </CardContent></Card>
       </div>
+
+      {/* Announcements Section */}
+      <Card className="mb-8">
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2"><MessageCircle className="h-4 w-4 text-primary" /> Announcements</CardTitle>
+          <CardDescription>Post updates visible to all participants</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex gap-2">
+            <Input
+              placeholder="Type an announcement..."
+              value={announcementInput}
+              onChange={e => setAnnouncementInput(e.target.value)}
+              className="flex-1"
+              onKeyDown={e => e.key === 'Enter' && handlePostAnnouncement()}
+            />
+            <Button size="sm" className="rounded-full" onClick={handlePostAnnouncement} disabled={isSendingAnn || !announcementInput.trim()}>
+              {isSendingAnn ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Send className="h-4 w-4 mr-1" /> Post</>}
+            </Button>
+          </div>
+          {announcements.length > 0 && (
+            <div className="space-y-2 mt-3">
+              {announcements.map(ann => (
+                <div key={ann.id} className="flex items-start justify-between p-3 rounded-xl border bg-muted/20 text-sm">
+                  <div>
+                    <p className="text-foreground">{ann.message}</p>
+                    <p className="text-[10px] text-muted-foreground mt-1">{new Date(ann.created_at).toLocaleString()}</p>
+                  </div>
+                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-destructive" onClick={async () => {
+                    await dataService.deleteAnnouncement(ann.id);
+                    setAnnouncements(prev => prev.filter(a => a.id !== ann.id));
+                    toast.success('Deleted');
+                  }}>
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Sessions & Bookings */}
       <h2 className="text-lg font-bold mb-4 flex items-center gap-2"><List className="h-5 w-5 text-primary" /> Sessions & Participants</h2>
@@ -1005,7 +1094,14 @@ function SupabaseManageView({ activityId, navigate }: { activityId: string | und
                                 {isSelected ? <CheckSquare className="h-4 w-4 text-primary" /> : <Square className="h-4 w-4" />}
                               </button>
                             </TableCell>
-                            <TableCell className="font-medium">{booking.player_name}</TableCell>
+                            <TableCell className="font-medium">
+                              {booking.player_username || booking.player_name}
+                              {booking.special_request && (
+                                <span className="block text-[10px] text-muted-foreground mt-0.5" title={booking.special_request}>
+                                  📝 {booking.special_request.length > 30 ? booking.special_request.slice(0, 30) + '...' : booking.special_request}
+                                </span>
+                              )}
+                            </TableCell>
                             <TableCell>
                               <Badge variant={booking.reservation_status === 'confirmed' ? 'default' : 'secondary'} className="text-xs">
                                 {booking.reservation_status === 'confirmed' ? '✓ Confirmed' : '⏳ Pending'}

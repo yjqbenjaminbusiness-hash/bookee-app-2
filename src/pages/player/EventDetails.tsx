@@ -960,9 +960,16 @@ function SupabaseActivityView({
   const [selectedSession, setSelectedSession] = useState<string | null>(null);
   const [bookingsBySession, setBookingsBySession] = useState<Record<string, any[]>>({});
   const [userBookingIds, setUserBookingIds] = useState<Set<string>>(new Set());
+  const [userBookings, setUserBookings] = useState<Record<string, any>>({});
   const [isJoining, setIsJoining] = useState(false);
   const [expandedSession, setExpandedSession] = useState<string | null>(null);
   const [markingPaid, setMarkingPaid] = useState<string | null>(null);
+  const [announcements, setAnnouncements] = useState<any[]>([]);
+
+  // Special request join dialog
+  const [showJoinDialog, setShowJoinDialog] = useState(false);
+  const [joinSessionId, setJoinSessionId] = useState<string | null>(null);
+  const [specialRequest, setSpecialRequest] = useState('');
 
   useEffect(() => {
     const loadBookings = async () => {
@@ -974,35 +981,62 @@ function SupabaseActivityView({
 
       if (user) {
         const userBIds = new Set<string>();
+        const uBookings: Record<string, any> = {};
         Object.values(bMap).flat().forEach(b => {
-          if (b.user_id === user.id) userBIds.add(b.session_id);
+          if (b.user_id === user.id) {
+            userBIds.add(b.session_id);
+            uBookings[b.session_id] = b;
+          }
         });
         setUserBookingIds(userBIds);
+        setUserBookings(uBookings);
       }
     };
     loadBookings();
-  }, [sessions, user]);
 
-  const handleJoin = async (sessionId: string) => {
+    // Load announcements
+    dataService.listAnnouncementsByActivity(activity.id).then(setAnnouncements);
+  }, [sessions, user, activity.id]);
+
+  const initiateJoin = (sessionId: string) => {
     if (!user) { toast.error('Please log in to join'); return; }
     const session = sessions.find(s => s.id === sessionId);
     if (!session) return;
-    if (session.filled_slots >= session.max_slots) { toast.error('This session is full'); return; }
     if (userBookingIds.has(sessionId)) { toast.info('You already have a booking for this session'); return; }
+    setJoinSessionId(sessionId);
+    setSpecialRequest('');
+    setShowJoinDialog(true);
+  };
+
+  const handleJoin = async () => {
+    if (!user || !joinSessionId) return;
+    const session = sessions.find(s => s.id === joinSessionId);
+    if (!session) return;
+
+    const activeBookings = (bookingsBySession[joinSessionId] || []).filter(
+      (b: any) => b.reservation_status !== 'rejected' && b.reservation_status !== 'cancelled'
+    );
+    const isFull = activeBookings.length >= session.max_slots;
 
     setIsJoining(true);
+    setShowJoinDialog(false);
     try {
       await dataService.createBooking({
-        session_id: sessionId,
+        session_id: joinSessionId,
         user_id: user.id,
-        player_name: user.displayName || user.email || 'Player',
+        player_name: user.username || user.displayName || user.email || 'Player',
+        player_username: user.username || undefined,
         amount: session.price,
+        special_request: specialRequest.trim() || undefined,
+        reservation_status: isFull ? 'cancelled' : undefined,
       });
-      toast.success('You have joined this session!');
+      toast.success(isFull ? 'Added to waitlist!' : 'You have joined this session!');
       // Reload bookings
-      const bks = await dataService.listBookingsBySession(sessionId);
-      setBookingsBySession(prev => ({ ...prev, [sessionId]: bks }));
-      setUserBookingIds(prev => new Set([...prev, sessionId]));
+      const bks = await dataService.listBookingsBySession(joinSessionId);
+      setBookingsBySession(prev => ({ ...prev, [joinSessionId]: bks }));
+      setUserBookingIds(prev => new Set([...prev, joinSessionId]));
+      const myBooking = bks.find((b: any) => b.user_id === user.id);
+      if (myBooking) setUserBookings(prev => ({ ...prev, [joinSessionId]: myBooking }));
     } catch (err: any) {
       toast.error(err.message || 'Failed to join');
     } finally {
@@ -1010,12 +1044,19 @@ function SupabaseActivityView({
     }
   };
 
+  const handleJoinWaitlist = async (sessionId: string) => {
+    if (!user) { toast.error('Please log in to join'); return; }
+    if (userBookingIds.has(sessionId)) { toast.info('You already have a booking'); return; }
+    setJoinSessionId(sessionId);
+    setSpecialRequest('');
+    setShowJoinDialog(true);
+  };
+
   const handleMarkPaid = async (bookingId: string) => {
     setMarkingPaid(bookingId);
     try {
       await dataService.updateBookingPaymentStatus(bookingId, 'pending');
       toast.success('Payment marked — organizer will be notified');
-      // Reload all
       const bMap: Record<string, any[]> = {};
       await Promise.all(sessions.map(async (s) => {
         bMap[s.id] = await dataService.listBookingsBySession(s.id);
@@ -1025,6 +1066,27 @@ function SupabaseActivityView({
       toast.error(err.message || 'Failed to update');
     } finally {
       setMarkingPaid(null);
+    }
+  };
+
+  const getMyStatus = (sessionId: string) => {
+    const booking = userBookings[sessionId];
+    if (!booking) return null;
+    if (booking.reservation_status === 'cancelled') return 'waitlisted';
+    if (booking.reservation_status === 'confirmed' && booking.payment_status === 'paid') return 'confirmed-paid';
+    if (booking.reservation_status === 'confirmed') return 'confirmed';
+    if (booking.payment_status === 'pending') return 'pending-payment';
+    return 'pending';
+  };
+
+  const statusBadge = (status: string | null) => {
+    switch (status) {
+      case 'confirmed-paid': return <Badge className="bg-primary text-primary-foreground text-[10px]">✓ Confirmed & Paid</Badge>;
+      case 'confirmed': return <Badge className="bg-primary text-primary-foreground text-[10px]">✓ Confirmed</Badge>;
+      case 'pending-payment': return <Badge variant="secondary" className="text-[10px] text-amber-600">⏳ Pending Payment</Badge>;
+      case 'pending': return <Badge variant="secondary" className="text-[10px]">⏳ Pending</Badge>;
+      case 'waitlisted': return <Badge variant="outline" className="text-[10px] text-amber-600 border-amber-600">📋 Waitlisted</Badge>;
+      default: return null;
     }
   };
 
@@ -1061,6 +1123,21 @@ function SupabaseActivityView({
           <p className="text-muted-foreground">{activity.description}</p>
         )}
 
+        {/* Announcements */}
+        {announcements.length > 0 && (
+          <section className="space-y-3">
+            <h2 className="text-lg font-bold text-foreground flex items-center gap-2"><MessageSquare className="h-5 w-5 text-primary" /> Announcements</h2>
+            <div className="space-y-2">
+              {announcements.map(ann => (
+                <div key={ann.id} className="p-3 rounded-xl border bg-primary/5 text-sm">
+                  <p className="text-foreground">{ann.message}</p>
+                  <p className="text-[10px] text-muted-foreground mt-1">{new Date(ann.created_at).toLocaleString()}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
         {/* Sessions with join & participants */}
         <section className="space-y-4">
           <h2 className="text-2xl font-bold text-foreground">Available Sessions</h2>
@@ -1071,10 +1148,12 @@ function SupabaseActivityView({
           ) : (
             <div className="space-y-4">
               {sessions.map(session => {
-                const pct = session.max_slots > 0 ? (session.filled_slots / session.max_slots) * 100 : 0;
-                const isFull = session.filled_slots >= session.max_slots;
-                const hasBooked = userBookingIds.has(session.id);
                 const sessionBookings = bookingsBySession[session.id] || [];
+                const activeBookings = sessionBookings.filter((b: any) => b.reservation_status !== 'rejected' && b.reservation_status !== 'cancelled');
+                const pct = session.max_slots > 0 ? (activeBookings.length / session.max_slots) * 100 : 0;
+                const isFull = activeBookings.length >= session.max_slots;
+                const hasBooked = userBookingIds.has(session.id);
+                const myStatus = getMyStatus(session.id);
                 const isExpanded = expandedSession === session.id;
 
                 return (
@@ -1084,23 +1163,36 @@ function SupabaseActivityView({
                         <div className="flex-1">
                           <p className="font-bold text-foreground">{session.time_label}</p>
                           <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
-                            <Users className="h-3 w-3" /> {session.filled_slots}/{session.max_slots} booked
+                            <Users className="h-3 w-3" /> {activeBookings.length}/{session.max_slots} booked
                           </p>
                           <div className="h-1.5 rounded-full bg-muted overflow-hidden mt-2 w-32">
                             <div className="h-full rounded-full bg-primary" style={{ width: `${Math.min(pct, 100)}%`, background: pct >= 90 ? 'hsl(var(--destructive))' : undefined }} />
                           </div>
+                          {/* User status */}
+                          {hasBooked && myStatus && (
+                            <div className="mt-2">{statusBadge(myStatus)}</div>
+                          )}
                         </div>
                         <div className="flex flex-col items-end gap-2">
                           <p className="text-lg font-bold text-primary">${session.price}</p>
                           {hasBooked ? (
-                            <Badge className="bg-primary text-primary-foreground">✓ Joined</Badge>
+                            statusBadge(myStatus) || <Badge className="bg-primary text-primary-foreground">✓ Joined</Badge>
                           ) : isFull ? (
-                            <Badge variant="destructive">Full</Badge>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="rounded-full font-bold text-amber-600 border-amber-600/40"
+                              onClick={() => handleJoinWaitlist(session.id)}
+                              disabled={isJoining}
+                            >
+                              {isJoining ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <List className="h-3 w-3 mr-1" />}
+                              Join Waitlist
+                            </Button>
                           ) : (
                             <Button
                               size="sm"
                               className="rounded-full font-bold bg-primary text-primary-foreground hover:bg-primary/90"
-                              onClick={() => handleJoin(session.id)}
+                              onClick={() => initiateJoin(session.id)}
                               disabled={isJoining}
                             >
                               {isJoining ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <UserPlus className="h-3 w-3 mr-1" />}
@@ -1116,7 +1208,7 @@ function SupabaseActivityView({
                         className="flex items-center gap-1.5 mt-3 text-xs font-bold text-primary hover:underline"
                       >
                         {isExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-                        {isExpanded ? 'Hide' : 'View'} Participants ({sessionBookings.length})
+                        {isExpanded ? 'Hide' : 'View'} Participants ({activeBookings.length})
                       </button>
                     </div>
 
@@ -1130,17 +1222,18 @@ function SupabaseActivityView({
                           className="overflow-hidden"
                         >
                           <div className="border-t px-4 py-3 bg-muted/10 space-y-2">
-                            {sessionBookings.length === 0 ? (
+                            {activeBookings.length === 0 ? (
                               <p className="text-sm text-muted-foreground text-center py-3">No participants yet. Be the first to join!</p>
                             ) : (
-                              sessionBookings.map((b, i) => {
+                              activeBookings.map((b: any, i: number) => {
                                 const isMe = user && b.user_id === user.id;
+                                const isConfirmed = b.reservation_status === 'confirmed';
                                 return (
                                   <div key={b.id} className="flex items-center justify-between p-2 rounded-lg bg-background border">
                                     <div className="flex items-center gap-2">
                                       <span className="text-xs font-bold text-muted-foreground w-5">{i + 1}.</span>
                                       <span className="text-sm font-medium text-foreground">
-                                        {b.player_name || 'Player'}
+                                        {b.player_username || b.player_name || 'Player'}
                                         {isMe && <Badge variant="secondary" className="ml-2 text-[9px]">You</Badge>}
                                       </span>
                                     </div>
@@ -1149,11 +1242,11 @@ function SupabaseActivityView({
                                         variant="outline"
                                         className="text-[10px]"
                                         style={{
-                                          color: b.payment_status === 'paid' ? '#1A7A4A' : b.payment_status === 'pending' ? '#C47A00' : undefined,
-                                          borderColor: b.payment_status === 'paid' ? '#1A7A4A' : b.payment_status === 'pending' ? '#C47A00' : undefined,
+                                          color: b.reservation_status === 'confirmed' ? 'hsl(var(--primary))' : b.payment_status === 'pending' ? '#C47A00' : undefined,
+                                          borderColor: b.reservation_status === 'confirmed' ? 'hsl(var(--primary))' : b.payment_status === 'pending' ? '#C47A00' : undefined,
                                         }}
                                       >
-                                        {b.payment_status === 'paid' ? '✓ Paid' : b.payment_status === 'pending' ? '⏳ Payment Sent' : '○ Unpaid'}
+                                        {b.reservation_status === 'confirmed' ? '✓ Going' : b.payment_status === 'pending' ? '⏳ Payment Sent' : b.payment_status === 'paid' ? '✓ Paid' : '○ Pending'}
                                       </Badge>
                                       {isMe && b.payment_status === 'unpaid' && (
                                         <Button
@@ -1193,6 +1286,58 @@ function SupabaseActivityView({
           </Button>
         </section>
       </div>
+
+      {/* Join Dialog with Special Request */}
+      <AnimatePresence>
+        {showJoinDialog && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+            onClick={() => setShowJoinDialog(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-background rounded-2xl p-6 w-full max-w-md border shadow-lg space-y-4"
+              onClick={e => e.stopPropagation()}
+            >
+              <h3 className="text-lg font-bold text-foreground">Join Session</h3>
+              <p className="text-sm text-muted-foreground">
+                {(() => {
+                  const s = sessions.find(s => s.id === joinSessionId);
+                  const active = (bookingsBySession[joinSessionId || ''] || []).filter((b: any) => b.reservation_status !== 'rejected' && b.reservation_status !== 'cancelled');
+                  const full = s && active.length >= s.max_slots;
+                  return full ? 'This session is full. You will be added to the waitlist.' : `Joining: ${s?.time_label || 'session'}`;
+                })()}
+              </p>
+              <div className="space-y-2">
+                <Label htmlFor="special-request" className="text-sm font-bold">Special Request (optional)</Label>
+                <textarea
+                  id="special-request"
+                  className="w-full rounded-xl border bg-background p-3 text-sm min-h-[80px] focus:outline-none focus:ring-2 focus:ring-ring"
+                  placeholder="e.g. Bringing a guest, preferred position, notes to organizer..."
+                  value={specialRequest}
+                  onChange={e => setSpecialRequest(e.target.value)}
+                />
+              </div>
+              <div className="flex gap-2 justify-end">
+                <Button variant="outline" className="rounded-full" onClick={() => setShowJoinDialog(false)}>Cancel</Button>
+                <Button className="rounded-full bg-primary text-primary-foreground" onClick={handleJoin} disabled={isJoining}>
+                  {isJoining ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <UserPlus className="h-4 w-4 mr-1" />}
+                  {(() => {
+                    const s = sessions.find(s => s.id === joinSessionId);
+                    const active = (bookingsBySession[joinSessionId || ''] || []).filter((b: any) => b.reservation_status !== 'rejected' && b.reservation_status !== 'cancelled');
+                    return s && active.length >= s.max_slots ? 'Join Waitlist' : 'Join';
+                  })()}
+                </Button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

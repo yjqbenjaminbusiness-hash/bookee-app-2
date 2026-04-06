@@ -50,6 +50,13 @@ const TIMELINE_ITEMS = [
     tag: 'New Feature',
     tagColor: 'hsl(35 90% 50%)',
   },
+  {
+    date: '02 April 2026',
+    title: 'Telegram Bot Launch',
+    description: 'Manage your bookings, organize activities, and join ballot sessions all from @BookeeAppBot on Telegram.',
+    tag: 'New Feature',
+    tagColor: 'hsl(220 70% 50%)',
+  },
 ];
 
 const IN_PROGRESS_ITEMS = [
@@ -59,12 +66,7 @@ const IN_PROGRESS_ITEMS = [
     tag: 'Payments',
     tagColor: 'hsl(35 90% 50%)',
   },
-  {
-    title: 'Telegram Bot Launch',
-    description: 'Manage your bookings, organize activities, and join ballot sessions all from @BookeeAppBot on Telegram.',
-    tag: 'Launch',
-    tagColor: 'hsl(260 60% 55%)',
-  },
+
 ];
 
 interface Suggestion {

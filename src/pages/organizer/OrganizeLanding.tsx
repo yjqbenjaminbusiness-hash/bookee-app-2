@@ -249,7 +249,7 @@ export default function OrganizeLanding() {
                     <Button
                       variant="outline"
                       size="sm"
-                      className="text-xs rounded-full px-4"
+                      className="text-xs rounded-full px-4 border-primary/40 text-primary font-bold"
                       onClick={(e) => { e.stopPropagation(); navigate(`/player/groups/${group.id}`); }}
                     >
                       View More
@@ -286,7 +286,7 @@ export default function OrganizeLanding() {
                                 key={opt.title}
                                 variant="outline"
                                 size="sm"
-                                className="rounded-full text-xs"
+                                className="rounded-full text-xs border-primary/30 text-primary font-bold"
                                 onClick={() => navigate(`${opt.route}${opt.route.includes('?') ? '&' : '?'}group=${group.id}`)}
                               >
                                 <Icon className="mr-1 h-3 w-3" /> {opt.title}

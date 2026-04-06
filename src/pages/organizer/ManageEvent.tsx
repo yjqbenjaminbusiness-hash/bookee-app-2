@@ -1175,6 +1175,62 @@ function SupabaseManageView({ activityId, navigate }: { activityId: string | und
                     </div>
                   </div>
                 )}
+
+                {/* Release Details per session */}
+                <div className="border-t p-4 bg-muted/10 space-y-2">
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground font-bold uppercase tracking-wider">
+                    <Unlock className="h-3 w-3" /> Release Details (visible to confirmed players)
+                  </div>
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="e.g. Court 3, Level 2, enter via side gate..."
+                      defaultValue={(session as any).released_details || ''}
+                      className="flex-1 text-sm"
+                      onKeyDown={async (e) => {
+                        if (e.key === 'Enter') {
+                          const val = (e.target as HTMLInputElement).value.trim();
+                          const { error } = await supabase.from('activity_sessions').update({ released_details: val || null } as any).eq('id', session.id);
+                          if (error) { toast.error('Failed to update'); return; }
+                          toast.success(val ? 'Details released to confirmed players' : 'Details cleared');
+                          reloadSessions();
+                        }
+                      }}
+                    />
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="rounded-full text-xs"
+                      onClick={async () => {
+                        const input = document.querySelector(`[data-release-session="${session.id}"]`) as HTMLInputElement;
+                        const val = input?.value?.trim() || '';
+                        const { error } = await supabase.from('activity_sessions').update({ released_details: val || null } as any).eq('id', session.id);
+                        if (error) { toast.error('Failed to update'); return; }
+                        toast.success(val ? 'Details released' : 'Details cleared');
+                        reloadSessions();
+                      }}
+                    >
+                      {(session as any).released_details ? 'Update' : 'Release'}
+                    </Button>
+                    {(session as any).released_details && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="rounded-full text-xs text-destructive"
+                        onClick={async () => {
+                          const { error } = await supabase.from('activity_sessions').update({ released_details: null } as any).eq('id', session.id);
+                          if (error) { toast.error('Failed to clear'); return; }
+                          toast.success('Details cleared');
+                          reloadSessions();
+                        }}
+                      >
+                        Clear
+                      </Button>
+                    )}
+                  </div>
+                  {(session as any).released_details && (
+                    <p className="text-xs text-primary font-medium">Currently showing: {(session as any).released_details}</p>
+                  )}
+                </div>
               </CardContent>
             )}
           </Card>

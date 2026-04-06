@@ -6,6 +6,7 @@ import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
 import { Calendar, Clock, ChevronRight, Activity as ActivityIcon, Zap, User, TrendingUp, Loader2, Users, CheckCircle2, Eye, EyeOff, MapPin } from 'lucide-react';
+import FeedbackDialog from '../../components/FeedbackDialog';
 
 export default function PlayerDashboard() {
   const { user } = useAuth();

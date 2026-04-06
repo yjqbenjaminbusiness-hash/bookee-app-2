@@ -65,8 +65,7 @@ const IN_PROGRESS_ITEMS = [
     description: 'Pay for your bookings using PayNow QR code — fast, secure, and built for Singapore.',
     tag: 'Payments',
     tagColor: 'hsl(35 90% 50%)',
-  },
-
+  }
 ];
 
 interface Suggestion {

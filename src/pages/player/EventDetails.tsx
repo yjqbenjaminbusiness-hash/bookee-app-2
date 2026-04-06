@@ -1287,14 +1287,23 @@ function SupabaseActivityView({
                         </div>
                       </div>
 
-                      {/* Expand participants */}
-                      <button
-                        onClick={() => setExpandedSession(isExpanded ? null : session.id)}
-                        className="flex items-center gap-1.5 mt-3 text-xs font-bold text-primary hover:underline"
-                      >
-                        {isExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-                        {isExpanded ? 'Hide' : 'View'} Participants ({activeBookings.length})
-                      </button>
+                      {/* Expand participants - respect privacy */}
+                      {(() => {
+                        const isPrivate = (activity as any).participant_visibility === 'private';
+                        const isOrganizer = user && user.id === activity.organizer_id;
+                        if (isPrivate && !isOrganizer) {
+                          return null; // hide expand button for non-organizers when private
+                        }
+                        return (
+                          <button
+                            onClick={() => setExpandedSession(isExpanded ? null : session.id)}
+                            className="flex items-center gap-1.5 mt-3 text-xs font-bold text-primary hover:underline"
+                          >
+                            {isExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                            {isExpanded ? 'Hide' : 'View'} Participants ({activeBookings.length})
+                          </button>
+                        );
+                      })()}
                     </div>
 
                     {/* Participant list */}

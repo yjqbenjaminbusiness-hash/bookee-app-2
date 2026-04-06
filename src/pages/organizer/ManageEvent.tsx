@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../..
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/table';
 import { Badge } from '../../components/ui/badge';
 import { toast } from 'sonner';
-import { MapPin, Calendar, ArrowLeft, CheckCircle2, XCircle, Clock, DollarSign, ChevronDown, ChevronUp, UserMinus, List, MessageCircle, Unlock, Plus, Trash2, Star, MessageSquare, Minus, AlertTriangle, Globe, Lock, CheckSquare, Square, Send, Bell, Users, Loader2 } from 'lucide-react';
+import { MapPin, Calendar, ArrowLeft, CheckCircle2, XCircle, Clock, DollarSign, ChevronDown, ChevronUp, UserMinus, List, MessageCircle, Unlock, Plus, Trash2, Star, MessageSquare, Minus, AlertTriangle, Globe, Lock, CheckSquare, Square, Send, Bell, Users, Loader2, UserPlus } from 'lucide-react';
 import { Progress } from '../../components/ui/progress';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
@@ -705,13 +705,18 @@ function SupabaseManageView({ activityId, navigate }: { activityId: string | und
   const [selectedBookings, setSelectedBookings] = useState<Set<string>>(new Set());
   const [expandedSessions, setExpandedSessions] = useState<Set<string>>(new Set());
 
-  // Announcements state (must be before any conditional returns)
+  // Announcements state
   const [announcements, setAnnouncements] = useState<any[]>([]);
   const [announcementInput, setAnnouncementInput] = useState('');
   const [isSendingAnn, setIsSendingAnn] = useState(false);
 
   // Special requests state
   const [specialRequests, setSpecialRequests] = useState<any[]>([]);
+
+  // Guest management state
+  const [guestName, setGuestName] = useState<Record<string, string>>({});
+  const [guestNote, setGuestNote] = useState<Record<string, string>>({});
+  const [isAddingGuest, setIsAddingGuest] = useState(false);
 
   useEffect(() => {
     if (activity) {
@@ -901,6 +906,40 @@ function SupabaseManageView({ activityId, navigate }: { activityId: string | und
     }
   };
 
+  const handleAddGuest = async (sessionId: string) => {
+    const name = guestName[sessionId]?.trim();
+    if (!name) { toast.error('Please enter a guest name'); return; }
+    setIsAddingGuest(true);
+    try {
+      const note = guestNote[sessionId]?.trim() || null;
+      const { error } = await supabase.from('bookings').insert({
+        session_id: sessionId,
+        user_id: null,
+        player_name: `Guest - ${name}`,
+        reservation_status: 'confirmed' as any,
+        payment_status: 'unpaid' as any,
+        special_request: note,
+        amount: 0,
+      } as any);
+      if (error) throw error;
+      toast.success(`Guest "${name}" added`);
+      setGuestName(prev => ({ ...prev, [sessionId]: '' }));
+      setGuestNote(prev => ({ ...prev, [sessionId]: '' }));
+      reloadBookings();
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to add guest');
+    } finally {
+      setIsAddingGuest(false);
+    }
+  };
+
+  const handleRemoveGuest = async (bookingId: string) => {
+    const { error } = await supabase.from('bookings').delete().eq('id', bookingId);
+    if (error) { toast.error('Failed to remove guest'); return; }
+    toast.success('Guest removed');
+    reloadBookings();
+  };
+
   const handleToggleVisibility = async () => {
     if (!activity) return;
     const newVis = (activity as any).visibility === 'private' ? 'public' : 'private';
@@ -908,6 +947,16 @@ function SupabaseManageView({ activityId, navigate }: { activityId: string | und
     if (error) { toast.error('Failed to update visibility'); return; }
     setActivity({ ...activity, visibility: newVis } as any);
     toast.success(`Activity is now ${newVis}`);
+  };
+
+  const handleToggleParticipantVisibility = async () => {
+    if (!activity) return;
+    const current = (activity as any).participant_visibility || 'public';
+    const newVis = current === 'private' ? 'public' : 'private';
+    const { error } = await supabase.from('activities').update({ participant_visibility: newVis } as any).eq('id', activity.id);
+    if (error) { toast.error('Failed to update'); return; }
+    setActivity({ ...activity, participant_visibility: newVis } as any);
+    toast.success(`Participant list is now ${newVis}`);
   };
 
   return (
@@ -926,14 +975,24 @@ function SupabaseManageView({ activityId, navigate }: { activityId: string | und
               <Badge variant={isPast ? 'secondary' : 'default'}>{isPast ? 'Past' : 'Active'}</Badge>
             </div>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            className="rounded-full"
-            onClick={handleToggleVisibility}
-          >
-            {(activity as any).visibility === 'private' ? <><Lock className="h-3 w-3 mr-1" /> Private</> : <><Globe className="h-3 w-3 mr-1" /> Public</>}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-full"
+              onClick={handleToggleParticipantVisibility}
+            >
+              {(activity as any).participant_visibility === 'private' ? <><Lock className="h-3 w-3 mr-1" /> Players Hidden</> : <><Users className="h-3 w-3 mr-1" /> Players Visible</>}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-full"
+              onClick={handleToggleVisibility}
+            >
+              {(activity as any).visibility === 'private' ? <><Lock className="h-3 w-3 mr-1" /> Private</> : <><Globe className="h-3 w-3 mr-1" /> Public</>}
+            </Button>
+          </div>
         </div>
         {activity.description && <p className="text-sm text-muted-foreground mt-2">{activity.description}</p>}
       </div>
@@ -1184,6 +1243,58 @@ function SupabaseManageView({ activityId, navigate }: { activityId: string | und
                     </div>
                   </div>
                 )}
+
+                {/* Add Guest Section */}
+                <div className="border-t p-4 bg-muted/10 space-y-3">
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground font-bold uppercase tracking-wider">
+                    <UserPlus className="h-3 w-3" /> Add Guest (non-registered)
+                  </div>
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <Input
+                      placeholder="Guest name"
+                      value={guestName[session.id] || ''}
+                      onChange={e => setGuestName(prev => ({ ...prev, [session.id]: e.target.value }))}
+                      className="flex-1 text-sm"
+                    />
+                    <Input
+                      placeholder="Note (optional)"
+                      value={guestNote[session.id] || ''}
+                      onChange={e => setGuestNote(prev => ({ ...prev, [session.id]: e.target.value }))}
+                      className="flex-1 text-sm"
+                    />
+                    <Button
+                      size="sm"
+                      className="rounded-full text-xs"
+                      onClick={() => handleAddGuest(session.id)}
+                      disabled={isAddingGuest || !guestName[session.id]?.trim()}
+                    >
+                      {isAddingGuest ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Plus className="h-3 w-3 mr-1" />}
+                      Add Guest
+                    </Button>
+                  </div>
+                  {/* List existing guests with remove option */}
+                  {bookings.filter((b: any) => b.user_id === null || b.player_name?.startsWith('Guest -')).length > 0 && (
+                    <div className="space-y-1 pt-1">
+                      {bookings.filter((b: any) => b.user_id === null || b.player_name?.startsWith('Guest -')).map((g: any) => (
+                        <div key={g.id} className="flex items-center justify-between text-sm p-2 rounded-lg bg-background border">
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline" className="text-[9px] text-amber-600 border-amber-600/40">Guest</Badge>
+                            <span className="font-medium">{g.player_name?.replace('Guest - ', '')}</span>
+                            {g.special_request && <span className="text-[10px] text-muted-foreground">📝 {g.special_request}</span>}
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0 text-destructive"
+                            onClick={() => handleRemoveGuest(g.id)}
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
 
                 {/* Release Details per session */}
                 <div className="border-t p-4 bg-muted/10 space-y-2">

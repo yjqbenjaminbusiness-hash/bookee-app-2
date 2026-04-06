@@ -1219,6 +1219,7 @@ async function handleMyBookeeCallback(chatId: number, cbData: string, supabase: 
     await sendMessage(chatId, "📋 <b>My Bookee</b>", {
       inline_keyboard: [
         [{ text: "🔍 Explore Activities", callback_data: "explore" }],
+        [{ text: "📍 Browse by Location", callback_data: "browse_location" }],
         [{ text: "📋 My Reservations", callback_data: "my_reservations" }],
         [{ text: "🎲 Ballot Status", callback_data: "my_ballot_status" }],
         [{ text: "⬅️ Back", callback_data: "main_menu" }],
@@ -1227,34 +1228,92 @@ async function handleMyBookeeCallback(chatId: number, cbData: string, supabase: 
     return;
   }
 
+  if (cbData === "browse_location") {
+    const { data: activities } = await supabase
+      .from("activities")
+      .select("venue")
+      .eq("status", "active")
+      .order("date", { ascending: true });
+
+    const venues = [...new Set((activities || []).map((a: any) => a.venue).filter(Boolean))];
+    if (venues.length === 0) {
+      await sendMessage(chatId, "No active venues found.", {
+        inline_keyboard: [[{ text: "⬅️ Back", callback_data: "my_bookee" }]],
+      });
+      return;
+    }
+
+    const buttons = venues.slice(0, 8).map(v => [{ text: `📍 ${v}`, callback_data: `loc_${v.slice(0, 40)}` }]);
+    buttons.push([{ text: "⬅️ Back", callback_data: "my_bookee" }]);
+    await sendMessage(chatId, "📍 <b>Browse by Location</b>\n\nSelect a venue:", { inline_keyboard: buttons });
+    return;
+  }
+
+  if (cbData.startsWith("loc_")) {
+    const venue = cbData.slice(4);
+    const { data: activities } = await supabase
+      .from("activities")
+      .select("id, title, sport, venue, date")
+      .eq("status", "active")
+      .ilike("venue", `%${venue}%`)
+      .order("date", { ascending: true })
+      .limit(5);
+
+    const buttons: any[] = [];
+    let msg = `📍 <b>Activities at ${venue}</b>\n\n`;
+    if (activities && activities.length > 0) {
+      for (const a of activities) {
+        msg += `🏟️ <b>${a.title}</b>\n📅 ${formatDate(a.date)} | ⚽ ${a.sport}\n\n`;
+        buttons.push([{ text: `🏟️ ${a.title}`, callback_data: `join_${a.id}` }]);
+      }
+    } else {
+      msg = `No activities found at ${venue}.`;
+    }
+    buttons.push([{ text: "⬅️ Back", callback_data: "browse_location" }]);
+    await sendMessage(chatId, msg, { inline_keyboard: buttons });
+    return;
+  }
+
   if (cbData === "explore") {
+    // Demo activity IDs to filter out
+    const demoIds = [
+      "00000000-0000-0000-0000-000000000001",
+      "00000000-0000-0000-0000-000000000002",
+      "00000000-0000-0000-0000-000000000003",
+    ];
+
     const { data: activities } = await supabase
       .from("activities")
       .select("id, title, sport, venue, date, status")
       .eq("status", "active")
       .order("date", { ascending: true })
-      .limit(8);
+      .limit(10);
 
-    // Also fetch ballots
+    // Filter out demo activities and limit to 3
+    const filtered = (activities || []).filter((a: any) => !demoIds.includes(a.id)).slice(0, 3);
+
+    // Also fetch ballots (limit 3, filter demos)
     const { data: ballots } = await supabase
       .from("ballots")
       .select("id, activity_name, sport, location, ballot_deadline")
       .order("ballot_deadline", { ascending: true })
       .limit(5);
 
-    const buttons: any[] = [];
-    let msg = "🔍 <b>Available Activities</b>\n\n";
+    const filteredBallots = (ballots || []).filter((b: any) => !demoIds.includes(b.id)).slice(0, 3);
 
-    if (activities && activities.length > 0) {
-      for (const a of activities) {
+    const buttons: any[] = [];
+    let msg = "🔍 <b>Top Activities</b>\n\n";
+
+    if (filtered.length > 0) {
+      for (const a of filtered) {
         msg += `🏟️ <b>${a.title}</b>\n📍 ${a.venue} | 📅 ${formatDate(a.date)}\n⚽ ${a.sport}\n\n`;
         buttons.push([{ text: `🏟️ ${a.title}`, callback_data: `join_${a.id}` }]);
       }
     }
 
-    if (ballots && ballots.length > 0) {
+    if (filteredBallots.length > 0) {
       msg += "<b>Open Ballots:</b>\n\n";
-      for (const b of ballots) {
+      for (const b of filteredBallots) {
         msg += `🎲 <b>${b.activity_name}</b>\n📍 ${b.location} | 📅 ${formatDate(b.ballot_deadline)}\n\n`;
         buttons.push([{ text: `🎲 ${b.activity_name}`, callback_data: `ballot_view_${b.id}` }]);
       }
@@ -1264,6 +1323,7 @@ async function handleMyBookeeCallback(chatId: number, cbData: string, supabase: 
       msg = "No activities available right now.";
     }
 
+    buttons.push([{ text: "🌐 View more on web", url: `${SITE_URL}/player/events` }]);
     buttons.push([{ text: "⬅️ Back", callback_data: "my_bookee" }]);
     await sendMessage(chatId, msg, { inline_keyboard: buttons });
     return;
@@ -1691,7 +1751,7 @@ async function handleCallback(chatId: number, data: string, supabase: any) {
     return;
   }
 
-  if (data === "my_bookee" || data === "explore" || data === "my_reservations" || data === "my_ballot_status" || data.startsWith("cancel_booking_") || data.startsWith("join_") || data.startsWith("book_session_")) {
+  if (data === "my_bookee" || data === "explore" || data === "browse_location" || data.startsWith("loc_") || data === "my_reservations" || data === "my_ballot_status" || data.startsWith("cancel_booking_") || data.startsWith("join_") || data.startsWith("book_session_")) {
     await handleMyBookeeCallback(chatId, data, supabase);
     return;
   }

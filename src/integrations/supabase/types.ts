@@ -27,6 +27,7 @@ export type Database = {
           location: string | null
           max_auto_posts: number
           organizer_id: string
+          participant_visibility: string
           sport: string
           status: string
           title: string
@@ -46,6 +47,7 @@ export type Database = {
           location?: string | null
           max_auto_posts?: number
           organizer_id: string
+          participant_visibility?: string
           sport: string
           status?: string
           title: string
@@ -65,6 +67,7 @@ export type Database = {
           location?: string | null
           max_auto_posts?: number
           organizer_id?: string
+          participant_visibility?: string
           sport?: string
           status?: string
           title?: string

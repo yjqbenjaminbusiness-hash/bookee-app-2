@@ -705,13 +705,18 @@ function SupabaseManageView({ activityId, navigate }: { activityId: string | und
   const [selectedBookings, setSelectedBookings] = useState<Set<string>>(new Set());
   const [expandedSessions, setExpandedSessions] = useState<Set<string>>(new Set());
 
-  // Announcements state (must be before any conditional returns)
+  // Announcements state
   const [announcements, setAnnouncements] = useState<any[]>([]);
   const [announcementInput, setAnnouncementInput] = useState('');
   const [isSendingAnn, setIsSendingAnn] = useState(false);
 
   // Special requests state
   const [specialRequests, setSpecialRequests] = useState<any[]>([]);
+
+  // Guest management state
+  const [guestName, setGuestName] = useState<Record<string, string>>({});
+  const [guestNote, setGuestNote] = useState<Record<string, string>>({});
+  const [isAddingGuest, setIsAddingGuest] = useState(false);
 
   useEffect(() => {
     if (activity) {
@@ -901,6 +906,40 @@ function SupabaseManageView({ activityId, navigate }: { activityId: string | und
     }
   };
 
+  const handleAddGuest = async (sessionId: string) => {
+    const name = guestName[sessionId]?.trim();
+    if (!name) { toast.error('Please enter a guest name'); return; }
+    setIsAddingGuest(true);
+    try {
+      const note = guestNote[sessionId]?.trim() || null;
+      const { error } = await supabase.from('bookings').insert({
+        session_id: sessionId,
+        user_id: null,
+        player_name: `Guest - ${name}`,
+        reservation_status: 'confirmed' as any,
+        payment_status: 'unpaid' as any,
+        special_request: note,
+        amount: 0,
+      } as any);
+      if (error) throw error;
+      toast.success(`Guest "${name}" added`);
+      setGuestName(prev => ({ ...prev, [sessionId]: '' }));
+      setGuestNote(prev => ({ ...prev, [sessionId]: '' }));
+      reloadBookings();
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to add guest');
+    } finally {
+      setIsAddingGuest(false);
+    }
+  };
+
+  const handleRemoveGuest = async (bookingId: string) => {
+    const { error } = await supabase.from('bookings').delete().eq('id', bookingId);
+    if (error) { toast.error('Failed to remove guest'); return; }
+    toast.success('Guest removed');
+    reloadBookings();
+  };
+
   const handleToggleVisibility = async () => {
     if (!activity) return;
     const newVis = (activity as any).visibility === 'private' ? 'public' : 'private';
@@ -908,6 +947,16 @@ function SupabaseManageView({ activityId, navigate }: { activityId: string | und
     if (error) { toast.error('Failed to update visibility'); return; }
     setActivity({ ...activity, visibility: newVis } as any);
     toast.success(`Activity is now ${newVis}`);
+  };
+
+  const handleToggleParticipantVisibility = async () => {
+    if (!activity) return;
+    const current = (activity as any).participant_visibility || 'public';
+    const newVis = current === 'private' ? 'public' : 'private';
+    const { error } = await supabase.from('activities').update({ participant_visibility: newVis } as any).eq('id', activity.id);
+    if (error) { toast.error('Failed to update'); return; }
+    setActivity({ ...activity, participant_visibility: newVis } as any);
+    toast.success(`Participant list is now ${newVis}`);
   };
 
   return (

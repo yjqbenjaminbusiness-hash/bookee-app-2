@@ -710,9 +710,18 @@ function SupabaseManageView({ activityId, navigate }: { activityId: string | und
   const [announcementInput, setAnnouncementInput] = useState('');
   const [isSendingAnn, setIsSendingAnn] = useState(false);
 
+  // Special requests state
+  const [specialRequests, setSpecialRequests] = useState<any[]>([]);
+
   useEffect(() => {
     if (activity) {
       dataService.listAnnouncementsByActivity(activity.id).then(setAnnouncements);
+      // Load special requests
+      supabase.from('special_requests' as any)
+        .select('*')
+        .eq('activity_id', activity.id)
+        .order('created_at', { ascending: false })
+        .then(({ data }) => setSpecialRequests(data || []));
     }
   }, [activity]);
 

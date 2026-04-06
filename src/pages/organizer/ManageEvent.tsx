@@ -1183,6 +1183,7 @@ function SupabaseManageView({ activityId, navigate }: { activityId: string | und
                   </div>
                   <div className="flex gap-2">
                     <Input
+                      data-release-session={session.id}
                       placeholder="e.g. Court 3, Level 2, enter via side gate..."
                       defaultValue={(session as any).released_details || ''}
                       className="flex-1 text-sm"

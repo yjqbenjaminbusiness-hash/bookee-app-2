@@ -1177,6 +1177,38 @@ function SupabaseActivityView({
           </section>
         )}
 
+        {/* Contact Organizer */}
+        {organizerProfile && (organizerProfile.phone || organizerProfile.username) && (
+          <section className="p-4 rounded-2xl border-2 border-primary/15 bg-card">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+              <div>
+                <h3 className="font-bold text-foreground">Contact Organizer</h3>
+                <p className="text-xs text-muted-foreground">{organizerProfile.display_name || 'Organizer'}</p>
+              </div>
+              <div className="flex gap-2">
+                {organizerProfile.phone && (
+                  <Button
+                    size="sm"
+                    className="rounded-full font-bold bg-primary text-primary-foreground"
+                    onClick={() => window.open(`https://wa.me/${organizerProfile.phone.replace(/\D/g, '')}?text=${encodeURIComponent(`Hi, question about ${activity.title}`)}`, '_blank')}
+                  >
+                    <MessageCircle className="mr-1.5 h-3.5 w-3.5" /> WhatsApp
+                  </Button>
+                )}
+                {organizerProfile.username && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="rounded-full font-bold"
+                    onClick={() => window.open(`https://t.me/${organizerProfile.username}`, '_blank')}
+                  >
+                    <Send className="mr-1.5 h-3.5 w-3.5" /> Telegram
+                  </Button>
+                )}
+              </div>
+            </div>
+          </section>
+
         {/* Sessions with join & participants */}
         <section className="space-y-4">
           <h2 className="text-2xl font-bold text-foreground">Available Sessions</h2>

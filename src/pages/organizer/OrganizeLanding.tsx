@@ -237,6 +237,7 @@ export default function OrganizeLanding() {
                     <div className="flex items-center gap-2">
                       <p className="font-bold text-foreground truncate">{group.name}</p>
                       <Badge variant="secondary" className="text-xs">{group.sport}</Badge>
+                      {isDemo && <Badge className="text-[9px] bg-muted-foreground/60 text-white border-none">DEMO</Badge>}
                     </div>
                     <p className="text-xs text-muted-foreground mt-0.5">
                       {group.member_count || 0} members · {upcoming.length} upcoming
@@ -324,6 +325,7 @@ export default function OrganizeLanding() {
   );
 
   function renderActivityRow(act: Activity, today: string) {
+    const isDemo = dataService.isDemoItem(act.id);
     const actSessions = sessionsByActivity[act.id] || [];
     const totalSlots = actSessions.reduce((a, s) => a + s.max_slots, 0);
     const filledSlots = actSessions.reduce((a, s) => a + s.filled_slots, 0);

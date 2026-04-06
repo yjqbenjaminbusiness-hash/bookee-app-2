@@ -1097,6 +1097,9 @@ function SupabaseManageView({ activityId, navigate }: { activityId: string | und
                             </TableCell>
                             <TableCell className="font-medium">
                               {booking.player_username || booking.player_name}
+                              {booking.player_name?.startsWith('Guest of') && (
+                                <Badge variant="outline" className="ml-2 text-[9px] text-amber-600 border-amber-600/40">Guest</Badge>
+                              )}
                               {booking.special_request && (
                                 <span className="block text-[10px] text-muted-foreground mt-0.5" title={booking.special_request}>
                                   📝 {booking.special_request.length > 30 ? booking.special_request.slice(0, 30) + '...' : booking.special_request}

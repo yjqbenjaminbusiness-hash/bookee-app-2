@@ -1,105 +1,91 @@
 
 
-# Fix & Enhance Plan: Username, Private Activities, Announcements, Special Requests, Waitlist, Status System
+# Enhance Session Functionality: Guest Sign-Up, Session Unlock, Contact Organizer
 
 ## Diagnosis
 
-1. **Username**: The `profiles` table has `display_name` but no dedicated `username` field. The `bookings` table already has `player_username` column. Settings page is read-only — no edit capability.
+**What already exists:**
+- Special request field during join -- DONE (join dialog with textarea in EventDetails.tsx)
+- Waitlist auto-join when full -- DONE
+- Participant status system (Confirmed/Pending/Waitlisted) -- DONE
+- Slot adjustment per session -- DONE (ManageEvent.tsx)
+- Bulk actions per session -- DONE
 
-2. **Private activities**: The `participantVisibility` field exists only in mock data (`MockEvent`). The Supabase `activities` table has NO visibility/privacy column. The Explore page (`Events.tsx`) fetches all activities via `dataService.listActivities()` with no filtering. The `CreateEvent` form has a visibility toggle but never stores it to the DB.
+**What is missing:**
+1. **Guest sign-up**: No "+ Add Guest" option in the join dialog. No guest booking concept tied to a main user.
+2. **Session-level unlock**: No locked/unlocked details per session. No `details_released` flag on `activity_sessions`. The `location` field on activities is always visible.
+3. **Organizer "Release Details" control**: No toggle per session to release court/location info.
+4. **Contact Organizer button**: No button in the player's session view to contact the organizer via Telegram or WhatsApp.
 
-3. **Announcements**: No announcements table or mechanism exists for per-activity announcements.
+## Schema Change Required
 
-4. **Special request during signup/join**: The `bookings` table has no `special_request` or `notes` field. The join flow in `EventDetails.tsx` has no input for it.
+Add one column to `activity_sessions`:
 
-5. **Waitlist**: When session is full, the UI shows "Full" badge but no "Join Waitlist" option. No auto-waitlist logic.
-
-6. **Participant status**: Booking has `reservation_status` (pending/confirmed/rejected) and `payment_status` (unpaid/pending/paid). The player-facing view doesn't show the user their own status clearly.
-
-## Schema Changes Required
-
-**Migration 1** — Add columns and table:
 ```sql
--- Add username to profiles
-ALTER TABLE profiles ADD COLUMN IF NOT EXISTS username text;
-
--- Add visibility to activities (public/private, default public)
-ALTER TABLE activities ADD COLUMN IF NOT EXISTS visibility text NOT NULL DEFAULT 'public';
-
--- Add special_request to bookings
-ALTER TABLE bookings ADD COLUMN IF NOT EXISTS special_request text;
-
--- Create announcements table
-CREATE TABLE IF NOT EXISTS public.announcements (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  activity_id uuid NOT NULL,
-  organizer_id uuid NOT NULL,
-  message text NOT NULL,
-  created_at timestamptz NOT NULL DEFAULT now()
-);
-ALTER TABLE public.announcements ENABLE ROW LEVEL SECURITY;
-
--- RLS: everyone can read announcements for activities they can see
-CREATE POLICY "Announcements viewable by everyone"
-  ON public.announcements FOR SELECT TO public USING (true);
-
-CREATE POLICY "Organizers can create announcements"
-  ON public.announcements FOR INSERT TO authenticated
-  WITH CHECK (auth.uid() = organizer_id);
-
-CREATE POLICY "Organizers can delete own announcements"
-  ON public.announcements FOR DELETE TO authenticated
-  USING (auth.uid() = organizer_id);
+ALTER TABLE activity_sessions ADD COLUMN IF NOT EXISTS
+  released_details text;  -- nullable; when set, contains unlocked info (court number, notes, etc.)
 ```
+
+This avoids a boolean flag and instead stores the actual details to release. When `NULL`, details are locked; when set, they are shown to confirmed participants only.
+
+No other schema changes needed -- guest bookings will reuse the existing `bookings` table with a naming convention (`player_name = "Guest of [user]"`).
 
 ## Implementation Plan
 
-### 1. Username Customization
-- **SettingsPage.tsx**: Add editable username field with save button. Update `profiles.username` via Supabase. Show fallback to `display_name`.
-- **useAuth.tsx**: Include `username` in `supabaseUserToMockUser` mapping; add to `MockUser` type.
-- **data.ts**: When creating bookings, pass `player_username` alongside `player_name`.
-- **Participant lists**: Display `player_username || player_name` in EventDetails and ManageEvent.
+### 1. Guest Sign-Up (EventDetails.tsx join dialog)
 
-### 2. Private Activity Visibility
-- **CreateEvent.tsx**: Save `participantVisibility` value as `visibility` column on activity creation.
-- **data.ts**: Add `listPublicActivities()` that filters `visibility = 'public'`.
-- **Events.tsx** (Explore): Use `listPublicActivities()` instead of `listActivities()` so private activities are hidden from non-members.
-- **OrganizeLanding.tsx**: Continue showing all organizer's activities (including private).
-- **ManageEvent.tsx** (Supabase view): Add toggle to switch activity visibility.
+In the existing join dialog (`showJoinDialog` modal):
+- Add a "+ Add Guest" button below the special request textarea
+- When clicked, show a guest name input field
+- On submit, create TWO bookings: one for the user, one for the guest
+  - Guest booking: `player_name = "Guest of [username]"`, `user_id = same user`, `player_username = null`
+  - Guest `reservation_status` = `'pending'` (requires organizer approval)
+- Guest counts toward slot limit
+- If session is full after user booking, guest goes to waitlist
 
-### 3. Announcements
-- **data.ts**: Add `createAnnouncement()`, `listAnnouncementsByActivity()`.
-- **ManageEvent.tsx** (Supabase view): Add announcement input + send button + list of past announcements.
-- **EventDetails.tsx** (SupabaseActivityView): Show announcements section for participants.
+### 2. Organizer Guest Approval (ManageEvent.tsx)
 
-### 4. Special Request on Join
-- **EventDetails.tsx** (SupabaseActivityView `handleJoin`): Show a small dialog/modal before confirming join, with optional "Special Request" textarea. Pass to `createBooking()`.
-- **data.ts** `createBooking`: Include `special_request` field.
-- **ManageEvent.tsx**: Display special request in participant table (tooltip or inline).
+- In the participant table, guest bookings are identifiable by `player_name` starting with "Guest of"
+- Show a "Guest" badge next to these entries
+- Existing Confirm/Reject buttons already work for approval
+- No additional code needed beyond the badge indicator
 
-### 5. Waitlist Auto-Join
-- **EventDetails.tsx** (SupabaseActivityView): When session is full, change button to "Join Waitlist". Create booking with `reservation_status = 'cancelled'` (matching existing waitlist convention).
-- Show "Waitlisted" badge to user instead of "Joined".
+### 3. Session-Level Unlock (EventDetails.tsx player view)
 
-### 6. Participant Status System
-- **EventDetails.tsx** (SupabaseActivityView): After joining, show user's status clearly: "Confirmed", "Pending", "Waitlisted", "Pending Payment".
-- **Unlock logic**: When user's `reservation_status !== 'confirmed'` or `payment_status === 'unpaid'`, hide certain details (e.g., organizer phone, court info) behind a lock icon.
+- After the migration adds `released_details` to `activity_sessions`, update the `ActivitySession` type in `data.ts`
+- In the player's session card, show a locked section:
+  - If user is NOT confirmed: show lock icon + "Details available after confirmation"
+  - If user IS confirmed AND `released_details` is set: show the details
+  - If user IS confirmed AND `released_details` is null: show "Details not yet released"
 
-### Files Modified
+### 4. Organizer Release Details Control (ManageEvent.tsx)
+
+- Per session card, add an input field + "Release Details" button
+- Organizer types court number / location notes, clicks release
+- Updates `activity_sessions.released_details` via Supabase
+- Shows current released details with option to clear
+
+### 5. Contact Organizer Button (EventDetails.tsx)
+
+- Fetch the organizer's profile (phone, telegram_chat_id) using `activity.organizer_id`
+- Below each session or in the activity header, add a "Contact Organizer" button
+- Opens a dropdown with available options:
+  - WhatsApp: `https://wa.me/[phone]` (if phone exists)
+  - Telegram: `https://t.me/[username]` or deep link (if telegram info exists)
+- Only show if user has joined at least one session
+
+## Files Modified
+
 | File | Changes |
 |------|---------|
-| `src/pages/SettingsPage.tsx` | Add username edit field |
-| `src/hooks/useAuth.tsx` | Map username from profile |
-| `src/lib/data.ts` | Add visibility filter, announcements CRUD, special_request in booking, Activity type update |
-| `src/pages/organizer/CreateEvent.tsx` | Save visibility to DB |
-| `src/pages/player/Events.tsx` | Filter private activities |
-| `src/pages/player/EventDetails.tsx` | Waitlist join, special request modal, status display, announcements view, unlock logic |
-| `src/pages/organizer/ManageEvent.tsx` | Announcements posting, visibility toggle, special request display |
-| Migration SQL | New columns + announcements table |
+| Migration SQL | Add `released_details` column to `activity_sessions` |
+| `src/lib/data.ts` | Update `ActivitySession` interface to include `released_details` |
+| `src/pages/player/EventDetails.tsx` | Add guest field in join dialog, locked details section per session, contact organizer button |
+| `src/pages/organizer/ManageEvent.tsx` | Add guest badge in participant table, release details input per session |
 
-### Risk Assessment
-- Adding columns with defaults is safe — no existing data breaks.
-- New `announcements` table is additive.
-- Filtering explore by `visibility = 'public'` only affects the public listing; organizer views remain unfiltered.
-- Waitlist uses existing `reservation_status = 'cancelled'` convention already in ManageEvent, so no conflict.
+## Risk Assessment
+- Guest bookings reuse existing `bookings` table -- no schema risk
+- `released_details` column is nullable text, additive only
+- Contact button is read-only UI, no data risk
+- Lock/unlock is purely display logic based on existing `reservation_status`
 

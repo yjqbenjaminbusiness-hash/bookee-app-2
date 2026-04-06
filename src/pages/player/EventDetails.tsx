@@ -1208,6 +1208,7 @@ function SupabaseActivityView({
               </div>
             </div>
           </section>
+        )}
 
         {/* Sessions with join & participants */}
         <section className="space-y-4">

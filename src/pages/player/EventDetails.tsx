@@ -1205,6 +1205,7 @@ function SupabaseActivityView({
                     onClick={() => window.open(`https://wa.me/${organizerProfile.phone.replace(/\D/g, '')}?text=${encodeURIComponent(`Hi, question about ${activity.title}`)}`, '_blank')}
                   >
                     <MessageCircle className="mr-1.5 h-3.5 w-3.5" /> WhatsApp
+                    {organizerProfile.username && <span className="ml-1 text-[10px] opacity-75">• Preferred</span>}
                   </Button>
                 )}
                 {organizerProfile.username && (

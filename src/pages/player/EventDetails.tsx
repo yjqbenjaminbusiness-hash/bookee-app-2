@@ -1326,13 +1326,13 @@ function SupabaseActivityView({
                                         variant="outline"
                                         className="text-[10px]"
                                         style={{
-                                          color: b.reservation_status === 'confirmed' ? 'hsl(var(--primary))' : b.payment_status === 'pending' ? '#C47A00' : undefined,
-                                          borderColor: b.reservation_status === 'confirmed' ? 'hsl(var(--primary))' : b.payment_status === 'pending' ? '#C47A00' : undefined,
+                                          color: b.reservation_status === 'rejected' ? 'hsl(var(--destructive))' : b.reservation_status === 'confirmed' ? 'hsl(var(--primary))' : b.payment_status === 'pending' ? '#C47A00' : undefined,
+                                          borderColor: b.reservation_status === 'rejected' ? 'hsl(var(--destructive))' : b.reservation_status === 'confirmed' ? 'hsl(var(--primary))' : b.payment_status === 'pending' ? '#C47A00' : undefined,
                                         }}
                                       >
-                                        {b.reservation_status === 'confirmed' ? '✓ Going' : b.payment_status === 'pending' ? '⏳ Payment Sent' : b.payment_status === 'paid' ? '✓ Paid' : '○ Pending'}
+                                        {b.reservation_status === 'rejected' ? '✕ Rejected' : b.reservation_status === 'confirmed' ? '✓ Going' : b.payment_status === 'pending' ? '⏳ Payment Sent' : b.payment_status === 'paid' ? '✓ Paid' : '○ Pending'}
                                       </Badge>
-                                      {isMe && b.payment_status === 'unpaid' && (
+                                      {isMe && b.payment_status === 'unpaid' && b.reservation_status !== 'rejected' && (
                                         <Button
                                           size="sm"
                                           variant="outline"

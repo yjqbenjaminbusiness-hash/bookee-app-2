@@ -68,12 +68,8 @@ export default function PlayerDashboard() {
   const pastGames = enriched.filter(b => b.isPast);
   const displayedGames = activeTab === 'upcoming' ? upcomingGames : pastGames;
 
-  // Demo data
-  const demoGroup = dataService.getDemoGroup();
-  const demoActivity = dataService.getDemoActivity();
-
-  // All groups including demo
-  const allGroups = showDemo ? [...groups, demoGroup] : groups;
+  // Filter demo items based on toggle
+  const allGroups = showDemo ? groups : groups.filter(g => !dataService.isDemoItem(g.id));
 
   return (
     <div className="container py-10 px-4 max-w-6xl">

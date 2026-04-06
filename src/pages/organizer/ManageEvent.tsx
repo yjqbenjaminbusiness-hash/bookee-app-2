@@ -705,6 +705,17 @@ function SupabaseManageView({ activityId, navigate }: { activityId: string | und
   const [selectedBookings, setSelectedBookings] = useState<Set<string>>(new Set());
   const [expandedSessions, setExpandedSessions] = useState<Set<string>>(new Set());
 
+  // Announcements state (must be before any conditional returns)
+  const [announcements, setAnnouncements] = useState<any[]>([]);
+  const [announcementInput, setAnnouncementInput] = useState('');
+  const [isSendingAnn, setIsSendingAnn] = useState(false);
+
+  useEffect(() => {
+    if (activity) {
+      dataService.listAnnouncementsByActivity(activity.id).then(setAnnouncements);
+    }
+  }, [activity]);
+
   useEffect(() => {
     if (!activityId) return;
     const load = async () => {

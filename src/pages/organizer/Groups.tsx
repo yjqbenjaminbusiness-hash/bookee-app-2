@@ -11,7 +11,7 @@ import { toast } from 'sonner';
 import { Users, Plus, Trash2, ArrowLeft, Edit2, Save, X, ImagePlus, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-const SPORTS = ['Badminton', 'Basketball', 'Volleyball', 'Futsal', 'Tennis', 'Swimming', 'Running', 'Pickleball', 'Other'];
+
 
 export default function OrganizerGroups() {
   const { user } = useAuth();
@@ -20,13 +20,15 @@ export default function OrganizerGroups() {
   const [isLoading, setIsLoading] = useState(true);
 
   const [showCreate, setShowCreate] = useState(false);
-  const [newGroup, setNewGroup] = useState({ name: '', description: '', sport: 'Badminton' });
+  const [newGroup, setNewGroup] = useState({ name: '', description: '', sport: '' });
   const [newImageFile, setNewImageFile] = useState<File | null>(null);
   const [newImagePreview, setNewImagePreview] = useState('');
   const [isCreating, setIsCreating] = useState(false);
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editData, setEditData] = useState({ name: '', description: '', sport: '' });
+  const [editImageFile, setEditImageFile] = useState<File | null>(null);
+  const [editImagePreview, setEditImagePreview] = useState('');
 
   useEffect(() => {
     if (!user) return;
@@ -95,12 +97,19 @@ export default function OrganizerGroups() {
   const handleSaveEdit = async (groupId: string) => {
     if (!editData.name.trim()) { toast.error('Name cannot be empty'); return; }
     try {
-      await dataService.updateGroup(groupId, {
+      const updates: any = {
         name: editData.name.trim(),
         description: editData.description.trim(),
         sport: editData.sport,
-      });
+      };
+      if (editImageFile) {
+        const imageUrl = await dataService.uploadGroupImage(editImageFile, groupId);
+        if (imageUrl) updates.image_url = imageUrl;
+      }
+      await dataService.updateGroup(groupId, updates);
       setEditingId(null);
+      setEditImageFile(null);
+      setEditImagePreview('');
       toast.success('Group updated!');
       await loadGroups();
     } catch (err: any) {
@@ -163,10 +172,7 @@ export default function OrganizerGroups() {
                   </div>
                   <div className="space-y-2">
                     <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Sport</Label>
-                    <select value={newGroup.sport} onChange={e => setNewGroup(s => ({ ...s, sport: e.target.value }))}
-                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                      {SPORTS.map(s => <option key={s} value={s}>{s}</option>)}
-                    </select>
+                    <Input placeholder="e.g. Badminton, Futsal, Tennis" value={newGroup.sport} onChange={e => setNewGroup(s => ({ ...s, sport: e.target.value }))} />
                   </div>
                 </div>
                 <div className="space-y-2">
@@ -226,17 +232,32 @@ export default function OrganizerGroups() {
                       <div className="space-y-3">
                         <div className="grid sm:grid-cols-2 gap-3">
                           <Input value={editData.name} onChange={e => setEditData(s => ({ ...s, name: e.target.value }))} placeholder="Group name" className="font-bold text-lg" />
-                          <select value={editData.sport} onChange={e => setEditData(s => ({ ...s, sport: e.target.value }))}
-                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none">
-                            {SPORTS.map(s => <option key={s} value={s}>{s}</option>)}
-                          </select>
+                          <Input value={editData.sport} onChange={e => setEditData(s => ({ ...s, sport: e.target.value }))} placeholder="e.g. Badminton, Futsal, Tennis" />
                         </div>
                         <Input value={editData.description} onChange={e => setEditData(s => ({ ...s, description: e.target.value }))} placeholder="Description" />
+                        <div className="space-y-2">
+                          <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+                            <ImagePlus className="h-3 w-3" /> Banner Image
+                          </Label>
+                          <div className="flex items-center gap-4">
+                            <label className="flex items-center gap-2 px-4 py-2 rounded-full border-2 border-dashed border-[#C47A00]/20 hover:border-[#C47A00]/40 cursor-pointer transition-colors">
+                              <ImagePlus className="h-4 w-4" style={{ color: '#C47A00' }} />
+                              <span className="text-sm text-muted-foreground">{editImageFile ? editImageFile.name : 'Upload new image'}</span>
+                              <input type="file" accept="image/*" onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) { setEditImageFile(file); setEditImagePreview(URL.createObjectURL(file)); }
+                              }} className="hidden" />
+                            </label>
+                            {(editImagePreview || group.image_url) && (
+                              <img src={editImagePreview || group.image_url!} alt="Preview" className="h-16 w-24 object-cover rounded-lg border" />
+                            )}
+                          </div>
+                        </div>
                         <div className="flex gap-2">
                           <Button size="sm" className="rounded-full" style={{ background: '#1A7A4A', color: '#fff' }} onClick={() => handleSaveEdit(group.id)}>
                             <Save className="mr-1.5 h-3.5 w-3.5" /> Save
                           </Button>
-                          <Button size="sm" variant="ghost" className="rounded-full" onClick={() => setEditingId(null)}>Cancel</Button>
+                          <Button size="sm" variant="ghost" className="rounded-full" onClick={() => { setEditingId(null); setEditImageFile(null); setEditImagePreview(''); }}>Cancel</Button>
                         </div>
                       </div>
                     ) : (

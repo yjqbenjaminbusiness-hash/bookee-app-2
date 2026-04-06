@@ -1244,6 +1244,58 @@ function SupabaseManageView({ activityId, navigate }: { activityId: string | und
                   </div>
                 )}
 
+                {/* Add Guest Section */}
+                <div className="border-t p-4 bg-muted/10 space-y-3">
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground font-bold uppercase tracking-wider">
+                    <UserPlus className="h-3 w-3" /> Add Guest (non-registered)
+                  </div>
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <Input
+                      placeholder="Guest name"
+                      value={guestName[session.id] || ''}
+                      onChange={e => setGuestName(prev => ({ ...prev, [session.id]: e.target.value }))}
+                      className="flex-1 text-sm"
+                    />
+                    <Input
+                      placeholder="Note (optional)"
+                      value={guestNote[session.id] || ''}
+                      onChange={e => setGuestNote(prev => ({ ...prev, [session.id]: e.target.value }))}
+                      className="flex-1 text-sm"
+                    />
+                    <Button
+                      size="sm"
+                      className="rounded-full text-xs"
+                      onClick={() => handleAddGuest(session.id)}
+                      disabled={isAddingGuest || !guestName[session.id]?.trim()}
+                    >
+                      {isAddingGuest ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Plus className="h-3 w-3 mr-1" />}
+                      Add Guest
+                    </Button>
+                  </div>
+                  {/* List existing guests with remove option */}
+                  {bookings.filter((b: any) => b.user_id === null || b.player_name?.startsWith('Guest -')).length > 0 && (
+                    <div className="space-y-1 pt-1">
+                      {bookings.filter((b: any) => b.user_id === null || b.player_name?.startsWith('Guest -')).map((g: any) => (
+                        <div key={g.id} className="flex items-center justify-between text-sm p-2 rounded-lg bg-background border">
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline" className="text-[9px] text-amber-600 border-amber-600/40">Guest</Badge>
+                            <span className="font-medium">{g.player_name?.replace('Guest - ', '')}</span>
+                            {g.special_request && <span className="text-[10px] text-muted-foreground">📝 {g.special_request}</span>}
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0 text-destructive"
+                            onClick={() => handleRemoveGuest(g.id)}
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
                 {/* Release Details per session */}
                 <div className="border-t p-4 bg-muted/10 space-y-2">
                   <div className="flex items-center gap-2 text-xs text-muted-foreground font-bold uppercase tracking-wider">

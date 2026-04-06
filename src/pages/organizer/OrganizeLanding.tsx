@@ -6,6 +6,7 @@ import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
 import { Clock, Shuffle, CalendarDays, Plus, ChevronDown, ChevronRight, Users, MapPin, Calendar, ArrowRight, Loader2, Settings, Activity as ActivityIcon, UsersRound, Eye, EyeOff } from 'lucide-react';
+import FeedbackDialog from '../../components/FeedbackDialog';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 
@@ -106,10 +107,11 @@ export default function OrganizeLanding() {
             {showDemo ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
             {showDemo ? 'Hide Demo' : 'Show Demo'}
           </button>
+          <FeedbackDialog />
           <Button
             variant="outline"
             onClick={() => navigate('/organizer/groups')}
-            className="rounded-full"
+            className="rounded-full border-primary/40 text-primary font-bold"
           >
             <Settings className="mr-2 h-4 w-4" /> Manage Groups
           </Button>
@@ -134,14 +136,14 @@ export default function OrganizeLanding() {
             <div className="text-3xl font-bold text-primary">{groups.length}</div>
           </CardContent>
         </Card>
-        <Card className="border-2 bg-accent/30 border-accent/30">
+        <Card className="border-2 bg-amber-50 border-amber-200/60">
           <CardHeader className="pb-2">
-            <CardTitle className="text-xs font-bold uppercase tracking-widest text-accent-foreground flex items-center gap-1.5">
+            <CardTitle className="text-xs font-bold uppercase tracking-widest text-amber-700 flex items-center gap-1.5">
               <ActivityIcon className="h-3.5 w-3.5" /> Upcoming
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-accent-foreground">{upcomingActivities.length}</div>
+            <div className="text-3xl font-bold text-amber-700">{upcomingActivities.length}</div>
           </CardContent>
         </Card>
         <Card className="border-2 bg-secondary/50 border-secondary/50">
@@ -247,7 +249,7 @@ export default function OrganizeLanding() {
                     <Button
                       variant="outline"
                       size="sm"
-                      className="text-xs rounded-full px-4"
+                      className="text-xs rounded-full px-4 border-primary/40 text-primary font-bold"
                       onClick={(e) => { e.stopPropagation(); navigate(`/player/groups/${group.id}`); }}
                     >
                       View More
@@ -284,7 +286,7 @@ export default function OrganizeLanding() {
                                 key={opt.title}
                                 variant="outline"
                                 size="sm"
-                                className="rounded-full text-xs"
+                                className="rounded-full text-xs border-primary/30 text-primary font-bold"
                                 onClick={() => navigate(`${opt.route}${opt.route.includes('?') ? '&' : '?'}group=${group.id}`)}
                               >
                                 <Icon className="mr-1 h-3 w-3" /> {opt.title}

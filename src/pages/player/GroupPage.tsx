@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { dataService, type Group, type Activity, type ActivitySession } from '../../lib/data';
+import { dataService, type Group, type Activity, type ActivitySession, type Ballot } from '../../lib/data';
 import { useAuth } from '../../hooks/useAuth';
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
-import { ArrowLeft, Calendar, Clock, Users, ArrowRight, UserPlus, Check, Loader2, MapPin, Share2, Copy, Link, Shield, Settings, Megaphone, Eye, EyeOff, Bell, Trash2, Plus, Minus } from 'lucide-react';
+import { ArrowLeft, Calendar, Clock, Users, ArrowRight, UserPlus, Check, Loader2, MapPin, Share2, Copy, Link, Shield, Settings, Megaphone, Eye, EyeOff, Bell, Trash2, Plus, Minus, Shuffle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -18,6 +18,7 @@ export default function GroupPage() {
   const [isMember, setIsMember] = useState(false);
   const [group, setGroup] = useState<Group | null>(null);
   const [activities, setActivities] = useState<Activity[]>([]);
+  const [ballots, setBallots] = useState<Ballot[]>([]);
   const [sessions, setSessions] = useState<Record<string, ActivitySession[]>>({});
   const [memberCount, setMemberCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
@@ -34,13 +35,15 @@ export default function GroupPage() {
       try {
         // Demo group is now in DB — no special handling needed
 
-        const [grp, acts, members] = await Promise.all([
+        const [grp, acts, members, bals] = await Promise.all([
           dataService.getGroup(groupId),
           dataService.listActivitiesByGroup(groupId),
           dataService.getGroupMembers(groupId),
+          dataService.listBallotsByGroup(groupId),
         ]);
         setGroup(grp);
         setActivities(acts);
+        setBallots(bals);
         setMemberCount(members.length);
 
         if (user) {
@@ -381,6 +384,48 @@ export default function GroupPage() {
             </motion.div>
           </AnimatePresence>
         </section>
+
+        {/* Group Ballots */}
+        {ballots.length > 0 && (
+          <section>
+            <div className="mb-4">
+              <p className="text-xs font-bold uppercase tracking-widest mb-1" style={{ color: '#7C3AED' }}>Ballot Sessions</p>
+              <h2 className="text-lg font-bold" style={{ color: '#111' }}>Group Ballots</h2>
+            </div>
+            <div className="space-y-3">
+              {ballots.map((bal, i) => {
+                const isPast = bal.ballot_deadline < new Date().toISOString().split('T')[0];
+                return (
+                  <motion.div key={bal.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
+                    className="p-4 rounded-2xl border-2 bg-white hover:shadow-md transition-all"
+                    style={{ borderColor: 'rgba(124,58,237,0.14)' }}>
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-start gap-3 flex-1 min-w-0">
+                        <div className="p-2 rounded-xl flex-shrink-0" style={{ background: '#F3F0FF' }}>
+                          <Shuffle className="h-4 w-4" style={{ color: '#7C3AED' }} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-bold text-sm leading-snug" style={{ color: '#111' }}>{bal.activity_name}</p>
+                          <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                            <MapPin className="h-3 w-3" /> {bal.location}
+                          </p>
+                          <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                            <Calendar className="h-3 w-3" /> Deadline: {new Date(bal.ballot_deadline).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-end gap-2 flex-shrink-0">
+                        <Badge variant="outline" className="text-[10px] bg-purple-50 text-purple-700 border-purple-200">Ballot</Badge>
+                        <span className="text-xs text-muted-foreground">{bal.slots} slots</span>
+                        {isPast && <Badge variant="secondary" className="text-[10px]">Closed</Badge>}
+                      </div>
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </div>
+          </section>
+        )}
 
         {/* Members preview */}
         <section>

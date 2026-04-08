@@ -1,52 +1,30 @@
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/button';
 import { motion } from 'framer-motion';
-import { Users, ShieldCheck, Play, Bot, MessageSquare, ArrowRight, Mail } from 'lucide-react';
-import { toast } from 'sonner';
+import { Users, ShieldCheck } from 'lucide-react';
 
 export default function DemoPage() {
   const navigate = useNavigate();
-
-  const labelMapping: Record<string, string> = {
-    'organizer': 'Launch Demo',
-    'player': 'Launch Demo',
-    'chat-org': 'Open Bot',
-    'chat-player': 'Open Bot'
-  };
 
   const demoOptions = [
     {
       id: 'organizer',
       title: 'Organizer Demo',
-      description: 'Manage events, players, and payments.',
+      description: 'Manage events, participants, and payments.',
       icon: ShieldCheck,
       color: '#1A7A4A',
-      path: '/demo/organizer'
+      path: '/demo/organizer',
+      label: 'Launch Demo',
     },
     {
       id: 'player',
-      title: 'Player Demo',
+      title: 'Participant Demo',
       description: 'Discover and join activities.',
       icon: Users,
       color: '#1A7A4A',
-      path: '/demo/player'
+      path: '/demo/player',
+      label: 'Launch Demo',
     },
-    {
-      id: 'chat-org',
-      title: 'Organizer Chat',
-      description: 'Bot assisted hosting.',
-      icon: Bot,
-      color: '#7C3AED',
-      path: '/demo/chat?role=organizer'
-    },
-    {
-      id: 'chat-player',
-      title: 'Player Chat',
-      description: 'Bot assisted discovery.',
-      icon: MessageSquare,
-      color: '#7C3AED',
-      path: '/demo/chat?role=player'
-    }
   ];
 
   return (
@@ -67,7 +45,7 @@ export default function DemoPage() {
             transition={{ delay: 0.1 }}
             className="text-muted-foreground text-sm md:text-base max-w-lg mx-auto"
           >
-            Explore our isolated sandbox environment in a 4-quadrant simulation.
+            Explore our sandbox — try both the organizer and participant views.
           </motion.p>
         </div>
 
@@ -96,7 +74,7 @@ export default function DemoPage() {
                 style={{ background: option.color, color: '#fff' }}
                 onClick={() => navigate(option.path)}
               >
-                {labelMapping[option.id]}
+                {option.label}
               </Button>
             </motion.div>
           ))}

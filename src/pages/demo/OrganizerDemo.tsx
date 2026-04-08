@@ -301,6 +301,49 @@ export default function OrganizerDemo() {
               </div>
             </section>
 
+            {/* Ballot Demo Example */}
+            <section className="space-y-4">
+              <h2 className="font-bold text-lg flex items-center gap-2">
+                <Shuffle className="h-5 w-5" style={{ color: '#7C3AED' }} /> Ballot Session Example
+              </h2>
+              <Card className="overflow-hidden border-2 border-purple-100 shadow-md">
+                <div className="p-5 bg-purple-50/30">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-12 h-12 rounded-2xl bg-purple-100 flex items-center justify-center text-xl shadow-inner">🏸</div>
+                    <div>
+                      <h3 className="font-bold text-lg leading-none mb-1">Weekly Court Ballot</h3>
+                      <p className="text-xs text-muted-foreground">Senja Cashew Sports Hall · Deadline: 15 Mar</p>
+                    </div>
+                    <Badge variant="outline" className="ml-auto text-[10px] bg-purple-50 text-purple-700 border-purple-200">Ballot</Badge>
+                  </div>
+                  <div className="space-y-2">
+                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Participant Attempts</p>
+                    <div className="grid gap-2">
+                      {[
+                        { name: 'Sarah L.', attempts: 3, status: 'selected' },
+                        { name: 'James K.', attempts: 2, status: 'pending' },
+                        { name: 'Wei Ming', attempts: 1, status: 'pending' },
+                      ].map(p => (
+                        <div key={p.name} className="flex items-center justify-between p-3 rounded-xl border bg-white">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center font-bold text-xs text-purple-700">{p.name.charAt(0)}</div>
+                            <div>
+                              <p className="font-bold text-sm">{p.name}</p>
+                              <p className="text-[10px] text-muted-foreground">{p.attempts} attempt{p.attempts !== 1 ? 's' : ''} this cycle</p>
+                            </div>
+                          </div>
+                          <Badge className={`text-[10px] ${p.status === 'selected' ? 'bg-green-100 text-green-700 border-green-200' : 'bg-amber-50 text-amber-600 border-amber-200'}`}>
+                            {p.status === 'selected' ? '✓ Selected' : 'Pending'}
+                          </Badge>
+                        </div>
+                      ))}
+                    </div>
+                    <p className="text-[10px] text-muted-foreground mt-2">10 slots available · 3 participants balloted</p>
+                  </div>
+                </div>
+              </Card>
+            </section>
+
             {/* Groups Simulation Link */}
             <section className="bg-primary/5 rounded-3xl p-8 border border-primary/10 relative overflow-hidden group cursor-pointer hover:shadow-lg transition-all">
               <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:scale-110 transition-transform">

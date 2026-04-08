@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
+  Shuffle,
   LayoutDashboard, 
   Calendar, 
   Users, 

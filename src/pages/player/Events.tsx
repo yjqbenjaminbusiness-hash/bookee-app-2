@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { dataService, type Activity, type ActivitySession, type Group } from '../../lib/data';
+import { dataService, type Activity, type ActivitySession, type Group, type Ballot } from '../../lib/data';
 import { useAuth } from '../../hooks/useAuth';
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
-import { Search, ArrowRight, Users, Star, Calendar, MapPin, ChevronRight, Clock, UserPlus, Check, Loader2, Eye, EyeOff } from 'lucide-react';
+import { Search, ArrowRight, Users, Star, Calendar, MapPin, ChevronRight, Clock, UserPlus, Check, Loader2, Eye, EyeOff, Shuffle } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 
@@ -43,6 +43,7 @@ export default function PlayerEvents() {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [sessions, setSessions] = useState<Record<string, ActivitySession[]>>({});
   const [groups, setGroups] = useState<Group[]>([]);
+  const [ballots, setBallots] = useState<Ballot[]>([]);
   const [groupMap, setGroupMap] = useState<Record<string, Group>>({});
   const [joiningGroupId, setJoiningGroupId] = useState<string | null>(null);
   const [joinedGroupIds, setJoinedGroupIds] = useState<Set<string>>(new Set());
@@ -56,12 +57,14 @@ export default function PlayerEvents() {
     const loadData = async () => {
       setIsLoading(true);
       try {
-        const [acts, grps] = await Promise.all([
+        const [acts, grps, bals] = await Promise.all([
           dataService.listPublicActivities(),
           dataService.listGroups(),
+          dataService.listPublicBallots(),
         ]);
         setActivities(acts);
         setGroups(grps);
+        setBallots(bals);
 
         // Build group lookup map
         const gMap: Record<string, Group> = {};
@@ -109,6 +112,7 @@ export default function PlayerEvents() {
   // Filter demo items based on toggle
   const allActivities = showDemo ? activities : activities.filter(a => !dataService.isDemoItem(a.id));
   const allGroups = showDemo ? groups : groups.filter(g => !dataService.isDemoItem(g.id));
+  const allBallots = showDemo ? ballots : ballots.filter(b => !dataService.isDemoItem(b.id));
 
   const filteredActivities = allActivities.filter(a => {
     const matchesSport = selectedSport === 'all' || a.sport === selectedSport;
@@ -274,6 +278,64 @@ export default function PlayerEvents() {
             </div>
           )}
         </section>
+
+        {/* Ballot Sessions */}
+        {allBallots.length > 0 && (
+          <>
+            <div className="flex items-center gap-4">
+              <div className="flex-1 h-px bg-border" />
+              <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground px-3">Ballot Sessions</span>
+              <div className="flex-1 h-px bg-border" />
+            </div>
+
+            <section>
+              <div className="mb-4">
+                <p className="text-xs font-bold uppercase tracking-widest mb-1" style={{ color: '#7C3AED' }}>Open Ballots</p>
+                <h2 className="text-xl font-bold" style={{ color: '#111' }}>Ballot Sessions</h2>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                {allBallots.map((ballot, i) => {
+                  const linkedGroup = ballot.group_id ? (groupMap[ballot.group_id] || null) : null;
+                  const isPast = ballot.ballot_deadline < new Date().toISOString().split('T')[0];
+                  return (
+                    <motion.div key={ballot.id}
+                      initial={{ opacity: 0, y: 16 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3, delay: i * 0.05 }}
+                      className="rounded-2xl border-2 overflow-hidden bg-white hover:shadow-lg transition-all"
+                      style={{ borderColor: 'rgba(124,58,237,0.14)' }}>
+                      <div className="p-5 space-y-3">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Shuffle className="h-4 w-4" style={{ color: '#7C3AED' }} />
+                          <Badge variant="outline" className="text-[10px] bg-purple-50 text-purple-700 border-purple-200">Ballot</Badge>
+                          {isPast && <Badge variant="secondary" className="text-[10px]">Closed</Badge>}
+                        </div>
+                        <h3 className="font-bold text-base leading-snug" style={{ color: '#111' }}>{ballot.activity_name}</h3>
+                        {linkedGroup && (
+                          <p className="text-[10px] font-bold px-2 py-0.5 rounded-full inline-block" style={{ background: '#E8F7EF', color: '#1A7A4A' }}>
+                            {linkedGroup.name}
+                          </p>
+                        )}
+                        <p className="text-xs text-muted-foreground flex items-center gap-1">
+                          <MapPin className="h-3 w-3" /> {ballot.location}
+                        </p>
+                        <p className="text-xs text-muted-foreground flex items-center gap-1">
+                          <Calendar className="h-3 w-3" /> Deadline: {new Date(ballot.ballot_deadline).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })}
+                        </p>
+                        <div className="flex items-center justify-between pt-2">
+                          <span className="text-xs text-muted-foreground flex items-center gap-1">
+                            <Users className="h-3 w-3" /> {ballot.slots} slots
+                          </span>
+                          <span className="text-xs font-bold" style={{ color: '#7C3AED' }}>{ballot.sport}</span>
+                        </div>
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </div>
+            </section>
+          </>
+        )}
 
         {/* Divider */}
         <div className="flex items-center gap-4">

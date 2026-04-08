@@ -397,7 +397,7 @@ export default function GroupPage() {
                     <motion.div key={ballot.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
                       className="group p-4 rounded-2xl border-2 bg-card hover:shadow-md transition-all cursor-pointer"
                       style={{ borderColor: 'hsl(var(--accent) / 0.2)' }}
-                      onClick={() => navigate(`/player/ballots/${ballot.id}`)}>
+                      onClick={() => toast.info('Ballot detail view coming soon')}>
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex items-start gap-3 flex-1 min-w-0">
                           <div className="p-2 rounded-xl bg-accent/10">

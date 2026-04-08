@@ -365,7 +365,7 @@ export default function OrganizeLanding() {
         key={ballot.id}
         className={`flex items-center gap-3 p-3 rounded-xl border hover:shadow-sm transition-all cursor-pointer ${isDemo ? 'opacity-60 border-dashed' : 'bg-background'}`}
         style={isDemo ? { background: 'hsl(var(--muted))' } : undefined}
-        onClick={() => navigate(`/player/ballots/${ballot.id}`)}
+        onClick={() => toast.info('Ballot detail view coming soon')}
       >
         <div className="p-2 rounded-lg flex-shrink-0 bg-accent/10">
           <Shuffle className="h-4 w-4 text-accent" style={isPast ? { opacity: 0.4 } : undefined} />

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
-import { dataService, type Group, type Activity, type ActivitySession, type Ballot } from '../../lib/data';
+import { dataService, type Group, type Activity, type ActivitySession } from '../../lib/data';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
@@ -15,9 +15,7 @@ export default function OrganizeLanding() {
   const navigate = useNavigate();
   const [groups, setGroups] = useState<Group[]>([]);
   const [allActivities, setAllActivities] = useState<Activity[]>([]);
-  const [allBallots, setAllBallots] = useState<Ballot[]>([]);
   const [activitiesByGroup, setActivitiesByGroup] = useState<Record<string, Activity[]>>({});
-  const [ballotsByGroup, setBallotsByGroup] = useState<Record<string, Ballot[]>>({});
   const [sessionsByActivity, setSessionsByActivity] = useState<Record<string, ActivitySession[]>>({});
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState(true);
@@ -34,28 +32,18 @@ export default function OrganizeLanding() {
     const load = async () => {
       setIsLoading(true);
       try {
-        const [grps, acts, ballots] = await Promise.all([
+        const [grps, acts] = await Promise.all([
           dataService.listGroupsByOrganizer(user.id),
           dataService.listActivitiesByOrganizer(user.id),
-          dataService.listBallotsByOrganizer(user.id),
         ]);
         setGroups(grps);
         setAllActivities(acts);
-        setAllBallots(ballots);
 
         const actMap: Record<string, Activity[]> = {};
         for (const g of grps) {
           actMap[g.id] = acts.filter(a => a.group_id === g.id).sort((a, b) => a.date.localeCompare(b.date));
         }
         setActivitiesByGroup(actMap);
-
-        const balMap: Record<string, Ballot[]> = {};
-        for (const b of ballots) {
-          const key = b.group_id || '__unlinked__';
-          if (!balMap[key]) balMap[key] = [];
-          balMap[key].push(b);
-        }
-        setBallotsByGroup(balMap);
 
         const sessMap: Record<string, ActivitySession[]> = {};
         await Promise.all(acts.map(async (a) => {
@@ -97,12 +85,10 @@ export default function OrganizeLanding() {
   const today = new Date().toISOString().split('T')[0];
   const displayedGroups = showDemo ? groups : groups.filter(g => !dataService.isDemoItem(g.id));
   const displayedActivities = showDemo ? allActivities : allActivities.filter(a => !dataService.isDemoItem(a.id));
-  const displayedBallots = showDemo ? allBallots : allBallots.filter(b => !dataService.isDemoItem(b.id));
   const upcomingActivities = displayedActivities.filter(a => a.date >= today);
   const totalParticipants = Object.values(sessionsByActivity).flat().reduce((acc, s) => acc + s.filled_slots, 0);
   const totalSessions = Object.values(sessionsByActivity).flat().length;
   const unlinkedActivities = displayedActivities.filter(a => !a.group_id).sort((a, b) => a.date.localeCompare(b.date));
-  const unlinkedBallots = displayedBallots.filter(b => !b.group_id);
 
   return (
     <div className="container py-8 px-4 max-w-5xl">
@@ -150,14 +136,14 @@ export default function OrganizeLanding() {
             <div className="text-3xl font-bold text-primary">{groups.length}</div>
           </CardContent>
         </Card>
-        <Card className="border-2 bg-yellow-50 border-yellow-200/60">
+        <Card className="border-2 bg-amber-50 border-amber-200/60">
           <CardHeader className="pb-2">
-            <CardTitle className="text-xs font-bold uppercase tracking-widest text-yellow-600 flex items-center gap-1.5">
+            <CardTitle className="text-xs font-bold uppercase tracking-widest text-amber-700 flex items-center gap-1.5">
               <ActivityIcon className="h-3.5 w-3.5" /> Upcoming
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-yellow-600">{upcomingActivities.length}</div>
+            <div className="text-3xl font-bold text-amber-700">{upcomingActivities.length}</div>
           </CardContent>
         </Card>
         <Card className="border-2 bg-secondary/50 border-secondary/50">
@@ -177,7 +163,7 @@ export default function OrganizeLanding() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-foreground">{totalSessions + displayedBallots.length}</div>
+            <div className="text-3xl font-bold text-foreground">{totalSessions}</div>
           </CardContent>
         </Card>
       </div>
@@ -203,7 +189,7 @@ export default function OrganizeLanding() {
       </div>
 
       {/* Groups List */}
-      {groups.length === 0 && unlinkedActivities.length === 0 && unlinkedBallots.length === 0 ? (
+      {groups.length === 0 && unlinkedActivities.length === 0 ? (
         <div className="text-center py-16 rounded-2xl border-2 border-dashed bg-muted/10">
           <span className="text-4xl mb-4 block">📋</span>
           <p className="font-bold text-foreground text-lg">No groups yet</p>
@@ -224,7 +210,6 @@ export default function OrganizeLanding() {
             const groupActs = showDemo
               ? (activitiesByGroup[group.id] || [])
               : (activitiesByGroup[group.id] || []).filter(a => !dataService.isDemoItem(a.id));
-            const groupBals = ballotsByGroup[group.id] || [];
             const upcoming = groupActs.filter(a => a.date >= today);
             const isDemo = dataService.isDemoItem(group.id);
 
@@ -257,7 +242,7 @@ export default function OrganizeLanding() {
                       {isDemo && <Badge className="text-[9px] bg-muted-foreground/60 text-white border-none">DEMO</Badge>}
                     </div>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      {group.member_count || 0} members · {upcoming.length} upcoming{groupBals.length > 0 ? ` · ${groupBals.length} ballot${groupBals.length !== 1 ? 's' : ''}` : ''}
+                      {group.member_count || 0} members · {upcoming.length} upcoming
                     </p>
                   </div>
                   <div className="flex items-center gap-3">
@@ -281,7 +266,7 @@ export default function OrganizeLanding() {
                   </div>
                 </div>
 
-                {/* Expanded Activities + Ballots */}
+                {/* Expanded Activities */}
                 <AnimatePresence>
                   {isExpanded && (
                     <motion.div
@@ -310,15 +295,12 @@ export default function OrganizeLanding() {
                           })}
                         </div>
 
-                        {groupActs.length === 0 && groupBals.length === 0 ? (
+                        {groupActs.length === 0 ? (
                           <div className="text-center py-6 rounded-xl border border-dashed bg-background">
-                            <p className="text-sm text-muted-foreground">No activities or ballots in this group yet</p>
+                            <p className="text-sm text-muted-foreground">No activities in this group yet</p>
                           </div>
                         ) : (
-                          <>
-                            {groupActs.map((act) => renderActivityRow(act, today))}
-                            {groupBals.map((bal) => renderBallotRow(bal))}
-                          </>
+                          groupActs.map((act) => renderActivityRow(act, today))
                         )}
                       </div>
                     </motion.div>
@@ -336,18 +318,6 @@ export default function OrganizeLanding() {
               </p>
               <div className="rounded-2xl border-2 overflow-hidden bg-card p-4 space-y-2">
                 {unlinkedActivities.map((act) => renderActivityRow(act, today))}
-              </div>
-            </>
-          )}
-
-          {/* Unlinked Ballots */}
-          {unlinkedBallots.length > 0 && (
-            <>
-              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mt-6 mb-2">
-                Unlinked Ballots ({unlinkedBallots.length})
-              </p>
-              <div className="rounded-2xl border-2 overflow-hidden bg-card p-4 space-y-2">
-                {unlinkedBallots.map((bal) => renderBallotRow(bal))}
               </div>
             </>
           )}
@@ -394,42 +364,6 @@ export default function OrganizeLanding() {
             {isPast ? 'Past' : act.status === 'active' ? 'Active' : act.status}
           </Badge>
           <ArrowRight className="h-4 w-4 text-muted-foreground" />
-        </div>
-      </div>
-    );
-  }
-
-  function renderBallotRow(bal: Ballot) {
-    const isPast = bal.ballot_deadline < today;
-
-    return (
-      <div
-        key={bal.id}
-        className="flex items-center gap-3 p-3 rounded-xl border hover:shadow-sm transition-all cursor-pointer bg-background"
-      >
-        <div className="p-2 rounded-lg flex-shrink-0 bg-accent/10">
-          <Shuffle className="h-4 w-4 text-accent" style={isPast ? { opacity: 0.4 } : undefined} />
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="font-semibold text-sm text-foreground truncate">{bal.activity_name}</p>
-          <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
-            <span className="flex items-center gap-1">
-              <Calendar className="h-3 w-3" />
-              Deadline: {new Date(bal.ballot_deadline).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}
-            </span>
-            <span className="flex items-center gap-1">
-              <MapPin className="h-3 w-3" /> {bal.location}
-            </span>
-            <span className="flex items-center gap-1">
-              <Users className="h-3 w-3" /> {bal.slots} slots
-            </span>
-          </div>
-        </div>
-        <div className="flex items-center gap-2 flex-shrink-0">
-          <Badge variant="outline" className="text-xs bg-accent/5 text-accent border-accent/20">Ballot</Badge>
-          <Badge variant={isPast ? 'secondary' : 'default'} className="text-xs">
-            {isPast ? 'Closed' : 'Open'}
-          </Badge>
         </div>
       </div>
     );

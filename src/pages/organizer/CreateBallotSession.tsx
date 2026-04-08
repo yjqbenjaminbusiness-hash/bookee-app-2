@@ -62,7 +62,7 @@ export default function CreateBallotSession() {
 
     console.log('[CreateBallot] Ballot created:', data);
     toast.success('Ballot Session created!');
-    navigate('/organize');
+    navigate('/organizer/dashboard');
   };
 
   return (

@@ -168,7 +168,7 @@ export default function PlayerDemo() {
                           >
                             <div className="p-4 space-y-4">
                               <div className="space-y-2">
-                                <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Signed Up Players</p>
+                                <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Signed Up Participants</p>
                                 <div className="flex flex-wrap gap-2">
                                   {activity.players.slice(0, 5).map(p => (
                                     <div key={p.id} className="flex items-center gap-1.5 bg-white border px-2 py-1 rounded-full shadow-sm">

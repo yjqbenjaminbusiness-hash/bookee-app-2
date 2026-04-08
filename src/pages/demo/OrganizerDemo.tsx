@@ -195,7 +195,7 @@ export default function OrganizerDemo() {
                             <div className="space-y-4">
                               <div className="flex items-center justify-between">
                                 <h4 className="text-xs font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-                                  <Users className="h-3.5 w-3.5" /> Player Attendance
+                                  <Users className="h-3.5 w-3.5" /> Participant Attendance
                                 </h4>
                                 <Badge variant="outline" className="bg-primary/5 text-primary border-primary/10">
                                   {activity.players.length} Signed Up
@@ -329,7 +329,7 @@ export default function OrganizerDemo() {
                       <span className="text-[10px] font-bold text-muted-foreground bg-white px-2 py-0.5 rounded-full shadow-sm">{activity.date}</span>
                     </div>
                     <div className="flex items-center justify-between text-xs">
-                      <span className="text-muted-foreground flex items-center gap-1"><Users className="h-3 w-3" /> {activity.players.length} players</span>
+                      <span className="text-muted-foreground flex items-center gap-1"><Users className="h-3 w-3" /> {activity.players.length} participants</span>
                       <span className="text-green-600 font-bold flex items-center gap-1"><CreditCard className="h-3 w-3" /> $120.00</span>
                     </div>
                   </Card>

@@ -351,6 +351,16 @@ export const dataService = {
     return (data || []) as Ballot[];
   },
 
+  async listBallotsByOrganizer(organizerId: string): Promise<Ballot[]> {
+    const { data, error } = await supabase
+      .from('ballots')
+      .select('*')
+      .eq('created_by', organizerId)
+      .order('created_at', { ascending: false });
+    if (error) { console.error('listBallotsByOrganizer error:', error); return []; }
+    return (data || []) as Ballot[];
+  },
+
   // ─── Bookings ───────────────────────────────────────────────
   async listBookingsByUser(userId: string): Promise<any[]> {
     const { data, error } = await supabase

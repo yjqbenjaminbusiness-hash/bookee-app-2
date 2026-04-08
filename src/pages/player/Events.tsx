@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { dataService, type Activity, type ActivitySession, type Group } from '../../lib/data';
+import { dataService, type Activity, type ActivitySession, type Group, type Ballot } from '../../lib/data';
 import { useAuth } from '../../hooks/useAuth';
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
-import { Search, ArrowRight, Users, Star, Calendar, MapPin, ChevronRight, Clock, UserPlus, Check, Loader2, Eye, EyeOff } from 'lucide-react';
+import { Search, ArrowRight, Users, Star, Calendar, MapPin, ChevronRight, Clock, UserPlus, Check, Loader2, Eye, EyeOff, Shuffle } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 
@@ -41,6 +41,7 @@ export default function PlayerEvents() {
   const [selectedSport, setSelectedSport] = useState('all');
   const [search, setSearch] = useState('');
   const [activities, setActivities] = useState<Activity[]>([]);
+  const [ballots, setBallots] = useState<Ballot[]>([]);
   const [sessions, setSessions] = useState<Record<string, ActivitySession[]>>({});
   const [groups, setGroups] = useState<Group[]>([]);
   const [groupMap, setGroupMap] = useState<Record<string, Group>>({});
@@ -56,12 +57,14 @@ export default function PlayerEvents() {
     const loadData = async () => {
       setIsLoading(true);
       try {
-        const [acts, grps] = await Promise.all([
+        const [acts, grps, blts] = await Promise.all([
           dataService.listPublicActivities(),
           dataService.listGroups(),
+          dataService.listPublicBallots(),
         ]);
         setActivities(acts);
         setGroups(grps);
+        setBallots(blts);
 
         // Build group lookup map
         const gMap: Record<string, Group> = {};
@@ -109,6 +112,7 @@ export default function PlayerEvents() {
   // Filter demo items based on toggle
   const allActivities = showDemo ? activities : activities.filter(a => !dataService.isDemoItem(a.id));
   const allGroups = showDemo ? groups : groups.filter(g => !dataService.isDemoItem(g.id));
+  const allBallots = showDemo ? ballots : ballots.filter(b => !dataService.isDemoItem(b.id));
 
   const filteredActivities = allActivities.filter(a => {
     const matchesSport = selectedSport === 'all' || a.sport === selectedSport;
@@ -116,6 +120,15 @@ export default function PlayerEvents() {
       a.title.toLowerCase().includes(search.toLowerCase()) ||
       a.venue.toLowerCase().includes(search.toLowerCase()) ||
       a.sport.toLowerCase().includes(search.toLowerCase());
+    return matchesSport && matchesSearch;
+  });
+
+  const filteredBallots = allBallots.filter(b => {
+    const matchesSport = selectedSport === 'all' || b.sport === selectedSport;
+    const matchesSearch = !search ||
+      b.activity_name.toLowerCase().includes(search.toLowerCase()) ||
+      b.location.toLowerCase().includes(search.toLowerCase()) ||
+      b.sport.toLowerCase().includes(search.toLowerCase());
     return matchesSport && matchesSearch;
   });
 
@@ -274,6 +287,77 @@ export default function PlayerEvents() {
             </div>
           )}
         </section>
+
+        {/* Ballot Sessions */}
+        {filteredBallots.length > 0 && (
+          <>
+            <div className="flex items-center gap-4">
+              <div className="flex-1 h-px bg-border" />
+              <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground px-3">Ballot Sessions</span>
+              <div className="flex-1 h-px bg-border" />
+            </div>
+
+            <section>
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-widest mb-1" style={{ color: 'hsl(var(--accent-foreground))' }}>Randomized Selection</p>
+                  <h2 className="text-xl font-bold text-foreground">Ballot Sessions</h2>
+                </div>
+                <span className="text-xs text-muted-foreground px-3 py-1 rounded-full bg-muted/60 font-medium">
+                  {filteredBallots.length} ballot{filteredBallots.length !== 1 ? 's' : ''}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                {filteredBallots.map((ballot, i) => {
+                  const sportCat = SPORT_CATEGORIES.find(c => c.id === ballot.sport) || SPORT_CATEGORIES[0];
+                  const isPast = ballot.ballot_deadline < new Date().toISOString().split('T')[0];
+
+                  return (
+                    <motion.div key={ballot.id}
+                      initial={{ opacity: 0, y: 16 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3, delay: i * 0.05 }}
+                      className="rounded-2xl border-2 overflow-hidden hover:shadow-lg transition-all cursor-pointer bg-card"
+                      style={{ borderColor: 'hsl(var(--accent) / 0.2)' }}
+                      onClick={() => toast.info('Ballot detail view coming soon')}>
+                      <div className="p-5 space-y-3">
+                        <div className="flex items-center gap-2">
+                          <div className="p-2 rounded-xl" style={{ background: sportCat.bg }}>
+                            <Shuffle className="h-4 w-4" style={{ color: sportCat.color }} />
+                          </div>
+                          <Badge variant="outline" className="text-xs border-accent/40 text-accent">
+                            <Shuffle className="h-3 w-3 mr-1" /> Ballot
+                          </Badge>
+                          <Badge variant={isPast ? 'secondary' : 'default'} className="text-xs">
+                            {isPast ? 'Closed' : 'Open'}
+                          </Badge>
+                        </div>
+                        <div>
+                          <h3 className="font-bold text-base leading-snug text-foreground">{ballot.activity_name}</h3>
+                          <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
+                            <MapPin className="h-3 w-3" /> {ballot.location}
+                          </p>
+                          <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                            <Calendar className="h-3 w-3" /> Deadline: {new Date(ballot.ballot_deadline).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })}
+                          </p>
+                          <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                            <Users className="h-3 w-3" /> {ballot.slots} slots available
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-bold px-2.5 py-1 rounded-full" style={{ background: sportCat.bg, color: sportCat.color }}>
+                            {sportCat.emoji} {ballot.sport}
+                          </span>
+                        </div>
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </div>
+            </section>
+          </>
+        )}
 
         {/* Divider */}
         <div className="flex items-center gap-4">

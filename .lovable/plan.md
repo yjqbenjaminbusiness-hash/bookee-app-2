@@ -1,41 +1,60 @@
 
 
-# Fix Telegram Domain + Email Inbox Question
+# Fix Ballot Functionality
 
-## Findings
+## Diagnosis
 
-### 1. Telegram Bot — Stale Domain (Bug)
-`supabase/functions/telegram-poll/index.ts` line 6 still has:
-```
-const SITE_URL = "https://bookee-app.lovable.app";
-```
-This is used in ~10+ places throughout the bot (login links, activity links, "View more on web", help text). It was supposed to be updated to the production domain but wasn't deployed or the change was lost.
+The ballot creation flow works correctly — it inserts into the `ballots` table via Supabase. However, **ballots are never fetched or displayed** in any of the three target views:
 
-**Fix**: Change `SITE_URL` to `https://bookee-app.com` and redeploy the edge function.
+1. **OrganizeLanding** (`/organize`) — only fetches `activities` via `listActivitiesByOrganizer`. No ballot query exists.
+2. **GroupPage** (`/player/groups/:id`) — only fetches activities via `listActivitiesByGroup`. No ballot query.
+3. **Explore** (`/player/events`) — only fetches activities via `listPublicActivities`. No ballot query.
 
-### 2. Email Inbox — Not Possible with Lovable Email
-The `notify.bookee-app.com` subdomain is configured for **sending** emails only. Lovable's email infrastructure does not provide an inbox or mailbox. You cannot receive emails at `support@bookee-app.com` through Lovable.
-
-To receive emails at your custom domain (e.g., `support@bookee-app.com`), you'd need a separate email hosting provider like Google Workspace, Zoho Mail, or similar — configured with MX records on your root domain. This doesn't conflict with Lovable's email sending (which uses the `notify.` subdomain).
-
-Your current feedback system works correctly: the feedback form sends an email **to** your Gmail address via the transactional email system. Gmail continues to be the inbox where you receive those messages.
-
-### 3. No Code Errors Found
-- Registry correctly imports the feedback template
-- FeedbackDialog correctly invokes `send-transactional-email`
-- All email edge functions are properly configured in `config.toml`
-- No `lovable.app` references exist in the frontend code
+Additionally:
+- `data.ts` has `listBallots`, `listPublicBallots`, `listBallotsByGroup` but is **missing `listBallotsByOrganizer`**.
+- `CreateBallotSession` navigates to `/organizer/dashboard` (line 65) instead of `/organize`.
 
 ## Plan
 
-### File: `supabase/functions/telegram-poll/index.ts`
-- **Line 6**: Change `SITE_URL` from `"https://bookee-app.lovable.app"` to `"https://bookee-app.com"`
-- Redeploy the `telegram-poll` edge function
+### 1. `src/lib/data.ts` — Add missing method
 
-### No other changes needed
-- Frontend code has no stale domain references
-- Email infrastructure is correctly configured
+Add `listBallotsByOrganizer(organizerId: string)` that queries `ballots` where `created_by = organizerId`.
 
-## Summary
-One fix (Telegram domain), one clarification (no inbox capability with Lovable — keep Gmail or set up a separate email hosting service for receiving mail).
+### 2. `src/pages/organizer/OrganizeLanding.tsx` — Fetch and display ballots
+
+- Import `Ballot` type from `data.ts`
+- Fetch `dataService.listBallotsByOrganizer(user.id)` alongside activities
+- Store ballots in state, group by `group_id`
+- Render ballot rows inside expanded groups (with Shuffle icon and "Ballot" badge) alongside activity rows
+- Show unlinked ballots in the unlinked section
+- Apply `showDemo` filter to ballots
+
+### 3. `src/pages/player/Events.tsx` — Show public ballots in Explore
+
+- Import `Ballot` type
+- Fetch `dataService.listPublicBallots()` alongside activities
+- Render a "Ballot Sessions" section with ballot cards (sport, location, deadline, slots)
+- Apply sport filter and search to ballots too
+
+### 4. `src/pages/player/GroupPage.tsx` — Show group ballots
+
+- Import `Ballot` type
+- Fetch `dataService.listBallotsByGroup(groupId)` alongside activities
+- Render ballot rows alongside activity rows in the upcoming/past tabs
+
+### 5. `src/pages/organizer/CreateBallotSession.tsx` — Fix navigation
+
+- Line 65: Change `navigate('/organizer/dashboard')` → `navigate('/organize')`
+
+## Files Changed
+
+| File | Change |
+|------|--------|
+| `src/lib/data.ts` | Add `listBallotsByOrganizer` method |
+| `src/pages/organizer/OrganizeLanding.tsx` | Fetch + render ballots in groups |
+| `src/pages/player/Events.tsx` | Fetch + render public ballots |
+| `src/pages/player/GroupPage.tsx` | Fetch + render group ballots |
+| `src/pages/organizer/CreateBallotSession.tsx` | Fix post-create navigation |
+
+No database changes needed.
 

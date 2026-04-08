@@ -30,6 +30,7 @@ import ChatDemo from "./pages/demo/ChatDemo";
 import PlayerDashboard from "./pages/player/Dashboard";
 import PlayerEvents from "./pages/player/Events";
 import EventDetails from "./pages/player/EventDetails";
+import BallotDetails from "./pages/player/BallotDetails";
 import PlayerBookings from "./pages/player/Bookings";
 import PaymentPage from "./pages/player/Payment";
 import SpecialRequestPage from "./pages/player/SpecialRequest";
@@ -95,6 +96,7 @@ const App = () => (
             } />
             <Route path="/player/events" element={<PlayerEvents />} />
             <Route path="/player/events/:id" element={<EventDetails />} />
+            <Route path="/player/ballots/:id" element={<BallotDetails />} />
             <Route path="/player/bookings" element={
               <ProtectedRoute allowedRoles={['player']}><PlayerBookings /></ProtectedRoute>
             } />

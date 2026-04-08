@@ -320,7 +320,7 @@ export default function PlayerEvents() {
                       transition={{ duration: 0.3, delay: i * 0.05 }}
                       className="rounded-2xl border-2 overflow-hidden hover:shadow-lg transition-all cursor-pointer bg-card"
                       style={{ borderColor: 'hsl(var(--accent) / 0.2)' }}
-                      onClick={() => toast.info('Ballot detail view coming soon')}>
+                      onClick={() => navigate(`/player/ballots/${ballot.id}`)}>
                       <div className="p-5 space-y-3">
                         <div className="flex items-center gap-2">
                           <div className="p-2 rounded-xl" style={{ background: sportCat.bg }}>

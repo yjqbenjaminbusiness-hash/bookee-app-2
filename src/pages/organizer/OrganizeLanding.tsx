@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
-import { dataService, type Group, type Activity, type ActivitySession } from '../../lib/data';
+import { dataService, type Group, type Activity, type ActivitySession, type Ballot } from '../../lib/data';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
@@ -15,7 +15,9 @@ export default function OrganizeLanding() {
   const navigate = useNavigate();
   const [groups, setGroups] = useState<Group[]>([]);
   const [allActivities, setAllActivities] = useState<Activity[]>([]);
+  const [allBallots, setAllBallots] = useState<Ballot[]>([]);
   const [activitiesByGroup, setActivitiesByGroup] = useState<Record<string, Activity[]>>({});
+  const [ballotsByGroup, setBallotsByGroup] = useState<Record<string, Ballot[]>>({});
   const [sessionsByActivity, setSessionsByActivity] = useState<Record<string, ActivitySession[]>>({});
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState(true);
@@ -32,18 +34,26 @@ export default function OrganizeLanding() {
     const load = async () => {
       setIsLoading(true);
       try {
-        const [grps, acts] = await Promise.all([
+        const [grps, acts, blts] = await Promise.all([
           dataService.listGroupsByOrganizer(user.id),
           dataService.listActivitiesByOrganizer(user.id),
+          dataService.listBallotsByOrganizer(user.id),
         ]);
         setGroups(grps);
         setAllActivities(acts);
+        setAllBallots(blts);
 
         const actMap: Record<string, Activity[]> = {};
         for (const g of grps) {
           actMap[g.id] = acts.filter(a => a.group_id === g.id).sort((a, b) => a.date.localeCompare(b.date));
         }
         setActivitiesByGroup(actMap);
+
+        const bltMap: Record<string, Ballot[]> = {};
+        for (const g of grps) {
+          bltMap[g.id] = blts.filter(b => b.group_id === g.id).sort((a, b) => a.ballot_deadline.localeCompare(b.ballot_deadline));
+        }
+        setBallotsByGroup(bltMap);
 
         const sessMap: Record<string, ActivitySession[]> = {};
         await Promise.all(acts.map(async (a) => {
@@ -85,10 +95,12 @@ export default function OrganizeLanding() {
   const today = new Date().toISOString().split('T')[0];
   const displayedGroups = showDemo ? groups : groups.filter(g => !dataService.isDemoItem(g.id));
   const displayedActivities = showDemo ? allActivities : allActivities.filter(a => !dataService.isDemoItem(a.id));
+  const displayedBallots = showDemo ? allBallots : allBallots.filter(b => !dataService.isDemoItem(b.id));
   const upcomingActivities = displayedActivities.filter(a => a.date >= today);
   const totalParticipants = Object.values(sessionsByActivity).flat().reduce((acc, s) => acc + s.filled_slots, 0);
   const totalSessions = Object.values(sessionsByActivity).flat().length;
   const unlinkedActivities = displayedActivities.filter(a => !a.group_id).sort((a, b) => a.date.localeCompare(b.date));
+  const unlinkedBallots = displayedBallots.filter(b => !b.group_id).sort((a, b) => a.ballot_deadline.localeCompare(b.ballot_deadline));
 
   return (
     <div className="container py-8 px-4 max-w-5xl">
@@ -210,6 +222,9 @@ export default function OrganizeLanding() {
             const groupActs = showDemo
               ? (activitiesByGroup[group.id] || [])
               : (activitiesByGroup[group.id] || []).filter(a => !dataService.isDemoItem(a.id));
+            const groupBlts = showDemo
+              ? (ballotsByGroup[group.id] || [])
+              : (ballotsByGroup[group.id] || []).filter(b => !dataService.isDemoItem(b.id));
             const upcoming = groupActs.filter(a => a.date >= today);
             const isDemo = dataService.isDemoItem(group.id);
 
@@ -242,7 +257,7 @@ export default function OrganizeLanding() {
                       {isDemo && <Badge className="text-[9px] bg-muted-foreground/60 text-white border-none">DEMO</Badge>}
                     </div>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      {group.member_count || 0} members · {upcoming.length} upcoming
+                      {group.member_count || 0} members · {upcoming.length} upcoming · {groupBlts.length} ballot{groupBlts.length !== 1 ? 's' : ''}
                     </p>
                   </div>
                   <div className="flex items-center gap-3">
@@ -295,12 +310,15 @@ export default function OrganizeLanding() {
                           })}
                         </div>
 
-                        {groupActs.length === 0 ? (
+                        {groupActs.length === 0 && groupBlts.length === 0 ? (
                           <div className="text-center py-6 rounded-xl border border-dashed bg-background">
-                            <p className="text-sm text-muted-foreground">No activities in this group yet</p>
+                            <p className="text-sm text-muted-foreground">No activities or ballots in this group yet</p>
                           </div>
                         ) : (
-                          groupActs.map((act) => renderActivityRow(act, today))
+                          <>
+                            {groupActs.map((act) => renderActivityRow(act, today))}
+                            {groupBlts.map((ballot) => renderBallotRow(ballot, today))}
+                          </>
                         )}
                       </div>
                     </motion.div>
@@ -321,10 +339,65 @@ export default function OrganizeLanding() {
               </div>
             </>
           )}
+
+          {/* Unlinked Ballots */}
+          {unlinkedBallots.length > 0 && (
+            <>
+              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mt-6 mb-2">
+                Unlinked Ballots ({unlinkedBallots.length})
+              </p>
+              <div className="rounded-2xl border-2 overflow-hidden bg-card p-4 space-y-2">
+                {unlinkedBallots.map((ballot) => renderBallotRow(ballot, today))}
+              </div>
+            </>
+          )}
         </div>
       )}
     </div>
   );
+
+  function renderBallotRow(ballot: Ballot, today: string) {
+    const isDemo = dataService.isDemoItem(ballot.id);
+    const isPast = ballot.ballot_deadline < today;
+
+    return (
+      <div
+        key={ballot.id}
+        className={`flex items-center gap-3 p-3 rounded-xl border hover:shadow-sm transition-all cursor-pointer ${isDemo ? 'opacity-60 border-dashed' : 'bg-background'}`}
+        style={isDemo ? { background: 'hsl(var(--muted))' } : undefined}
+        onClick={() => toast.info('Ballot detail view coming soon')}
+      >
+        <div className="p-2 rounded-lg flex-shrink-0 bg-accent/10">
+          <Shuffle className="h-4 w-4 text-accent" style={isPast ? { opacity: 0.4 } : undefined} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="font-semibold text-sm text-foreground truncate">{ballot.activity_name}</p>
+          <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
+            <span className="flex items-center gap-1">
+              <Calendar className="h-3 w-3" />
+              {new Date(ballot.ballot_deadline).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}
+            </span>
+            <span className="flex items-center gap-1">
+              <MapPin className="h-3 w-3" /> {ballot.location}
+            </span>
+            <span className="flex items-center gap-1">
+              <Users className="h-3 w-3" /> {ballot.slots} slots
+            </span>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {isDemo && <Badge className="text-[9px] bg-muted-foreground/60 text-white border-none">DEMO</Badge>}
+          <Badge variant="outline" className="text-xs border-accent/40 text-accent">
+            <Shuffle className="h-3 w-3 mr-1" /> Ballot
+          </Badge>
+          <Badge variant={isPast ? 'secondary' : 'default'} className="text-xs">
+            {isPast ? 'Closed' : 'Open'}
+          </Badge>
+          <ArrowRight className="h-4 w-4 text-muted-foreground" />
+        </div>
+      </div>
+    );
+  }
 
   function renderActivityRow(act: Activity, today: string) {
     const isDemo = dataService.isDemoItem(act.id);

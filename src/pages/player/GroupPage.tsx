@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { dataService, type Group, type Activity, type ActivitySession } from '../../lib/data';
+import { dataService, type Group, type Activity, type ActivitySession, type Ballot } from '../../lib/data';
 import { useAuth } from '../../hooks/useAuth';
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
-import { ArrowLeft, Calendar, Clock, Users, ArrowRight, UserPlus, Check, Loader2, MapPin, Share2, Copy, Link, Shield, Settings, Megaphone, Eye, EyeOff, Bell, Trash2, Plus, Minus } from 'lucide-react';
+import { ArrowLeft, Calendar, Clock, Users, ArrowRight, UserPlus, Check, Loader2, MapPin, Share2, Copy, Link, Shield, Settings, Megaphone, Eye, EyeOff, Bell, Trash2, Plus, Minus, Shuffle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -18,6 +18,7 @@ export default function GroupPage() {
   const [isMember, setIsMember] = useState(false);
   const [group, setGroup] = useState<Group | null>(null);
   const [activities, setActivities] = useState<Activity[]>([]);
+  const [ballots, setBallots] = useState<Ballot[]>([]);
   const [sessions, setSessions] = useState<Record<string, ActivitySession[]>>({});
   const [memberCount, setMemberCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
@@ -34,13 +35,15 @@ export default function GroupPage() {
       try {
         // Demo group is now in DB — no special handling needed
 
-        const [grp, acts, members] = await Promise.all([
+        const [grp, acts, members, blts] = await Promise.all([
           dataService.getGroup(groupId),
           dataService.listActivitiesByGroup(groupId),
           dataService.getGroupMembers(groupId),
+          dataService.listBallotsByGroup(groupId),
         ]);
         setGroup(grp);
         setActivities(acts);
+        setBallots(blts);
         setMemberCount(members.length);
 
         if (user) {
@@ -380,6 +383,54 @@ export default function GroupPage() {
               )}
             </motion.div>
           </AnimatePresence>
+
+          {/* Ballot Sessions in this group */}
+          {ballots.length > 0 && (
+            <div className="mt-6">
+              <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: 'hsl(var(--accent-foreground))' }}>
+                Ballot Sessions ({ballots.length})
+              </p>
+              <div className="space-y-3">
+                {ballots.map((ballot, i) => {
+                  const isPast = ballot.ballot_deadline < today;
+                  return (
+                    <motion.div key={ballot.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
+                      className="group p-4 rounded-2xl border-2 bg-card hover:shadow-md transition-all cursor-pointer"
+                      style={{ borderColor: 'hsl(var(--accent) / 0.2)' }}
+                      onClick={() => toast.info('Ballot detail view coming soon')}>
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-start gap-3 flex-1 min-w-0">
+                          <div className="p-2 rounded-xl bg-accent/10">
+                            <Shuffle className="h-4 w-4 text-accent" style={isPast ? { opacity: 0.4 } : undefined} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-0.5">
+                              <p className="font-bold text-sm leading-snug text-foreground">{ballot.activity_name}</p>
+                              <Badge variant="outline" className="text-[10px] border-accent/40 text-accent">Ballot</Badge>
+                            </div>
+                            <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                              <MapPin className="h-3 w-3" /> {ballot.location}
+                            </p>
+                            <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                              <Clock className="h-3 w-3" /> Deadline: {new Date(ballot.ballot_deadline).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })}
+                            </p>
+                            <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                              <Users className="h-3 w-3" /> {ballot.slots} slots
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex flex-col items-end gap-2 flex-shrink-0">
+                          <Badge variant={isPast ? 'secondary' : 'default'} className="text-xs">
+                            {isPast ? 'Closed' : 'Open'}
+                          </Badge>
+                        </div>
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </section>
 
         {/* Members preview */}

@@ -218,7 +218,7 @@ export default function ManageEvent() {
         </div>
         <div className="p-4 rounded-2xl border bg-card shadow-sm flex items-center justify-around gap-4 h-fit">
           <div className="flex flex-col items-center">
-            <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Participants</span>
+            <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Players</span>
             <span className="text-xl font-bold">{timeslots.reduce((a, t) => a + t.currentCapacity, 0)}</span>
           </div>
           <div className="h-8 w-[1px] bg-border" />
@@ -248,7 +248,7 @@ export default function ManageEvent() {
                       <div className="flex items-center gap-6 flex-1 max-w-md">
                         <div className="flex-1 space-y-1">
                           <div className="flex justify-between text-xs mb-1">
-                            <span className="font-medium">Participants registered: <strong>{slot.currentCapacity}</strong></span>
+                            <span className="font-medium">Players registered: <strong>{slot.currentCapacity}</strong></span>
                             <span className="font-medium">Total slots: <strong>{slot.maxCapacity}</strong></span>
                           </div>
                           <Progress value={pct} className="h-2 bg-muted overflow-hidden"><div className="h-full bg-accent transition-all" style={{ width: `${pct}%` }} /></Progress>
@@ -285,7 +285,7 @@ export default function ManageEvent() {
                         </div>
                         <Button variant="ghost" size="sm" onClick={() => toggleExpand(slot.id)}>
                           {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                          <span className="ml-2">{isExpanded ? 'Collapse' : 'Participants'}</span>
+                          <span className="ml-2">{isExpanded ? 'Collapse' : 'Players'}</span>
                         </Button>
                       </div>
                     </div>
@@ -595,7 +595,7 @@ export default function ManageEvent() {
             <h2 className="text-xl font-bold flex items-center gap-2"><Users className="h-5 w-5 text-accent" /> Participant Visibility</h2>
             <Card className="border-accent/10">
               <CardContent className="p-4 space-y-3">
-                <p className="text-xs text-muted-foreground">Control whether participants can see who else has joined.</p>
+                <p className="text-xs text-muted-foreground">Control whether players can see who else has joined.</p>
                 <div className="grid grid-cols-2 gap-2">
                   {(['public', 'private'] as const).map(v => {
                     const isActive = (event.participantVisibility || 'public') === v;
@@ -613,8 +613,8 @@ export default function ManageEvent() {
                 </div>
                 <div className="text-xs text-muted-foreground p-2 rounded-lg bg-muted/40">
                   {(event.participantVisibility || 'public') === 'public'
-                    ? '✅ Participants can see who has joined this activity'
-                    : '🔒 Participants only see slot counts — names are hidden'}
+                    ? '✅ Players can see who has joined this activity'
+                    : '🔒 Players only see slot counts — names are hidden'}
                 </div>
               </CardContent>
             </Card>
@@ -982,7 +982,7 @@ function SupabaseManageView({ activityId, navigate }: { activityId: string | und
               className="rounded-full"
               onClick={handleToggleParticipantVisibility}
             >
-              {(activity as any).participant_visibility === 'private' ? <><Lock className="h-3 w-3 mr-1" /> Participants Hidden</> : <><Users className="h-3 w-3 mr-1" /> Participants Visible</>}
+              {(activity as any).participant_visibility === 'private' ? <><Lock className="h-3 w-3 mr-1" /> Players Hidden</> : <><Users className="h-3 w-3 mr-1" /> Players Visible</>}
             </Button>
             <Button
               variant="outline"
@@ -1004,7 +1004,7 @@ function SupabaseManageView({ activityId, navigate }: { activityId: string | und
           <p className="text-2xl font-bold">{sessions.length}</p>
         </CardContent></Card>
         <Card><CardContent className="p-4 text-center">
-          <p className="text-xs text-muted-foreground uppercase font-bold">Participants</p>
+          <p className="text-xs text-muted-foreground uppercase font-bold">Players</p>
           <p className="text-2xl font-bold">{filledSlots}/{totalSlots}</p>
         </CardContent></Card>
         <Card><CardContent className="p-4 text-center">
@@ -1083,7 +1083,7 @@ function SupabaseManageView({ activityId, navigate }: { activityId: string | und
                 <div className="flex items-center gap-4 flex-1 max-w-md">
                   <div className="flex-1 space-y-1">
                     <div className="flex justify-between text-xs mb-1">
-                      <span className="font-medium">Participants: <strong>{activeBookings.length}</strong></span>
+                      <span className="font-medium">Players: <strong>{activeBookings.length}</strong></span>
                       <span className="font-medium">Slots: <strong>{session.max_slots}</strong></span>
                     </div>
                     <Progress value={pct} className="h-2" />
@@ -1112,7 +1112,7 @@ function SupabaseManageView({ activityId, navigate }: { activityId: string | und
                   </div>
                   <Button variant="ghost" size="sm" onClick={() => toggleSession(session.id)}>
                     {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                    <span className="ml-1">{isExpanded ? 'Collapse' : 'Participants'}</span>
+                    <span className="ml-1">{isExpanded ? 'Collapse' : 'Players'}</span>
                   </Button>
                 </div>
               </div>
@@ -1299,7 +1299,7 @@ function SupabaseManageView({ activityId, navigate }: { activityId: string | und
                 {/* Release Details per session */}
                 <div className="border-t p-4 bg-muted/10 space-y-2">
                   <div className="flex items-center gap-2 text-xs text-muted-foreground font-bold uppercase tracking-wider">
-                    <Unlock className="h-3 w-3" /> Share Session Details (visible to confirmed participants)
+                    <Unlock className="h-3 w-3" /> Release Details (visible to confirmed players)
                   </div>
                   <div className="flex gap-2">
                     <Input
@@ -1312,7 +1312,7 @@ function SupabaseManageView({ activityId, navigate }: { activityId: string | und
                           const val = (e.target as HTMLInputElement).value.trim();
                           const { error } = await supabase.from('activity_sessions').update({ released_details: val || null } as any).eq('id', session.id);
                           if (error) { toast.error('Failed to update'); return; }
-                          toast.success(val ? 'Details shared with confirmed participants' : 'Details cleared');
+                          toast.success(val ? 'Details released to confirmed players' : 'Details cleared');
                           reloadSessions();
                         }
                       }}

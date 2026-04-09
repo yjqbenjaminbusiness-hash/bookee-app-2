@@ -97,12 +97,12 @@ export default function OrganizeLanding() {
   const today = new Date().toISOString().split('T')[0];
   const displayedGroups = showDemo ? groups : groups.filter(g => !dataService.isDemoItem(g.id));
   const displayedActivities = showDemo ? allActivities : allActivities.filter(a => !dataService.isDemoItem(a.id));
-  const displayedBallots = showDemo ? allBallots : allBallots.filter(b => !dataService.isDemoItem(b.id));
+  const displayedBallotActivities = showDemo ? allBallotActivities : allBallotActivities.filter(a => !dataService.isDemoItem(a.id));
   const upcomingActivities = displayedActivities.filter(a => a.date >= today);
   const totalParticipants = Object.values(sessionsByActivity).flat().reduce((acc, s) => acc + s.filled_slots, 0);
   const totalSessions = Object.values(sessionsByActivity).flat().length;
   const unlinkedActivities = displayedActivities.filter(a => !a.group_id).sort((a, b) => a.date.localeCompare(b.date));
-  const unlinkedBallots = displayedBallots.filter(b => !b.group_id).sort((a, b) => a.ballot_deadline.localeCompare(b.ballot_deadline));
+  const unlinkedBallotActivities = displayedBallotActivities.filter(a => !a.group_id).sort((a, b) => a.date.localeCompare(b.date));
 
   return (
     <div className="container py-8 px-4 max-w-5xl">

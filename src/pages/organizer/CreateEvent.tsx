@@ -60,6 +60,7 @@ export default function CreateEvent() {
   const [description, setDescription] = useState('');
   const [phone, setPhone] = useState(user?.phone || '+65 ');
 
+  const [visibility, setVisibility] = useState<'public' | 'private'>('public');
   const [participantVisibility, setParticipantVisibility] = useState<'public' | 'private'>('public');
   const [paymentPolicyType, setPaymentPolicyType] = useState<'immediate' | 'before' | 'after' | 'optional'>('immediate');
   const [paymentPolicyHours, setPaymentPolicyHours] = useState('5');
@@ -111,7 +112,7 @@ export default function CreateEvent() {
         date,
         description: description.trim() || undefined,
         group_id: selectedGroupId || undefined,
-        visibility: 'public',
+        visibility,
         participant_visibility: participantVisibility,
       });
 
@@ -225,6 +226,40 @@ export default function CreateEvent() {
                 <div>
                   <p className="font-bold text-sm">Private</p>
                   <p className="text-xs text-muted-foreground mt-0.5">Player list hidden — only slot counts shown</p>
+                </div>
+              </button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Session Visibility */}
+        <Card className="shadow-sm border-accent/10">
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Eye className="h-4 w-4 text-accent" /> Session Visibility
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground mb-4">Control whether this session appears in public listings.</p>
+            <div className="grid sm:grid-cols-2 gap-3">
+              <button type="button" onClick={() => setVisibility('public')}
+                className={`flex items-start gap-3 p-4 rounded-xl border-2 text-left transition-all ${visibility === 'public' ? 'border-accent bg-accent/5' : 'border-border hover:border-accent/30'}`}>
+                <div className={`mt-0.5 w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${visibility === 'public' ? 'bg-accent text-white' : 'bg-muted'}`}>
+                  <Globe className="h-4 w-4" />
+                </div>
+                <div>
+                  <p className="font-bold text-sm">Public</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Visible in explore and listings</p>
+                </div>
+              </button>
+              <button type="button" onClick={() => setVisibility('private')}
+                className={`flex items-start gap-3 p-4 rounded-xl border-2 text-left transition-all ${visibility === 'private' ? 'border-accent bg-accent/5' : 'border-border hover:border-accent/30'}`}>
+                <div className={`mt-0.5 w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${visibility === 'private' ? 'bg-accent text-white' : 'bg-muted'}`}>
+                  <Lock className="h-4 w-4" />
+                </div>
+                <div>
+                  <p className="font-bold text-sm">Private</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Only accessible via shared link</p>
                 </div>
               </button>
             </div>

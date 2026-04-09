@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { dataService, type Activity, type ActivitySession, type Group, type Ballot } from '../../lib/data';
+import { dataService, type Activity, type ActivitySession, type Group } from '../../lib/data';
 import { useAuth } from '../../hooks/useAuth';
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
@@ -41,7 +41,7 @@ export default function PlayerEvents() {
   const [selectedSport, setSelectedSport] = useState('all');
   const [search, setSearch] = useState('');
   const [activities, setActivities] = useState<Activity[]>([]);
-  const [ballots, setBallots] = useState<Ballot[]>([]);
+  const [ballotActivities, setBallotActivities] = useState<Activity[]>([]);
   const [sessions, setSessions] = useState<Record<string, ActivitySession[]>>({});
   const [groups, setGroups] = useState<Group[]>([]);
   const [groupMap, setGroupMap] = useState<Record<string, Group>>({});
@@ -60,11 +60,12 @@ export default function PlayerEvents() {
         const [acts, grps, blts] = await Promise.all([
           dataService.listPublicActivities(),
           dataService.listGroups(),
-          dataService.listPublicBallots(),
+          dataService.listPublicBallotActivities(),
         ]);
-        setActivities(acts);
+        // Separate regular activities from ballot activities
+        setActivities(acts.filter(a => a.session_type !== 'ballot'));
         setGroups(grps);
-        setBallots(blts);
+        setBallotActivities(blts);
 
         // Build group lookup map
         const gMap: Record<string, Group> = {};
@@ -112,7 +113,7 @@ export default function PlayerEvents() {
   // Filter demo items based on toggle
   const allActivities = showDemo ? activities : activities.filter(a => !dataService.isDemoItem(a.id));
   const allGroups = showDemo ? groups : groups.filter(g => !dataService.isDemoItem(g.id));
-  const allBallots = showDemo ? ballots : ballots.filter(b => !dataService.isDemoItem(b.id));
+  const allBallotActs = showDemo ? ballotActivities : ballotActivities.filter(a => !dataService.isDemoItem(a.id));
 
   const filteredActivities = allActivities.filter(a => {
     const matchesSport = selectedSport === 'all' || a.sport === selectedSport;
@@ -123,12 +124,12 @@ export default function PlayerEvents() {
     return matchesSport && matchesSearch;
   });
 
-  const filteredBallots = allBallots.filter(b => {
-    const matchesSport = selectedSport === 'all' || b.sport === selectedSport;
+  const filteredBallotActivities = allBallotActs.filter(a => {
+    const matchesSport = selectedSport === 'all' || a.sport === selectedSport;
     const matchesSearch = !search ||
-      b.activity_name.toLowerCase().includes(search.toLowerCase()) ||
-      b.location.toLowerCase().includes(search.toLowerCase()) ||
-      b.sport.toLowerCase().includes(search.toLowerCase());
+      a.title.toLowerCase().includes(search.toLowerCase()) ||
+      a.venue.toLowerCase().includes(search.toLowerCase()) ||
+      a.sport.toLowerCase().includes(search.toLowerCase());
     return matchesSport && matchesSearch;
   });
 

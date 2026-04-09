@@ -225,8 +225,8 @@ export default function OrganizeLanding() {
               ? (activitiesByGroup[group.id] || [])
               : (activitiesByGroup[group.id] || []).filter(a => !dataService.isDemoItem(a.id));
             const groupBlts = showDemo
-              ? (ballotsByGroup[group.id] || [])
-              : (ballotsByGroup[group.id] || []).filter(b => !dataService.isDemoItem(b.id));
+              ? (ballotActivitiesByGroup[group.id] || [])
+              : (ballotActivitiesByGroup[group.id] || []).filter(a => !dataService.isDemoItem(a.id));
             const upcoming = groupActs.filter(a => a.date >= today);
             const isDemo = dataService.isDemoItem(group.id);
 
@@ -319,7 +319,7 @@ export default function OrganizeLanding() {
                         ) : (
                           <>
                             {groupActs.map((act) => renderActivityRow(act, today))}
-                            {groupBlts.map((ballot) => renderBallotRow(ballot, today))}
+                            {groupBlts.map((ballot) => renderBallotActivityRow(ballot, today))}
                           </>
                         )}
                       </div>
@@ -342,14 +342,14 @@ export default function OrganizeLanding() {
             </>
           )}
 
-          {/* Unlinked Ballots */}
-          {unlinkedBallots.length > 0 && (
+          {/* Unlinked Ballot Activities */}
+          {unlinkedBallotActivities.length > 0 && (
             <>
               <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mt-6 mb-2">
-                Unlinked Ballots ({unlinkedBallots.length})
+                Unlinked Ballots ({unlinkedBallotActivities.length})
               </p>
               <div className="rounded-2xl border-2 overflow-hidden bg-card p-4 space-y-2">
-                {unlinkedBallots.map((ballot) => renderBallotRow(ballot, today))}
+                {unlinkedBallotActivities.map((ballot) => renderBallotActivityRow(ballot, today))}
               </div>
             </>
           )}

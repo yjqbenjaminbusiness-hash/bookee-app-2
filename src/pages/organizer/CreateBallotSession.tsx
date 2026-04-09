@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
-import { supabase } from '@/integrations/supabase/client';
+import { dataService } from '@/lib/data';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
@@ -9,13 +9,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/ca
 import { toast } from 'sonner';
 import { Shuffle, MapPin, Calendar, Users, ArrowLeft, Loader2, Globe, Lock } from 'lucide-react';
 import { GroupSelector } from '../../components/GroupSelector';
-import { Label as RadioLabel } from '../../components/ui/label';
 
 export default function CreateBallotSession() {
   const { user, isAuthenticated } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const preselectedGroup = searchParams.get('group') || '';
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedGroupId, setSelectedGroupId] = useState<string>('');
+  const [selectedGroupId, setSelectedGroupId] = useState<string>(preselectedGroup);
 
   const [activityName, setActivityName] = useState('');
   const [sport, setSport] = useState('');
@@ -39,30 +40,46 @@ export default function CreateBallotSession() {
     }
 
     setIsLoading(true);
-    console.log('[CreateBallot] Creating ballot:', { activityName, sport, location, deadline, slots, selectedGroupId });
+    console.log('[CreateBallot] Creating ballot as activity:', { activityName, sport, location, deadline, slots, selectedGroupId });
 
-    const { data, error } = await supabase.from('ballots').insert({
-      activity_name: activityName,
-      sport,
-      location,
-      ballot_deadline: deadline,
-      slots: parseInt(slots) || 10,
-      created_by: user.id,
-      group_id: selectedGroupId || null,
-      visibility,
-    } as any).select();
+    try {
+      // Create as an activity with session_type = 'ballot'
+      const activity = await dataService.createActivity({
+        organizer_id: user.id,
+        title: activityName,
+        sport,
+        venue: location,
+        location: location,
+        date: deadline,
+        description: `Ballot session — ${parseInt(slots) || 10} slots available`,
+        group_id: selectedGroupId || undefined,
+        visibility,
+        session_type: 'ballot',
+      });
 
-    setIsLoading(false);
+      if (!activity) {
+        toast.error('Failed to create ballot session');
+        setIsLoading(false);
+        return;
+      }
 
-    if (error) {
-      console.error('[CreateBallot] Error:', error);
-      toast.error('Failed to create ballot session: ' + error.message);
-      return;
+      // Create one activity_session for the ballot slots
+      await dataService.createSession({
+        activity_id: activity.id,
+        time_label: 'Ballot Entry',
+        max_slots: parseInt(slots) || 10,
+        price: 0,
+      });
+
+      console.log('[CreateBallot] Ballot activity created:', activity);
+      toast.success('Ballot Session created!');
+      navigate('/organize');
+    } catch (err: any) {
+      console.error('[CreateBallot] Error:', err);
+      toast.error('Failed to create ballot session: ' + err.message);
+    } finally {
+      setIsLoading(false);
     }
-
-    console.log('[CreateBallot] Ballot created:', data);
-    toast.success('Ballot Session created!');
-    navigate('/organize');
   };
 
   return (

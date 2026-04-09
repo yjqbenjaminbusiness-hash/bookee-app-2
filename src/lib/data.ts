@@ -14,6 +14,7 @@ export interface Activity {
   group_id: string | null;
   image_url: string | null;
   visibility: string;
+  session_type: string;
   created_at: string;
   updated_at: string;
 }
@@ -119,6 +120,7 @@ export const dataService = {
     image_url?: string;
     visibility?: string;
     participant_visibility?: string;
+    session_type?: string;
   }): Promise<Activity | null> {
     console.log('[dataService] Creating activity:', activity);
     const { data, error } = await supabase
@@ -135,6 +137,7 @@ export const dataService = {
         image_url: activity.image_url || null,
         visibility: activity.visibility || 'public',
         participant_visibility: activity.participant_visibility || 'public',
+        session_type: activity.session_type || 'activity',
       } as any)
       .select()
       .single();
@@ -321,7 +324,7 @@ export const dataService = {
     return (count || 0) > 0;
   },
 
-  // ─── Ballots ────────────────────────────────────────────────
+  // ─── Ballots (legacy table) ──────────────────────────────────
   async listBallots(): Promise<Ballot[]> {
     const { data, error } = await supabase
       .from('ballots')
@@ -359,6 +362,40 @@ export const dataService = {
       .order('created_at', { ascending: false });
     if (error) { console.error('listBallotsByOrganizer error:', error); return []; }
     return (data || []) as Ballot[];
+  },
+
+  // ─── Ballot Activities (unified system) ─────────────────────
+  async listBallotActivitiesByOrganizer(organizerId: string): Promise<Activity[]> {
+    const { data, error } = await supabase
+      .from('activities')
+      .select('*')
+      .eq('organizer_id', organizerId)
+      .eq('session_type', 'ballot')
+      .order('date', { ascending: false });
+    if (error) { console.error('listBallotActivitiesByOrganizer error:', error); return []; }
+    return (data || []) as Activity[];
+  },
+
+  async listPublicBallotActivities(): Promise<Activity[]> {
+    const { data, error } = await supabase
+      .from('activities')
+      .select('*')
+      .eq('session_type', 'ballot')
+      .eq('visibility', 'public')
+      .order('date', { ascending: false });
+    if (error) { console.error('listPublicBallotActivities error:', error); return []; }
+    return (data || []) as Activity[];
+  },
+
+  async listBallotActivitiesByGroup(groupId: string): Promise<Activity[]> {
+    const { data, error } = await supabase
+      .from('activities')
+      .select('*')
+      .eq('group_id', groupId)
+      .eq('session_type', 'ballot')
+      .order('date', { ascending: false });
+    if (error) { console.error('listBallotActivitiesByGroup error:', error); return []; }
+    return (data || []) as Activity[];
   },
 
   // ─── Bookings ───────────────────────────────────────────────

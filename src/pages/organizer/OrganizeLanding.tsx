@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
-import { dataService, type Group, type Activity, type ActivitySession, type Ballot } from '../../lib/data';
+import { dataService, type Group, type Activity, type ActivitySession } from '../../lib/data';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
@@ -15,9 +15,9 @@ export default function OrganizeLanding() {
   const navigate = useNavigate();
   const [groups, setGroups] = useState<Group[]>([]);
   const [allActivities, setAllActivities] = useState<Activity[]>([]);
-  const [allBallots, setAllBallots] = useState<Ballot[]>([]);
+  const [allBallotActivities, setAllBallotActivities] = useState<Activity[]>([]);
   const [activitiesByGroup, setActivitiesByGroup] = useState<Record<string, Activity[]>>({});
-  const [ballotsByGroup, setBallotsByGroup] = useState<Record<string, Ballot[]>>({});
+  const [ballotActivitiesByGroup, setBallotActivitiesByGroup] = useState<Record<string, Activity[]>>({});
   const [sessionsByActivity, setSessionsByActivity] = useState<Record<string, ActivitySession[]>>({});
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState(true);
@@ -37,26 +37,29 @@ export default function OrganizeLanding() {
         const [grps, acts, blts] = await Promise.all([
           dataService.listGroupsByOrganizer(user.id),
           dataService.listActivitiesByOrganizer(user.id),
-          dataService.listBallotsByOrganizer(user.id),
+          dataService.listBallotActivitiesByOrganizer(user.id),
         ]);
         setGroups(grps);
-        setAllActivities(acts);
-        setAllBallots(blts);
+        // Filter out ballot-type from regular activities
+        setAllActivities(acts.filter(a => a.session_type !== 'ballot'));
+        setAllBallotActivities(blts);
 
         const actMap: Record<string, Activity[]> = {};
+        const regularActs = acts.filter(a => a.session_type !== 'ballot');
         for (const g of grps) {
-          actMap[g.id] = acts.filter(a => a.group_id === g.id).sort((a, b) => a.date.localeCompare(b.date));
+          actMap[g.id] = regularActs.filter(a => a.group_id === g.id).sort((a, b) => a.date.localeCompare(b.date));
         }
         setActivitiesByGroup(actMap);
 
-        const bltMap: Record<string, Ballot[]> = {};
+        const bltMap: Record<string, Activity[]> = {};
         for (const g of grps) {
-          bltMap[g.id] = blts.filter(b => b.group_id === g.id).sort((a, b) => a.ballot_deadline.localeCompare(b.ballot_deadline));
+          bltMap[g.id] = blts.filter(b => b.group_id === g.id).sort((a, b) => a.date.localeCompare(b.date));
         }
-        setBallotsByGroup(bltMap);
+        setBallotActivitiesByGroup(bltMap);
 
         const sessMap: Record<string, ActivitySession[]> = {};
-        await Promise.all(acts.map(async (a) => {
+        const allItems = [...acts, ...blts];
+        await Promise.all(allItems.map(async (a) => {
           sessMap[a.id] = await dataService.listSessionsByActivity(a.id);
         }));
         setSessionsByActivity(sessMap);
@@ -95,12 +98,12 @@ export default function OrganizeLanding() {
   const today = new Date().toISOString().split('T')[0];
   const displayedGroups = showDemo ? groups : groups.filter(g => !dataService.isDemoItem(g.id));
   const displayedActivities = showDemo ? allActivities : allActivities.filter(a => !dataService.isDemoItem(a.id));
-  const displayedBallots = showDemo ? allBallots : allBallots.filter(b => !dataService.isDemoItem(b.id));
+  const displayedBallotActivities = showDemo ? allBallotActivities : allBallotActivities.filter(a => !dataService.isDemoItem(a.id));
   const upcomingActivities = displayedActivities.filter(a => a.date >= today);
   const totalParticipants = Object.values(sessionsByActivity).flat().reduce((acc, s) => acc + s.filled_slots, 0);
   const totalSessions = Object.values(sessionsByActivity).flat().length;
   const unlinkedActivities = displayedActivities.filter(a => !a.group_id).sort((a, b) => a.date.localeCompare(b.date));
-  const unlinkedBallots = displayedBallots.filter(b => !b.group_id).sort((a, b) => a.ballot_deadline.localeCompare(b.ballot_deadline));
+  const unlinkedBallotActivities = displayedBallotActivities.filter(a => !a.group_id).sort((a, b) => a.date.localeCompare(b.date));
 
   return (
     <div className="container py-8 px-4 max-w-5xl">
@@ -223,8 +226,8 @@ export default function OrganizeLanding() {
               ? (activitiesByGroup[group.id] || [])
               : (activitiesByGroup[group.id] || []).filter(a => !dataService.isDemoItem(a.id));
             const groupBlts = showDemo
-              ? (ballotsByGroup[group.id] || [])
-              : (ballotsByGroup[group.id] || []).filter(b => !dataService.isDemoItem(b.id));
+              ? (ballotActivitiesByGroup[group.id] || [])
+              : (ballotActivitiesByGroup[group.id] || []).filter(a => !dataService.isDemoItem(a.id));
             const upcoming = groupActs.filter(a => a.date >= today);
             const isDemo = dataService.isDemoItem(group.id);
 
@@ -317,7 +320,7 @@ export default function OrganizeLanding() {
                         ) : (
                           <>
                             {groupActs.map((act) => renderActivityRow(act, today))}
-                            {groupBlts.map((ballot) => renderBallotRow(ballot, today))}
+                            {groupBlts.map((ballot) => renderBallotActivityRow(ballot, today))}
                           </>
                         )}
                       </div>
@@ -340,14 +343,14 @@ export default function OrganizeLanding() {
             </>
           )}
 
-          {/* Unlinked Ballots */}
-          {unlinkedBallots.length > 0 && (
+          {/* Unlinked Ballot Activities */}
+          {unlinkedBallotActivities.length > 0 && (
             <>
               <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mt-6 mb-2">
-                Unlinked Ballots ({unlinkedBallots.length})
+                Unlinked Ballots ({unlinkedBallotActivities.length})
               </p>
               <div className="rounded-2xl border-2 overflow-hidden bg-card p-4 space-y-2">
-                {unlinkedBallots.map((ballot) => renderBallotRow(ballot, today))}
+                {unlinkedBallotActivities.map((ballot) => renderBallotActivityRow(ballot, today))}
               </div>
             </>
           )}
@@ -356,32 +359,35 @@ export default function OrganizeLanding() {
     </div>
   );
 
-  function renderBallotRow(ballot: Ballot, today: string) {
-    const isDemo = dataService.isDemoItem(ballot.id);
-    const isPast = ballot.ballot_deadline < today;
+  function renderBallotActivityRow(act: Activity, today: string) {
+    const isDemo = dataService.isDemoItem(act.id);
+    const actSessions = sessionsByActivity[act.id] || [];
+    const totalSlots = actSessions.reduce((a, s) => a + s.max_slots, 0);
+    const filledSlots = actSessions.reduce((a, s) => a + s.filled_slots, 0);
+    const isPast = act.date < today;
 
     return (
       <div
-        key={ballot.id}
+        key={act.id}
         className={`flex items-center gap-3 p-3 rounded-xl border hover:shadow-sm transition-all cursor-pointer ${isDemo ? 'opacity-60 border-dashed' : 'bg-background'}`}
         style={isDemo ? { background: 'hsl(var(--muted))' } : undefined}
-        onClick={() => navigate(`/player/ballots/${ballot.id}`)}
+        onClick={() => navigate(`/organizer/events/${act.id}`)}
       >
         <div className="p-2 rounded-lg flex-shrink-0 bg-accent/10">
           <Shuffle className="h-4 w-4 text-accent" style={isPast ? { opacity: 0.4 } : undefined} />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="font-semibold text-sm text-foreground truncate">{ballot.activity_name}</p>
+          <p className="font-semibold text-sm text-foreground truncate">{act.title}</p>
           <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
             <span className="flex items-center gap-1">
               <Calendar className="h-3 w-3" />
-              {new Date(ballot.ballot_deadline).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}
+              {new Date(act.date).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}
             </span>
             <span className="flex items-center gap-1">
-              <MapPin className="h-3 w-3" /> {ballot.location}
+              <MapPin className="h-3 w-3" /> {act.venue}
             </span>
             <span className="flex items-center gap-1">
-              <Users className="h-3 w-3" /> {ballot.slots} slots
+              <Users className="h-3 w-3" /> {filledSlots}/{totalSlots}
             </span>
           </div>
         </div>

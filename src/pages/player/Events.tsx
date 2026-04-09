@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { dataService, type Activity, type ActivitySession, type Group, type Ballot } from '../../lib/data';
+import { dataService, type Activity, type ActivitySession, type Group } from '../../lib/data';
 import { useAuth } from '../../hooks/useAuth';
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
@@ -41,7 +41,7 @@ export default function PlayerEvents() {
   const [selectedSport, setSelectedSport] = useState('all');
   const [search, setSearch] = useState('');
   const [activities, setActivities] = useState<Activity[]>([]);
-  const [ballots, setBallots] = useState<Ballot[]>([]);
+  const [ballotActivities, setBallotActivities] = useState<Activity[]>([]);
   const [sessions, setSessions] = useState<Record<string, ActivitySession[]>>({});
   const [groups, setGroups] = useState<Group[]>([]);
   const [groupMap, setGroupMap] = useState<Record<string, Group>>({});
@@ -60,20 +60,22 @@ export default function PlayerEvents() {
         const [acts, grps, blts] = await Promise.all([
           dataService.listPublicActivities(),
           dataService.listGroups(),
-          dataService.listPublicBallots(),
+          dataService.listPublicBallotActivities(),
         ]);
-        setActivities(acts);
+        // Separate regular activities from ballot activities
+        setActivities(acts.filter(a => a.session_type !== 'ballot'));
         setGroups(grps);
-        setBallots(blts);
+        setBallotActivities(blts);
 
         // Build group lookup map
         const gMap: Record<string, Group> = {};
         grps.forEach(g => { gMap[g.id] = g; });
         setGroupMap(gMap);
 
-        // Load sessions for all activities
+        // Load sessions for all activities (including ballot activities)
         const sessMap: Record<string, ActivitySession[]> = {};
-        await Promise.all(acts.map(async (a) => {
+        const allActs = [...acts, ...blts];
+        await Promise.all(allActs.map(async (a) => {
           sessMap[a.id] = await dataService.listSessionsByActivity(a.id);
         }));
         setSessions(sessMap);
@@ -112,7 +114,7 @@ export default function PlayerEvents() {
   // Filter demo items based on toggle
   const allActivities = showDemo ? activities : activities.filter(a => !dataService.isDemoItem(a.id));
   const allGroups = showDemo ? groups : groups.filter(g => !dataService.isDemoItem(g.id));
-  const allBallots = showDemo ? ballots : ballots.filter(b => !dataService.isDemoItem(b.id));
+  const allBallotActs = showDemo ? ballotActivities : ballotActivities.filter(a => !dataService.isDemoItem(a.id));
 
   const filteredActivities = allActivities.filter(a => {
     const matchesSport = selectedSport === 'all' || a.sport === selectedSport;
@@ -123,12 +125,12 @@ export default function PlayerEvents() {
     return matchesSport && matchesSearch;
   });
 
-  const filteredBallots = allBallots.filter(b => {
-    const matchesSport = selectedSport === 'all' || b.sport === selectedSport;
+  const filteredBallotActivities = allBallotActs.filter(a => {
+    const matchesSport = selectedSport === 'all' || a.sport === selectedSport;
     const matchesSearch = !search ||
-      b.activity_name.toLowerCase().includes(search.toLowerCase()) ||
-      b.location.toLowerCase().includes(search.toLowerCase()) ||
-      b.sport.toLowerCase().includes(search.toLowerCase());
+      a.title.toLowerCase().includes(search.toLowerCase()) ||
+      a.venue.toLowerCase().includes(search.toLowerCase()) ||
+      a.sport.toLowerCase().includes(search.toLowerCase());
     return matchesSport && matchesSearch;
   });
 
@@ -289,7 +291,7 @@ export default function PlayerEvents() {
         </section>
 
         {/* Ballot Sessions */}
-        {filteredBallots.length > 0 && (
+        {filteredBallotActivities.length > 0 && (
           <>
             <div className="flex items-center gap-4">
               <div className="flex-1 h-px bg-border" />
@@ -304,51 +306,72 @@ export default function PlayerEvents() {
                   <h2 className="text-xl font-bold text-foreground">Ballot Sessions</h2>
                 </div>
                 <span className="text-xs text-muted-foreground px-3 py-1 rounded-full bg-muted/60 font-medium">
-                  {filteredBallots.length} ballot{filteredBallots.length !== 1 ? 's' : ''}
+                  {filteredBallotActivities.length} ballot{filteredBallotActivities.length !== 1 ? 's' : ''}
                 </span>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                {filteredBallots.map((ballot, i) => {
-                  const sportCat = SPORT_CATEGORIES.find(c => c.id === ballot.sport) || SPORT_CATEGORIES[0];
-                  const isPast = ballot.ballot_deadline < new Date().toISOString().split('T')[0];
+                {filteredBallotActivities.map((activity, i) => {
+                  const actSessions = sessions[activity.id] || [];
+                  const totalSpots = actSessions.reduce((a, s) => a + s.max_slots, 0);
+                  const takenSpots = actSessions.reduce((a, s) => a + s.filled_slots, 0);
+                  const fillPct = totalSpots > 0 ? (takenSpots / totalSpots) * 100 : 0;
+                  const sportCat = SPORT_CATEGORIES.find(c => c.id === activity.sport) || SPORT_CATEGORIES[0];
+                  const isPast = activity.date < new Date().toISOString().split('T')[0];
+                  const isDemo = dataService.isDemoItem(activity.id);
 
                   return (
-                    <motion.div key={ballot.id}
+                    <motion.div key={activity.id}
                       initial={{ opacity: 0, y: 16 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.3, delay: i * 0.05 }}
-                      className="rounded-2xl border-2 overflow-hidden hover:shadow-lg transition-all cursor-pointer bg-card"
-                      style={{ borderColor: 'hsl(var(--accent) / 0.2)' }}
-                      onClick={() => navigate(`/player/ballots/${ballot.id}`)}>
-                      <div className="p-5 space-y-3">
-                        <div className="flex items-center gap-2">
-                          <div className="p-2 rounded-xl" style={{ background: sportCat.bg }}>
-                            <Shuffle className="h-4 w-4" style={{ color: sportCat.color }} />
+                      className={`rounded-2xl border-2 overflow-hidden hover:shadow-lg transition-all cursor-pointer ${isDemo ? 'opacity-60 border-dashed' : 'bg-card'}`}
+                      style={{ borderColor: isDemo ? '#ccc' : 'hsl(var(--accent) / 0.2)' }}
+                      onClick={() => navigate(`/player/events/${activity.id}`)}>
+                      <div className="relative h-44 overflow-hidden bg-muted">
+                        <img src={getEventPhoto(activity.sport, activity.image_url)} alt={activity.title}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                          onError={e => { (e.target as HTMLImageElement).src = SPORT_PHOTOS.default; }} />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
+                        <span className="absolute top-3 left-3 text-[10px] font-bold px-2.5 py-1 rounded-full" style={{ background: sportCat.bg, color: sportCat.color }}>
+                          {sportCat.emoji} {activity.sport}
+                        </span>
+                        <span className="absolute top-3 right-3 text-[10px] font-bold px-2.5 py-1 rounded-full bg-accent/90 text-white">
+                          <Shuffle className="inline h-3 w-3 mr-1" />Ballot
+                        </span>
+                      </div>
+                      <div className="p-4 space-y-3">
+                        <div>
+                          <h3 className="font-bold text-base leading-snug text-foreground">{activity.title}</h3>
+                          <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                            <MapPin className="h-3 w-3" /> {activity.venue}
+                          </p>
+                          <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                            <Calendar className="h-3 w-3" /> Deadline: {new Date(activity.date).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })}
+                          </p>
+                        </div>
+                        {actSessions.length > 0 && (
+                          <div>
+                            <div className="flex justify-between text-xs mb-1">
+                              <span className="text-muted-foreground flex items-center gap-1"><Users className="h-3 w-3" /> {takenSpots}/{totalSpots} entries</span>
+                              <span className="font-bold" style={{ color: fillPct >= 90 ? '#B91C1C' : fillPct >= 60 ? '#C47A00' : '#1A7A4A' }}>
+                                {fillPct >= 90 ? 'Almost full' : `${totalSpots - takenSpots} left`}
+                              </span>
+                            </div>
+                            <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+                              <div className="h-1.5 rounded-full transition-all"
+                                style={{ width: `${fillPct}%`, background: fillPct >= 90 ? '#B91C1C' : fillPct >= 60 ? '#C47A00' : '#1A7A4A' }} />
+                            </div>
                           </div>
-                          <Badge variant="outline" className="text-xs border-accent/40 text-accent">
-                            <Shuffle className="h-3 w-3 mr-1" /> Ballot
-                          </Badge>
+                        )}
+                        <div className="flex items-center justify-between pt-1">
                           <Badge variant={isPast ? 'secondary' : 'default'} className="text-xs">
                             {isPast ? 'Closed' : 'Open'}
                           </Badge>
-                        </div>
-                        <div>
-                          <h3 className="font-bold text-base leading-snug text-foreground">{ballot.activity_name}</h3>
-                          <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
-                            <MapPin className="h-3 w-3" /> {ballot.location}
-                          </p>
-                          <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-                            <Calendar className="h-3 w-3" /> Deadline: {new Date(ballot.ballot_deadline).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })}
-                          </p>
-                          <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-                            <Users className="h-3 w-3" /> {ballot.slots} slots available
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-[10px] font-bold px-2.5 py-1 rounded-full" style={{ background: sportCat.bg, color: sportCat.color }}>
-                            {sportCat.emoji} {ballot.sport}
-                          </span>
+                          <Button size="sm" className="rounded-full px-5 font-bold text-white hover:scale-105 transition-transform" style={{ background: '#1A7A4A' }}
+                            onClick={e => { e.stopPropagation(); navigate(`/player/events/${activity.id}`); }}>
+                            View <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
+                          </Button>
                         </div>
                       </div>
                     </motion.div>

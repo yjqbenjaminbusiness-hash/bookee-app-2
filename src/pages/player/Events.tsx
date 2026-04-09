@@ -72,9 +72,10 @@ export default function PlayerEvents() {
         grps.forEach(g => { gMap[g.id] = g; });
         setGroupMap(gMap);
 
-        // Load sessions for all activities
+        // Load sessions for all activities (including ballot activities)
         const sessMap: Record<string, ActivitySession[]> = {};
-        await Promise.all(acts.map(async (a) => {
+        const allActs = [...acts, ...blts];
+        await Promise.all(allActs.map(async (a) => {
           sessMap[a.id] = await dataService.listSessionsByActivity(a.id);
         }));
         setSessions(sessMap);

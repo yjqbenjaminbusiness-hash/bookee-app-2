@@ -58,7 +58,8 @@ export default function OrganizeLanding() {
         setBallotActivitiesByGroup(bltMap);
 
         const sessMap: Record<string, ActivitySession[]> = {};
-        await Promise.all(acts.map(async (a) => {
+        const allItems = [...acts, ...blts];
+        await Promise.all(allItems.map(async (a) => {
           sessMap[a.id] = await dataService.listSessionsByActivity(a.id);
         }));
         setSessionsByActivity(sessMap);

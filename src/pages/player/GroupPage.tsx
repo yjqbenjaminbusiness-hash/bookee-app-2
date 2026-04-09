@@ -51,9 +51,10 @@ export default function GroupPage() {
           setIsMember(member);
         }
 
-        // Load sessions
+        // Load sessions for all activities including ballot activities
         const sessMap: Record<string, ActivitySession[]> = {};
-        await Promise.all(acts.map(async (a) => {
+        const allItems = [...acts, ...blts];
+        await Promise.all(allItems.map(async (a) => {
           sessMap[a.id] = await dataService.listSessionsByActivity(a.id);
         }));
         setSessions(sessMap);

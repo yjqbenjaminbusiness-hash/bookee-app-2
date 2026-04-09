@@ -385,19 +385,23 @@ export default function GroupPage() {
           </AnimatePresence>
 
           {/* Ballot Sessions in this group */}
-          {ballots.length > 0 && (
+          {ballotActivities.length > 0 && (
             <div className="mt-6">
               <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: 'hsl(var(--accent-foreground))' }}>
-                Ballot Sessions ({ballots.length})
+                Ballot Sessions ({ballotActivities.length})
               </p>
               <div className="space-y-3">
-                {ballots.map((ballot, i) => {
-                  const isPast = ballot.ballot_deadline < today;
+                {ballotActivities.map((act, i) => {
+                  const isPast = act.date < today;
+                  const actSessions = sessions[act.id] || [];
+                  const totalSlots = actSessions.reduce((a, s) => a + s.max_slots, 0);
+                  const filledSlots = actSessions.reduce((a, s) => a + s.filled_slots, 0);
+
                   return (
-                    <motion.div key={ballot.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
+                    <motion.div key={act.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
                       className="group p-4 rounded-2xl border-2 bg-card hover:shadow-md transition-all cursor-pointer"
                       style={{ borderColor: 'hsl(var(--accent) / 0.2)' }}
-                      onClick={() => navigate(`/player/ballots/${ballot.id}`)}>
+                      onClick={() => navigate(`/player/events/${act.id}`)}>
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex items-start gap-3 flex-1 min-w-0">
                           <div className="p-2 rounded-xl bg-accent/10">
@@ -405,17 +409,17 @@ export default function GroupPage() {
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-0.5">
-                              <p className="font-bold text-sm leading-snug text-foreground">{ballot.activity_name}</p>
+                              <p className="font-bold text-sm leading-snug text-foreground">{act.title}</p>
                               <Badge variant="outline" className="text-[10px] border-accent/40 text-accent">Ballot</Badge>
                             </div>
                             <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-                              <MapPin className="h-3 w-3" /> {ballot.location}
+                              <MapPin className="h-3 w-3" /> {act.venue}
                             </p>
                             <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-                              <Clock className="h-3 w-3" /> Deadline: {new Date(ballot.ballot_deadline).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })}
+                              <Clock className="h-3 w-3" /> Deadline: {new Date(act.date).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })}
                             </p>
                             <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-                              <Users className="h-3 w-3" /> {ballot.slots} slots
+                              <Users className="h-3 w-3" /> {filledSlots}/{totalSlots} entries
                             </p>
                           </div>
                         </div>

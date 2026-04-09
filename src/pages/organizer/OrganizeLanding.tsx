@@ -358,32 +358,35 @@ export default function OrganizeLanding() {
     </div>
   );
 
-  function renderBallotRow(ballot: Ballot, today: string) {
-    const isDemo = dataService.isDemoItem(ballot.id);
-    const isPast = ballot.ballot_deadline < today;
+  function renderBallotActivityRow(act: Activity, today: string) {
+    const isDemo = dataService.isDemoItem(act.id);
+    const actSessions = sessionsByActivity[act.id] || [];
+    const totalSlots = actSessions.reduce((a, s) => a + s.max_slots, 0);
+    const filledSlots = actSessions.reduce((a, s) => a + s.filled_slots, 0);
+    const isPast = act.date < today;
 
     return (
       <div
-        key={ballot.id}
+        key={act.id}
         className={`flex items-center gap-3 p-3 rounded-xl border hover:shadow-sm transition-all cursor-pointer ${isDemo ? 'opacity-60 border-dashed' : 'bg-background'}`}
         style={isDemo ? { background: 'hsl(var(--muted))' } : undefined}
-        onClick={() => navigate(`/player/ballots/${ballot.id}`)}
+        onClick={() => navigate(`/organizer/events/${act.id}`)}
       >
         <div className="p-2 rounded-lg flex-shrink-0 bg-accent/10">
           <Shuffle className="h-4 w-4 text-accent" style={isPast ? { opacity: 0.4 } : undefined} />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="font-semibold text-sm text-foreground truncate">{ballot.activity_name}</p>
+          <p className="font-semibold text-sm text-foreground truncate">{act.title}</p>
           <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
             <span className="flex items-center gap-1">
               <Calendar className="h-3 w-3" />
-              {new Date(ballot.ballot_deadline).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}
+              {new Date(act.date).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}
             </span>
             <span className="flex items-center gap-1">
-              <MapPin className="h-3 w-3" /> {ballot.location}
+              <MapPin className="h-3 w-3" /> {act.venue}
             </span>
             <span className="flex items-center gap-1">
-              <Users className="h-3 w-3" /> {ballot.slots} slots
+              <Users className="h-3 w-3" /> {filledSlots}/{totalSlots}
             </span>
           </div>
         </div>

@@ -28,6 +28,7 @@ export type Database = {
           max_auto_posts: number
           organizer_id: string
           participant_visibility: string
+          session_type: string
           sport: string
           status: string
           title: string
@@ -48,6 +49,7 @@ export type Database = {
           max_auto_posts?: number
           organizer_id: string
           participant_visibility?: string
+          session_type?: string
           sport: string
           status?: string
           title: string
@@ -68,6 +70,7 @@ export type Database = {
           max_auto_posts?: number
           organizer_id?: string
           participant_visibility?: string
+          session_type?: string
           sport?: string
           status?: string
           title?: string

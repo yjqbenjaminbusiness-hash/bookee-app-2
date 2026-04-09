@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { dataService, type Group, type Activity, type ActivitySession, type Ballot } from '../../lib/data';
+import { dataService, type Group, type Activity, type ActivitySession } from '../../lib/data';
 import { useAuth } from '../../hooks/useAuth';
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
@@ -18,7 +18,7 @@ export default function GroupPage() {
   const [isMember, setIsMember] = useState(false);
   const [group, setGroup] = useState<Group | null>(null);
   const [activities, setActivities] = useState<Activity[]>([]);
-  const [ballots, setBallots] = useState<Ballot[]>([]);
+  const [ballotActivities, setBallotActivities] = useState<Activity[]>([]);
   const [sessions, setSessions] = useState<Record<string, ActivitySession[]>>({});
   const [memberCount, setMemberCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
@@ -39,11 +39,11 @@ export default function GroupPage() {
           dataService.getGroup(groupId),
           dataService.listActivitiesByGroup(groupId),
           dataService.getGroupMembers(groupId),
-          dataService.listBallotsByGroup(groupId),
+          dataService.listBallotActivitiesByGroup(groupId),
         ]);
         setGroup(grp);
-        setActivities(acts);
-        setBallots(blts);
+        setActivities(acts.filter(a => a.session_type !== 'ballot'));
+        setBallotActivities(blts);
         setMemberCount(members.length);
 
         if (user) {

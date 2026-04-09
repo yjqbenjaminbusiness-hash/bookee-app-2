@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
-import { dataService, type Group, type Activity, type ActivitySession, type Ballot } from '../../lib/data';
+import { dataService, type Group, type Activity, type ActivitySession } from '../../lib/data';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
@@ -15,9 +15,9 @@ export default function OrganizeLanding() {
   const navigate = useNavigate();
   const [groups, setGroups] = useState<Group[]>([]);
   const [allActivities, setAllActivities] = useState<Activity[]>([]);
-  const [allBallots, setAllBallots] = useState<Ballot[]>([]);
+  const [allBallotActivities, setAllBallotActivities] = useState<Activity[]>([]);
   const [activitiesByGroup, setActivitiesByGroup] = useState<Record<string, Activity[]>>({});
-  const [ballotsByGroup, setBallotsByGroup] = useState<Record<string, Ballot[]>>({});
+  const [ballotActivitiesByGroup, setBallotActivitiesByGroup] = useState<Record<string, Activity[]>>({});
   const [sessionsByActivity, setSessionsByActivity] = useState<Record<string, ActivitySession[]>>({});
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState(true);
@@ -37,23 +37,25 @@ export default function OrganizeLanding() {
         const [grps, acts, blts] = await Promise.all([
           dataService.listGroupsByOrganizer(user.id),
           dataService.listActivitiesByOrganizer(user.id),
-          dataService.listBallotsByOrganizer(user.id),
+          dataService.listBallotActivitiesByOrganizer(user.id),
         ]);
         setGroups(grps);
-        setAllActivities(acts);
-        setAllBallots(blts);
+        // Filter out ballot-type from regular activities
+        setAllActivities(acts.filter(a => a.session_type !== 'ballot'));
+        setAllBallotActivities(blts);
 
         const actMap: Record<string, Activity[]> = {};
+        const regularActs = acts.filter(a => a.session_type !== 'ballot');
         for (const g of grps) {
-          actMap[g.id] = acts.filter(a => a.group_id === g.id).sort((a, b) => a.date.localeCompare(b.date));
+          actMap[g.id] = regularActs.filter(a => a.group_id === g.id).sort((a, b) => a.date.localeCompare(b.date));
         }
         setActivitiesByGroup(actMap);
 
-        const bltMap: Record<string, Ballot[]> = {};
+        const bltMap: Record<string, Activity[]> = {};
         for (const g of grps) {
-          bltMap[g.id] = blts.filter(b => b.group_id === g.id).sort((a, b) => a.ballot_deadline.localeCompare(b.ballot_deadline));
+          bltMap[g.id] = blts.filter(b => b.group_id === g.id).sort((a, b) => a.date.localeCompare(b.date));
         }
-        setBallotsByGroup(bltMap);
+        setBallotActivitiesByGroup(bltMap);
 
         const sessMap: Record<string, ActivitySession[]> = {};
         await Promise.all(acts.map(async (a) => {

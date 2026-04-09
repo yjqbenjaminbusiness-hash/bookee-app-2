@@ -14,6 +14,7 @@ export interface Activity {
   group_id: string | null;
   image_url: string | null;
   visibility: string;
+  session_type: string;
   created_at: string;
   updated_at: string;
 }

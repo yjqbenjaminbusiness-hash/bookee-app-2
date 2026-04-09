@@ -60,6 +60,7 @@ export default function CreateEvent() {
   const [description, setDescription] = useState('');
   const [phone, setPhone] = useState(user?.phone || '+65 ');
 
+  const [visibility, setVisibility] = useState<'public' | 'private'>('public');
   const [participantVisibility, setParticipantVisibility] = useState<'public' | 'private'>('public');
   const [paymentPolicyType, setPaymentPolicyType] = useState<'immediate' | 'before' | 'after' | 'optional'>('immediate');
   const [paymentPolicyHours, setPaymentPolicyHours] = useState('5');

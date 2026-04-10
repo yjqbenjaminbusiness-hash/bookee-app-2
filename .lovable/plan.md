@@ -1,34 +1,79 @@
-# Fix Dashboard Routing, Role Restrictions, and Contact Buttons
 
-## Root Cause
 
-The "My Bookee" blank page is caused by a role mismatch: the default role was changed to `'user'` but the route at `/player/dashboard` still has `allowedRoles={['player']}`. Users with role `'user'` hit the ProtectedRoute, fail the role check, and get redirected in a loop.
+# Add Session Actions, Post Game, Find Participants, and Session Rating
 
-## Plan
+## Overview
 
-### 1. Fix route role restrictions in `src/App.tsx`
+Add organizer action buttons (Post Game, Find Participants), and a simple session rating system. Contact buttons already exist in the player event detail view. The rating system needs a new database table.
 
-Update all `allowedRoles={['player']}` to `allowedRoles={['player', 'user']}` on player routes (dashboard, bookings, payment, special-request, groups). This is the minimal fix — no route renaming needed since `/player/` is an internal path convention, not user-facing.
+## 1. Database: Create `session_ratings` table
 
-### 2. Add `/dashboard` redirect in `src/App.tsx`
+New migration to create a minimal ratings table:
 
-Add `<Route path="/dashboard" element={<Navigate to="/player/dashboard" replace />} />` as a convenience alias so any stale `/dashboard` links work.
+```sql
+CREATE TABLE public.session_ratings (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  activity_id uuid NOT NULL,
+  session_id uuid,
+  user_id uuid NOT NULL,
+  group_id uuid,
+  organizer_id uuid NOT NULL,
+  rating integer NOT NULL CHECK (rating >= 1 AND rating <= 5),
+  comment text,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE(session_id, user_id)
+);
 
-### 3. Update Navbar dashboard path
+ALTER TABLE public.session_ratings ENABLE ROW LEVEL SECURITY;
 
-In `src/components/Navbar.tsx` line 29: change `dashboardPath` to always use `/player/dashboard` for `'user'` role (already does this, just confirm).
+CREATE POLICY "Users can insert own rating" ON public.session_ratings
+  FOR INSERT TO authenticated WITH CHECK (auth.uid() = user_id);
 
-### 4. Contact buttons — already implemented
+CREATE POLICY "Ratings viewable by everyone" ON public.session_ratings
+  FOR SELECT TO public USING (true);
+```
 
-WhatsApp and Telegram buttons both exist in `EventDetails.tsx` (lines 1206-1225) with correct logic: WhatsApp uses `organizerProfile.phone`, Telegram uses `organizerProfile.username`. The UI for the session needs to have both buttons present, add them so that users can interact with the buttons and directly contact organizers. 
+This stores rating at session level with `group_id` and `organizer_id` for aggregation. The unique constraint prevents duplicate ratings per user per session.
+
+## 2. Organizer Manage View: Add "Post Game" and "Find Participants" buttons
+
+**File**: `src/pages/organizer/ManageEvent.tsx` (SupabaseManageView)
+
+Add two buttons in the header area (after the visibility toggles, ~line 994):
+
+- **"Post Game"**: Generates a formatted message with activity name, date, venue, available slots, and join link (`https://bookee-app.com/player/events/{activityId}`). Copies to clipboard with toast confirmation.
+- **"Find Participants"**: Same message but with urgency framing ("Spots filling fast! X slots remaining"). Also copies to clipboard.
+
+Both are simple copy-to-clipboard actions. No bot integration needed for MVP.
+
+## 3. Player Event Detail: Add "Rate Session" button
+
+**File**: `src/pages/player/EventDetails.tsx` (SupabaseActivityView)
+
+After the session list section (~line 1370+), add a "Rate This Session" card that appears for users who have a confirmed booking. Contains:
+
+- 1-5 star selector (clickable star icons, reusing existing `Star` import)
+- Optional comment textarea
+- Submit button that inserts into `session_ratings` with `activity_id`, `session_id` (first booked session), `group_id` (from activity), `organizer_id`
+- Shows existing average rating if ratings exist
+
+Rating target logic: always store `group_id` and `organizer_id` from the activity. Display aggregation can be done at group level or organizer level later.
+
+## 4. Display average rating
+
+- **Player EventDetails**: Show average rating badge next to the activity title (small star + number)
+- **GroupPage**: Show average rating from all `session_ratings` where `group_id` matches
+
+Both are simple `SELECT AVG(rating)` queries.
 
 ## Files Changed
 
+| File | Change |
+|------|--------|
+| `src/pages/organizer/ManageEvent.tsx` | Add Post Game + Find Participants buttons in SupabaseManageView header |
+| `src/pages/player/EventDetails.tsx` | Add Rate Session UI + display avg rating in SupabaseActivityView |
+| `src/pages/player/GroupPage.tsx` | Display group average rating |
+| Database migration | Create `session_ratings` table with RLS |
 
-| File                      | Change                                                                                |
-| ------------------------- | ------------------------------------------------------------------------------------- |
-| `src/App.tsx`             | Change `allowedRoles` on player routes to include `'user'`; add `/dashboard` redirect |
-| `src/pages/LoginPage.tsx` | Ensure `getDashboardPath` returns `/player/dashboard` for `'user'` role               |
+No changes to Telegram bot, no new components, no changes to core session logic.
 
-
-No database or schema changes. No UI refactoring.

@@ -70,6 +70,7 @@ const App = () => (
           <Routes>
             {/* Public Routes */}
             <Route path="/" element={<LandingPage />} />
+            <Route path="/dashboard" element={<Navigate to="/player/dashboard" replace />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/signup/player" element={<SignupPlayerPage />} />
             <Route path="/signup/organizer" element={<SignupOrganizerPage />} />
@@ -92,23 +93,23 @@ const App = () => (
 
             {/* Player Routes */}
             <Route path="/player/dashboard" element={
-              <ProtectedRoute allowedRoles={['player']}><PlayerDashboard /></ProtectedRoute>
+              <ProtectedRoute allowedRoles={['player', 'user']}><PlayerDashboard /></ProtectedRoute>
             } />
             <Route path="/player/events" element={<PlayerEvents />} />
             <Route path="/player/events/:id" element={<EventDetails />} />
             <Route path="/player/ballots/:id" element={<BallotDetails />} />
             <Route path="/player/bookings" element={
-              <ProtectedRoute allowedRoles={['player']}><PlayerBookings /></ProtectedRoute>
+              <ProtectedRoute allowedRoles={['player', 'user']}><PlayerBookings /></ProtectedRoute>
             } />
             <Route path="/player/payment/:timeslotId" element={
-              <ProtectedRoute allowedRoles={['player']}><PaymentPage /></ProtectedRoute>
+              <ProtectedRoute allowedRoles={['player', 'user']}><PaymentPage /></ProtectedRoute>
             } />
             <Route path="/player/special-request" element={
-              <ProtectedRoute allowedRoles={['player']}><SpecialRequestPage /></ProtectedRoute>
+              <ProtectedRoute allowedRoles={['player', 'user']}><SpecialRequestPage /></ProtectedRoute>
             } />
             <Route path="/player/groups/:groupId" element={<GroupPage />} />
             <Route path="/player/groups" element={
-              <ProtectedRoute allowedRoles={['player']}><MyGroups /></ProtectedRoute>
+              <ProtectedRoute allowedRoles={['player', 'user']}><MyGroups /></ProtectedRoute>
             } />
 
             {/* Organizer Routes */}

@@ -1275,26 +1275,7 @@ function SupabaseActivityView({
           </div>
         </section>
 
-        {activity.description && (
-          <p className="text-muted-foreground">{activity.description}</p>
-        )}
-
-        {/* Announcements */}
-        {announcements.length > 0 && (
-          <section className="space-y-3">
-            <h2 className="text-lg font-bold text-foreground flex items-center gap-2"><MessageSquare className="h-5 w-5 text-primary" /> Announcements</h2>
-            <div className="space-y-2">
-              {announcements.map(ann => (
-                <div key={ann.id} className="p-3 rounded-xl border bg-primary/5 text-sm">
-                  <p className="text-foreground">{ann.message}</p>
-                  <p className="text-[10px] text-muted-foreground mt-1">{new Date(ann.created_at).toLocaleString()}</p>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* Contact Organizer */}
+        {/* Contact Organizer - immediately below banner */}
         {organizerProfile && (organizerProfile.phone || organizerProfile.username) && (
           <section className="p-4 rounded-2xl border-2 border-primary/15 bg-card">
             <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
@@ -1324,6 +1305,25 @@ function SupabaseActivityView({
                   </Button>
                 )}
               </div>
+            </div>
+          </section>
+        )}
+
+        {activity.description && (
+          <p className="text-muted-foreground">{activity.description}</p>
+        )}
+
+        {/* Announcements */}
+        {announcements.length > 0 && (
+          <section className="space-y-3">
+            <h2 className="text-lg font-bold text-foreground flex items-center gap-2"><MessageSquare className="h-5 w-5 text-primary" /> Announcements</h2>
+            <div className="space-y-2">
+              {announcements.map(ann => (
+                <div key={ann.id} className="p-3 rounded-xl border bg-primary/5 text-sm">
+                  <p className="text-foreground">{ann.message}</p>
+                  <p className="text-[10px] text-muted-foreground mt-1">{new Date(ann.created_at).toLocaleString()}</p>
+                </div>
+              ))}
             </div>
           </section>
         )}

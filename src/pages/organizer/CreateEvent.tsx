@@ -166,11 +166,11 @@ export default function CreateEvent() {
           <CardContent className="space-y-4">
             <div className="grid md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Activity Name *</Label>
+                <Label>Title *</Label>
                 <Input placeholder="e.g. Weekly Badminton" value={title} onChange={e => setTitle(e.target.value)} required />
               </div>
               <div className="space-y-2">
-                <Label>Sport</Label>
+                <Label>Activity</Label>
                 <Input placeholder="e.g. Badminton, Futsal" value={sport} onChange={e => setSport(e.target.value)} />
               </div>
             </div>

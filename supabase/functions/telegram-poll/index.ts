@@ -730,7 +730,7 @@ async function handleOrganizeCallback(chatId: number, cbData: string, supabase: 
       const avail = s.max_slots - s.filled_slots;
       msg += `⏰ ${s.time_label}\n`;
       msg += `👥 ${s.filled_slots}/${s.max_slots} (${avail} available)\n`;
-      msg += `💰 SGD $${(s.price / 100).toFixed(2)}\n\n`;
+      msg += `💰 SGD $${Number(s.price).toFixed(2)}\n\n`;
     }
 
     const sessionIds = sessions.map((s: any) => s.id);
@@ -1511,7 +1511,7 @@ async function handleMyBookeeCallback(chatId: number, cbData: string, supabase: 
       msg += "<b>Sessions:</b>\n\n";
       for (const s of sessions) {
         const available = s.max_slots - s.filled_slots;
-        const price = s.price > 0 ? `SGD $${(s.price / 100).toFixed(2)}` : "Free";
+        const price = s.price > 0 ? `SGD $${Number(s.price).toFixed(2)}` : "Free";
         msg += `⏰ ${s.time_label} — ${price} (${available} left)\n`;
         if (available > 0) {
           buttons.push([{ text: `✋ Join: ${s.time_label}`, callback_data: `book_session_${s.id}` }]);

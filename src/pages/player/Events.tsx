@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { dataService, type Activity, type ActivitySession, type Group } from '../../lib/data';
 import { useAuth } from '../../hooks/useAuth';
@@ -37,7 +37,6 @@ export default function PlayerEvents() {
   const [joinedGroupIds, setJoinedGroupIds] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState(true);
   const [showDemo, setShowDemo] = useState(true);
-  const scrollRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const { user } = useAuth();
 

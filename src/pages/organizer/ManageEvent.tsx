@@ -990,11 +990,41 @@ function SupabaseManageView({ activityId, navigate }: { activityId: string | und
               className="rounded-full"
               onClick={handleToggleVisibility}
             >
-              {(activity as any).visibility === 'private' ? <><Lock className="h-3 w-3 mr-1" /> Private</> : <><Globe className="h-3 w-3 mr-1" /> Public</>}
+            {(activity as any).visibility === 'private' ? <><Lock className="h-3 w-3 mr-1" /> Private</> : <><Globe className="h-3 w-3 mr-1" /> Public</>}
             </Button>
           </div>
         </div>
         {activity.description && <p className="text-sm text-muted-foreground mt-2">{activity.description}</p>}
+
+        {/* Post Game + Find Participants */}
+        <div className="flex gap-2 mt-4">
+          <Button
+            variant="outline"
+            size="sm"
+            className="rounded-full"
+            onClick={() => {
+              const totalAvail = sessions.reduce((a, s) => a + Math.max(0, s.max_slots - (bookingsBySession[s.id] || []).filter((b: any) => b.reservation_status !== 'rejected' && b.reservation_status !== 'cancelled').length), 0);
+              const msg = `🏆 ${activity.title}\n📅 ${new Date(activity.date).toLocaleDateString()}\n📍 ${activity.venue}\n👥 ${totalAvail} slot(s) available\n\nJoin here: ${window.location.origin}/player/events/${activity.id}`;
+              navigator.clipboard.writeText(msg);
+              toast.success('Post Game message copied to clipboard!');
+            }}
+          >
+            <Send className="h-3 w-3 mr-1" /> Post Game
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="rounded-full"
+            onClick={() => {
+              const totalAvail = sessions.reduce((a, s) => a + Math.max(0, s.max_slots - (bookingsBySession[s.id] || []).filter((b: any) => b.reservation_status !== 'rejected' && b.reservation_status !== 'cancelled').length), 0);
+              const msg = `⚡ Spots filling fast!\n\n🏆 ${activity.title}\n📅 ${new Date(activity.date).toLocaleDateString()}\n📍 ${activity.venue}\n🔥 Only ${totalAvail} slot(s) remaining!\n\nJoin now: ${window.location.origin}/player/events/${activity.id}`;
+              navigator.clipboard.writeText(msg);
+              toast.success('Find Participants message copied to clipboard!');
+            }}
+          >
+            <Users className="h-3 w-3 mr-1" /> Find Participants
+          </Button>
+        </div>
       </div>
 
       {/* Stats */}

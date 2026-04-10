@@ -1429,6 +1429,17 @@ function SupabaseActivityView({
           </section>
         )}
 
+        {/* Rate Session */}
+        {user && Object.keys(userBookings).length > 0 && (
+          <RateSessionCard
+            activityId={activity.id}
+            sessionId={Object.keys(userBookings)[0]}
+            groupId={activity.group_id || null}
+            organizerId={activity.organizer_id}
+            userId={user.id}
+          />
+        )}
+
         {/* Share */}
         <section className="p-4 rounded-2xl border bg-card flex items-center justify-between gap-3">
           <span className="text-sm font-bold flex items-center gap-2 text-foreground"><Share2 className="h-4 w-4" /> Share this activity</span>

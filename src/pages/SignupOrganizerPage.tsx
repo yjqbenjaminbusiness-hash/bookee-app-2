@@ -21,8 +21,8 @@ export default function SignupOrganizerPage() {
     setIsLoading(true);
     try {
       await signupOrganizerSupabase(email, password, displayName);
-      toast.success('Organizer application submitted! Please check your email to verify.');
-      navigate('/signup/organizer/pending');
+      toast.success('Account created! Welcome to Bookee.');
+      navigate('/organize');
     } catch (error: any) {
       toast.error(error.message || 'Failed to create account.');
     } finally {

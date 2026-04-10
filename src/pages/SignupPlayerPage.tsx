@@ -21,8 +21,8 @@ export default function SignupPlayerPage() {
     setIsLoading(true);
     try {
       await signupPlayerSupabase(email, password, displayName);
-      toast.success('Account created! Please check your email to verify.');
-      navigate('/login');
+      toast.success('Account created! Welcome to Bookee.');
+      navigate('/player/dashboard');
     } catch (error: any) {
       toast.error(error.message || 'Failed to create account.');
     } finally {

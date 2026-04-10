@@ -4,7 +4,7 @@
 export interface MockUser {
   id: string;
   email: string;
-  role: 'player' | 'organizer' | 'admin';
+  role: 'player' | 'organizer' | 'admin' | 'user';
   verified: boolean;
   pendingVerification: boolean;
   password: string;

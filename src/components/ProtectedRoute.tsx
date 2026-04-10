@@ -3,7 +3,7 @@ import { useAuth } from '../hooks/useAuth';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
-  allowedRoles?: ('player' | 'organizer' | 'admin')[];
+  allowedRoles?: ('player' | 'organizer' | 'admin' | 'user')[];
   requireVerified?: boolean;
 }
 
@@ -27,7 +27,7 @@ export function ProtectedRoute({ children, allowedRoles, requireVerified = true 
     // Check role
     if (allowedRoles && !allowedRoles.includes(user.role)) {
       // Redirect to their respective dashboard if they hit the wrong page
-      const dashboardPath = `/${user.role}/dashboard`;
+      const dashboardPath = user.role === 'user' || user.role === 'player' ? '/player/dashboard' : `/${user.role}/dashboard`;
       return <Navigate to={dashboardPath} replace />;
     }
 

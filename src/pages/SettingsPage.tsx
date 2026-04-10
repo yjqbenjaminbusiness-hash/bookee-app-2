@@ -83,7 +83,7 @@ export default function SettingsPage() {
                 <Mail className="h-3.5 w-3.5" /> {user.email}
               </p>
               <div className="flex gap-2 mt-2 flex-wrap">
-                <Badge variant="secondary" className="capitalize font-bold">{user.role}</Badge>
+                {user.role !== 'user' && user.role !== 'player' && <Badge variant="secondary" className="capitalize font-bold">{user.role}</Badge>}
                 {user.verified ? (
                   <Badge className="border-none font-bold bg-primary text-primary-foreground">
                     <ShieldCheck className="h-3 w-3 mr-1" /> Verified
@@ -128,20 +128,6 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
 
-      {/* Pending organizer notice */}
-      {user.role === 'organizer' && !user.verified && (
-        <Card className="border-2 bg-amber-50/50 border-amber-600/20">
-          <CardContent className="pt-6 flex gap-4">
-            <Shield className="h-6 w-6 shrink-0 mt-0.5 text-amber-600" />
-            <div className="space-y-1">
-              <p className="font-bold text-sm text-amber-800">Verification in Progress</p>
-              <p className="text-xs leading-relaxed text-amber-700">
-                Your organizer account is pending admin review. You will be able to create events once verified.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       {/* Logout */}
       <Card className="border-2 border-destructive/20 bg-destructive/5">

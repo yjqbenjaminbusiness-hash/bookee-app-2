@@ -50,7 +50,7 @@ function supabaseUserToMockUser(profile: any, role: string): MockUser {
   return {
     id: profile.user_id,
     email: profile.email || '',
-    role: role as 'player' | 'organizer' | 'admin',
+    role: role as 'player' | 'organizer' | 'admin' | 'user',
     verified: profile.verification_status === 'verified',
     pendingVerification: profile.verification_status === 'pending',
     password: '', // not stored
@@ -88,8 +88,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 .select('role')
                 .eq('user_id', session.user.id);
 
-              const role = roles && roles.length > 0 ? roles[0].role : 'player';
-              
+              const role = roles && roles.length > 0 ? roles[0].role : 'user';
+
               if (profile) {
                 const mockUser = supabaseUserToMockUser(profile, role);
                 setUser(mockUser);
@@ -124,7 +124,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             .select('role')
             .eq('user_id', session.user.id);
 
-          const role = roles && roles.length > 0 ? roles[0].role : 'player';
+          const role = roles && roles.length > 0 ? roles[0].role : 'user';
           
           if (profile) {
             const mockUser = supabaseUserToMockUser(profile, role);
@@ -237,7 +237,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .from('profiles').select('*').eq('user_id', supabaseUser.id).single();
       const { data: roles } = await supabase
         .from('user_roles').select('role').eq('user_id', supabaseUser.id);
-      const role = roles && roles.length > 0 ? roles[0].role : 'player';
+      const role = roles && roles.length > 0 ? roles[0].role : 'user';
       if (profile) {
         setUser(supabaseUserToMockUser(profile, role));
       }

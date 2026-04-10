@@ -26,7 +26,7 @@ export function Navbar() {
     navigate('/');
   };
 
-  const dashboardPath = user ? `/${user.role}/dashboard` : '/';
+  const dashboardPath = user ? (user.role === 'user' || user.role === 'player' ? '/player/dashboard' : `/${user.role}/dashboard`) : '/';
 
   const navLinks = [
     { to: '/demo', label: 'Demo', icon: <Play className="h-4 w-4" /> },
@@ -98,7 +98,7 @@ export function Navbar() {
                         <div className="flex flex-col space-y-1">
                           <p className="text-sm font-bold leading-none">{user?.displayName}</p>
                           <p className="text-xs leading-none text-muted-foreground">
-                            {user?.email} &middot; <span className="capitalize font-medium" style={{ color: '#1A7A4A' }}>{user?.role}</span>
+                            {user?.email}{user?.role && user.role !== 'user' && user.role !== 'player' ? <> &middot; <span className="capitalize font-medium" style={{ color: '#1A7A4A' }}>{user.role}</span></> : null}
                           </p>
                         </div>
                       </DropdownMenuLabel>
@@ -146,7 +146,7 @@ export function Navbar() {
               {user && (
                 <div className="px-4 py-3 mb-3 rounded-2xl" style={{ background: 'rgba(26,122,74,0.07)' }}>
                   <p className="font-bold text-sm" style={{ color: '#111' }}>{user.displayName}</p>
-                  <p className="text-xs text-muted-foreground capitalize">{user.role} account</p>
+                  <p className="text-xs text-muted-foreground capitalize">{user.role !== 'user' && user.role !== 'player' ? `${user.role} account` : 'Account'}</p>
                 </div>
               )}
 

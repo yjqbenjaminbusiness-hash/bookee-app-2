@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { dataService, type Activity, type ActivitySession, type Group } from '../../lib/data';
 import { useAuth } from '../../hooks/useAuth';
@@ -8,17 +8,6 @@ import { Search, ArrowRight, Users, Star, Calendar, MapPin, ChevronRight, Clock,
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 
-const SPORT_CATEGORIES = [
-  { id: 'all', label: 'All Sports', emoji: '🏅', color: '#1A7A4A', bg: '#E8F7EF' },
-  { id: 'Badminton', label: 'Badminton', emoji: '🏸', color: '#1A7A4A', bg: '#E8F7EF' },
-  { id: 'Basketball', label: 'Basketball', emoji: '🏀', color: '#C47A00', bg: '#FEF9EC' },
-  { id: 'Pickleball', label: 'Pickleball', emoji: '🎾', color: '#1A6FA8', bg: '#E6F0FA' },
-  { id: 'Soccer', label: 'Soccer', emoji: '⚽', color: '#7C3AED', bg: '#F3F0FF' },
-  { id: 'Swimming', label: 'Swimming', emoji: '🏊', color: '#0891B2', bg: '#ECFEFF' },
-  { id: 'Volleyball', label: 'Volleyball', emoji: '🏐', color: '#D97706', bg: '#FFFBEB' },
-  { id: 'Running', label: 'Running', emoji: '🏃', color: '#059669', bg: '#ECFDF5' },
-  { id: 'Tennis', label: 'Tennis', emoji: '🎾', color: '#7C3AED', bg: '#F3F0FF' },
-];
 
 const SPORT_PHOTOS: Record<string, string> = {
   Badminton: 'https://images.unsplash.com/photo-1521537634581-0dced2fee2ef?w=800&q=80',
@@ -38,7 +27,6 @@ function getEventPhoto(sport: string, imageUrl?: string | null): string {
 }
 
 export default function PlayerEvents() {
-  const [selectedSport, setSelectedSport] = useState('all');
   const [search, setSearch] = useState('');
   const [activities, setActivities] = useState<Activity[]>([]);
   const [ballotActivities, setBallotActivities] = useState<Activity[]>([]);
@@ -49,7 +37,6 @@ export default function PlayerEvents() {
   const [joinedGroupIds, setJoinedGroupIds] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState(true);
   const [showDemo, setShowDemo] = useState(true);
-  const scrollRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const { user } = useAuth();
 
@@ -117,21 +104,19 @@ export default function PlayerEvents() {
   const allBallotActs = showDemo ? ballotActivities : ballotActivities.filter(a => !dataService.isDemoItem(a.id));
 
   const filteredActivities = allActivities.filter(a => {
-    const matchesSport = selectedSport === 'all' || a.sport === selectedSport;
     const matchesSearch = !search ||
       a.title.toLowerCase().includes(search.toLowerCase()) ||
       a.venue.toLowerCase().includes(search.toLowerCase()) ||
       a.sport.toLowerCase().includes(search.toLowerCase());
-    return matchesSport && matchesSearch;
+    return matchesSearch;
   });
 
   const filteredBallotActivities = allBallotActs.filter(a => {
-    const matchesSport = selectedSport === 'all' || a.sport === selectedSport;
     const matchesSearch = !search ||
       a.title.toLowerCase().includes(search.toLowerCase()) ||
       a.venue.toLowerCase().includes(search.toLowerCase()) ||
       a.sport.toLowerCase().includes(search.toLowerCase());
-    return matchesSport && matchesSearch;
+    return matchesSearch;
   });
 
   if (isLoading) {
@@ -184,28 +169,15 @@ export default function PlayerEvents() {
             </span>
           </div>
 
-          {/* Sport filter */}
-          <div ref={scrollRef} className="flex gap-3 overflow-x-auto pb-3 mb-6 scrollbar-none" style={{ scrollbarWidth: 'none' }}>
-            {SPORT_CATEGORIES.map(sport => (
-              <button key={sport.id} onClick={() => setSelectedSport(sport.id)}
-                className="flex-shrink-0 flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold border-2 transition-all hover:scale-105 active:scale-95"
-                style={selectedSport === sport.id
-                  ? { background: sport.color, color: '#fff', borderColor: sport.color }
-                  : { background: sport.bg, color: sport.color, borderColor: `${sport.color}33` }}>
-                <span>{sport.emoji}</span>
-                <span>{sport.label}</span>
-              </button>
-            ))}
-          </div>
 
           {/* Activities grid */}
           {filteredActivities.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-center rounded-2xl border-2 border-dashed bg-muted/20">
               <span className="text-4xl mb-3">🔍</span>
               <h3 className="font-bold text-lg" style={{ color: '#111' }}>No activities found</h3>
-              <p className="text-muted-foreground text-sm mt-1">Try a different sport or clear your search.</p>
-              <Button variant="link" className="mt-3 text-primary font-bold" onClick={() => { setSearch(''); setSelectedSport('all'); }}>
-                Clear filters
+              <p className="text-muted-foreground text-sm mt-1">Try a different search term.</p>
+              <Button variant="link" className="mt-3 text-primary font-bold" onClick={() => setSearch('')}>
+                Clear search
               </Button>
             </div>
           ) : (
@@ -216,7 +188,7 @@ export default function PlayerEvents() {
                 const totalSpots = actSessions.reduce((a, s) => a + s.max_slots, 0);
                 const takenSpots = actSessions.reduce((a, s) => a + s.filled_slots, 0);
                 const fillPct = totalSpots > 0 ? (takenSpots / totalSpots) * 100 : 0;
-                const sportCat = SPORT_CATEGORIES.find(c => c.id === activity.sport) || SPORT_CATEGORIES[0];
+                const sportCat = { id: activity.sport, label: activity.sport, emoji: '🏅', color: '#1A7A4A', bg: '#E8F7EF' };
                 const isDemo = dataService.isDemoItem(activity.id);
                 const linkedGroup = activity.group_id ? (groupMap[activity.group_id] || null) : null;
 
@@ -316,7 +288,7 @@ export default function PlayerEvents() {
                   const totalSpots = actSessions.reduce((a, s) => a + s.max_slots, 0);
                   const takenSpots = actSessions.reduce((a, s) => a + s.filled_slots, 0);
                   const fillPct = totalSpots > 0 ? (takenSpots / totalSpots) * 100 : 0;
-                  const sportCat = SPORT_CATEGORIES.find(c => c.id === activity.sport) || SPORT_CATEGORIES[0];
+                  const sportCat = { id: activity.sport, label: activity.sport, emoji: '🏅', color: '#1A7A4A', bg: '#E8F7EF' };
                   const isPast = activity.date < new Date().toISOString().split('T')[0];
                   const isDemo = dataService.isDemoItem(activity.id);
 
@@ -405,7 +377,7 @@ export default function PlayerEvents() {
           ) : (
             <div className="space-y-5">
               {allGroups.map((group, i) => {
-                const sportCat = SPORT_CATEGORIES.find(c => c.id === group.sport) || SPORT_CATEGORIES[0];
+                const sportCat = { id: group.sport, label: group.sport, emoji: '🏅', color: '#1A7A4A', bg: '#E8F7EF' };
                 const isDemo = dataService.isDemoItem(group.id);
                 return (
                   <motion.div key={group.id}

@@ -21,6 +21,7 @@ const TEST_ACCOUNTS = [
 function getDashboardPath(role: string, _verified?: boolean) {
   if (role === 'admin') return '/admin/dashboard';
   if (role === 'organizer') return '/organizer/dashboard';
+  // Both 'player' and 'user' roles go to player dashboard
   return '/player/dashboard';
 }
 

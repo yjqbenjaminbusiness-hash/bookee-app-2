@@ -399,6 +399,9 @@ export default function OrganizeLanding() {
           <Badge variant={isPast ? 'secondary' : 'default'} className="text-xs">
             {isPast ? 'Closed' : 'Open'}
           </Badge>
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); const url = `https://bookee-app.com/player/events/${act.id}`; navigator.clipboard.writeText(url); toast.success('Link copied!'); }}>
+            <Share2 className="h-3.5 w-3.5 text-muted-foreground" />
+          </Button>
           <ArrowRight className="h-4 w-4 text-muted-foreground" />
         </div>
       </div>
@@ -442,6 +445,9 @@ export default function OrganizeLanding() {
           <Badge variant={isPast ? 'secondary' : 'default'} className="text-xs">
             {isPast ? 'Past' : act.status === 'active' ? 'Active' : act.status}
           </Badge>
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); const url = `https://bookee-app.com/player/events/${act.id}`; navigator.clipboard.writeText(url); toast.success('Link copied!'); }}>
+            <Share2 className="h-3.5 w-3.5 text-muted-foreground" />
+          </Button>
           <ArrowRight className="h-4 w-4 text-muted-foreground" />
         </div>
       </div>

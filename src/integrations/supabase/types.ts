@@ -539,6 +539,42 @@ export type Database = {
         }
         Relationships: []
       }
+      session_ratings: {
+        Row: {
+          activity_id: string
+          comment: string | null
+          created_at: string
+          group_id: string | null
+          id: string
+          organizer_id: string
+          rating: number
+          session_id: string | null
+          user_id: string
+        }
+        Insert: {
+          activity_id: string
+          comment?: string | null
+          created_at?: string
+          group_id?: string | null
+          id?: string
+          organizer_id: string
+          rating: number
+          session_id?: string | null
+          user_id: string
+        }
+        Update: {
+          activity_id?: string
+          comment?: string | null
+          created_at?: string
+          group_id?: string | null
+          id?: string
+          organizer_id?: string
+          rating?: number
+          session_id?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       special_requests: {
         Row: {
           activity_id: string | null

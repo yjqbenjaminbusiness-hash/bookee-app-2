@@ -8,17 +8,6 @@ import { Search, ArrowRight, Users, Star, Calendar, MapPin, ChevronRight, Clock,
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 
-const SPORT_CATEGORIES = [
-  { id: 'all', label: 'All Sports', emoji: '🏅', color: '#1A7A4A', bg: '#E8F7EF' },
-  { id: 'Badminton', label: 'Badminton', emoji: '🏸', color: '#1A7A4A', bg: '#E8F7EF' },
-  { id: 'Basketball', label: 'Basketball', emoji: '🏀', color: '#C47A00', bg: '#FEF9EC' },
-  { id: 'Pickleball', label: 'Pickleball', emoji: '🎾', color: '#1A6FA8', bg: '#E6F0FA' },
-  { id: 'Soccer', label: 'Soccer', emoji: '⚽', color: '#7C3AED', bg: '#F3F0FF' },
-  { id: 'Swimming', label: 'Swimming', emoji: '🏊', color: '#0891B2', bg: '#ECFEFF' },
-  { id: 'Volleyball', label: 'Volleyball', emoji: '🏐', color: '#D97706', bg: '#FFFBEB' },
-  { id: 'Running', label: 'Running', emoji: '🏃', color: '#059669', bg: '#ECFDF5' },
-  { id: 'Tennis', label: 'Tennis', emoji: '🎾', color: '#7C3AED', bg: '#F3F0FF' },
-];
 
 const SPORT_PHOTOS: Record<string, string> = {
   Badminton: 'https://images.unsplash.com/photo-1521537634581-0dced2fee2ef?w=800&q=80',
@@ -38,7 +27,7 @@ function getEventPhoto(sport: string, imageUrl?: string | null): string {
 }
 
 export default function PlayerEvents() {
-  const [selectedSport, setSelectedSport] = useState('all');
+  const [search, setSearch] = useState('');
   const [search, setSearch] = useState('');
   const [activities, setActivities] = useState<Activity[]>([]);
   const [ballotActivities, setBallotActivities] = useState<Activity[]>([]);

@@ -189,7 +189,7 @@ export default function PlayerEvents() {
                 const totalSpots = actSessions.reduce((a, s) => a + s.max_slots, 0);
                 const takenSpots = actSessions.reduce((a, s) => a + s.filled_slots, 0);
                 const fillPct = totalSpots > 0 ? (takenSpots / totalSpots) * 100 : 0;
-                const sportCat = SPORT_CATEGORIES.find(c => c.id === activity.sport) || SPORT_CATEGORIES[0];
+                const sportCat = { id: activity.sport, label: activity.sport, emoji: '🏅', color: '#1A7A4A', bg: '#E8F7EF' };
                 const isDemo = dataService.isDemoItem(activity.id);
                 const linkedGroup = activity.group_id ? (groupMap[activity.group_id] || null) : null;
 
@@ -289,7 +289,7 @@ export default function PlayerEvents() {
                   const totalSpots = actSessions.reduce((a, s) => a + s.max_slots, 0);
                   const takenSpots = actSessions.reduce((a, s) => a + s.filled_slots, 0);
                   const fillPct = totalSpots > 0 ? (takenSpots / totalSpots) * 100 : 0;
-                  const sportCat = SPORT_CATEGORIES.find(c => c.id === activity.sport) || SPORT_CATEGORIES[0];
+                  const sportCat = { id: activity.sport, label: activity.sport, emoji: '🏅', color: '#1A7A4A', bg: '#E8F7EF' };
                   const isPast = activity.date < new Date().toISOString().split('T')[0];
                   const isDemo = dataService.isDemoItem(activity.id);
 
@@ -378,7 +378,7 @@ export default function PlayerEvents() {
           ) : (
             <div className="space-y-5">
               {allGroups.map((group, i) => {
-                const sportCat = SPORT_CATEGORIES.find(c => c.id === group.sport) || SPORT_CATEGORIES[0];
+                const sportCat = { id: group.sport, label: group.sport, emoji: '🏅', color: '#1A7A4A', bg: '#E8F7EF' };
                 const isDemo = dataService.isDemoItem(group.id);
                 return (
                   <motion.div key={group.id}

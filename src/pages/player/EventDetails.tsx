@@ -947,6 +947,106 @@ export default function EventDetails() {
   );
 }
 
+// ─── Rate Session Card ────────────────────────────────────────────
+function RateSessionCard({ activityId, sessionId, groupId, organizerId, userId }: {
+  activityId: string; sessionId: string; groupId: string | null; organizerId: string; userId: string;
+}) {
+  const [rating, setRating] = useState(0);
+  const [hoverRating, setHoverRating] = useState(0);
+  const [comment, setComment] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+  const [avgRating, setAvgRating] = useState<number | null>(null);
+  const [ratingCount, setRatingCount] = useState(0);
+
+  useEffect(() => {
+    // Check if already rated
+    supabase.from('session_ratings' as any).select('id').eq('session_id', sessionId).eq('user_id', userId).maybeSingle()
+      .then(({ data }) => { if (data) setSubmitted(true); });
+    // Load avg rating
+    supabase.from('session_ratings' as any).select('rating').eq('activity_id', activityId)
+      .then(({ data }) => {
+        if (data && data.length > 0) {
+          const avg = data.reduce((a: number, r: any) => a + r.rating, 0) / data.length;
+          setAvgRating(Math.round(avg * 10) / 10);
+          setRatingCount(data.length);
+        }
+      });
+  }, [activityId, sessionId, userId]);
+
+  const handleSubmit = async () => {
+    if (rating < 1) { toast.error('Please select a rating'); return; }
+    setIsSubmitting(true);
+    try {
+      const { error } = await supabase.from('session_ratings' as any).insert({
+        activity_id: activityId,
+        session_id: sessionId,
+        group_id: groupId,
+        organizer_id: organizerId,
+        user_id: userId,
+        rating,
+        comment: comment.trim() || null,
+      });
+      if (error) throw error;
+      toast.success('Rating submitted!');
+      setSubmitted(true);
+    } catch (err: any) {
+      if (err.message?.includes('duplicate')) { toast.info('You already rated this session'); setSubmitted(true); }
+      else toast.error(err.message || 'Failed to submit rating');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  if (submitted) {
+    return (
+      <section className="p-4 rounded-2xl border bg-card">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
+          <span className="font-bold text-foreground">Thanks for rating!</span>
+          {avgRating && <span className="ml-auto text-xs">{avgRating} avg ({ratingCount} rating{ratingCount !== 1 ? 's' : ''})</span>}
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <section className="p-4 rounded-2xl border bg-card space-y-3">
+      <h3 className="font-bold text-foreground flex items-center gap-2 text-sm">
+        <Star className="h-4 w-4 text-primary" /> Rate This Session
+      </h3>
+      {avgRating && (
+        <p className="text-xs text-muted-foreground">{avgRating} avg from {ratingCount} rating{ratingCount !== 1 ? 's' : ''}</p>
+      )}
+      <div className="flex gap-1">
+        {[1, 2, 3, 4, 5].map(n => (
+          <button
+            key={n}
+            type="button"
+            onClick={() => setRating(n)}
+            onMouseEnter={() => setHoverRating(n)}
+            onMouseLeave={() => setHoverRating(0)}
+            className="p-1 transition-transform hover:scale-110"
+          >
+            <Star className={`h-6 w-6 ${n <= (hoverRating || rating) ? 'text-yellow-500 fill-yellow-500' : 'text-muted-foreground/30'}`} />
+          </button>
+        ))}
+      </div>
+      <textarea
+        className="w-full rounded-xl border bg-background p-3 text-sm min-h-[60px] focus:outline-none focus:ring-2 focus:ring-ring"
+        placeholder="Add a comment (optional)"
+        value={comment}
+        onChange={e => setComment(e.target.value)}
+        maxLength={500}
+      />
+      <Button size="sm" className="rounded-full" onClick={handleSubmit} disabled={isSubmitting || rating < 1}>
+        {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Send className="h-4 w-4 mr-1" />}
+        Submit Rating
+      </Button>
+    </section>
+  );
+}
+
 // ─── Supabase Activity View (real DB data) ────────────────────────
 function SupabaseActivityView({
   activity,

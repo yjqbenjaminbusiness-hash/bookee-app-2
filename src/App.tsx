@@ -19,7 +19,6 @@ import AnnouncementsPage from "./pages/AnnouncementsPage";
 import OrganizerInfoPage from "./pages/organizer/OrganizerInfoPage";
 import HelpPage from "./pages/HelpPage";
 import TermsPage from "./pages/TermsPage";
-import LoginPage from "./pages/LoginPage";
 import UnsubscribePage from "./pages/UnsubscribePage";
 
 // Demo Pages

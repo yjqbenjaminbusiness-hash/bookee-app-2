@@ -1,44 +1,59 @@
+# Simplify Roles, Fix Auth Flow, Improve Explore UX
 
+## Diagnosis
 
-# Fix Auth, Price Bug, Share, and Help Page
+1. **"Player" role display**: When a user has no entry in `user_roles`, `useAuth` defaults to `'player'`. This label shows in the Navbar dropdown, Settings page badge, and mobile menu. The user wants to remove this tagging. 
+2. **Email confirmation blocking access**: After signup, users get `verification_status: 'unverified'` on their profile and may see "Pending Review" badges. The `ProtectedRoute` no longer blocks on verification, but the UI still shows misleading "Pending Review" status. Email confirmation for Supabase auth is a separate concern — if emails aren't being delivered, users get stuck.
+3. **Explore sport filters**: The `SPORT_CATEGORIES` buttons take up significant space. User wants search-only filtering.
+4. **WhatsApp button**: The Supabase activity view already has WhatsApp + Telegram contact buttons. The mock event view also has WhatsApp sharing. However, on the session page, there should be a contact organizer WhatsApp & telegram button. This is missing and needs to be added in the UI. 
 
-## 1. Signup Pages — Add Google/Apple OAuth
+## Plan
 
-**Files**: `src/pages/SignupPlayerPage.tsx`, `src/pages/SignupOrganizerPage.tsx`
+### 1. Remove "Player" role label from UI
 
-Both signup pages only show email/password. Add Google and Apple OAuth buttons (same UI as LoginPage) above the email form, with an "Or continue with email" divider. Import `signInWithGoogle` and `signInWithApple` from `useAuth`. Use real Supabase signup (`signupPlayerSupabase` / `signupOrganizerSupabase`) instead of mock `signupPlayer` / `signupOrganizer`.
+**Files**: `src/hooks/useAuth.tsx`, `src/components/Navbar.tsx`, `src/pages/SettingsPage.tsx`
 
-## 2. Price Bug — Fix Telegram Bot Division
+- In `useAuth.tsx`: Change default role from `'player'` to `'user'` (lines 91, 116, 243). Update `MockUser` type to include `'user'`.
+- In `Navbar.tsx`: 
+  - Change `dashboardPath` (line 29): if role is `'user'`, go to `/player/dashboard` (keep same destination, just don't label it "Player").
+  - Line 101: Hide role text when role is `'user'`, only show for `organizer`/`admin`.
+  - Line 149: Same for mobile menu — show "Account" instead of "player account".
+- In `SettingsPage.tsx`: 
+  - Line 86: Don't show role badge when role is `'user'`.
+  - Lines 132-143: Remove the "Pending organizer" notice (no longer relevant since all users can organize).
 
-**File**: `supabase/functions/telegram-poll/index.ts`
+### 2. Fix email confirmation flow
 
-Lines 733 and 1514 incorrectly divide price by 100:
-- Line 733: `$${(s.price / 100).toFixed(2)}` → `$${Number(s.price).toFixed(2)}`
-- Line 1514: `$${(s.price / 100).toFixed(2)}` → `$${Number(s.price).toFixed(2)}`
+**Action**: Use `configure_auth` to disable mandatory email confirmation (auto-confirm signups). This prevents blocked access when email delivery isn't working.
 
-Line 501 is already correct. Price is stored as dollars in DB, no division needed.
+- In `src/pages/SignupPlayerPage.tsx` and `src/pages/SignupOrganizerPage.tsx`: After successful signup, navigate directly to dashboard instead of showing "check your email" message.
 
-## 3. Organizer Share Button
+### 3. Remove sport category filters from Explore
 
-**File**: `src/pages/organizer/OrganizeLanding.tsx`
+**File**: `src/pages/player/Events.tsx`
 
-Add a share icon button to each activity/ballot row that copies `https://bookee-app.com/player/events/{activityId}` to clipboard and shows a toast. Also add WhatsApp/Telegram share options via `window.open`.
+- Remove `SPORT_CATEGORIES` constant (lines 11-21).
+- Remove `selectedSport` state (line 41).
+- Remove the sport filter button row (lines 188-199).
+- Update `filteredActivities` and `filteredBallotActivities` to remove `matchesSport` — only use search text matching (which already searches by sport name).
 
-## 4. Help Page Cleanup
+### 4. WhatsApp button — Already implemented
 
-**File**: `src/pages/HelpPage.tsx`
-
-Remove the "Direct Contact" and "Safety & Trust" cards. Keep only the "Join our Beta Community" section with the email link and a brief intro paragraph.
+The Supabase activity detail view (EventDetails.tsx lines 1206-1214) already has a WhatsApp contact button next to Telegram. No changes needed.
 
 ## Files Changed
 
-| File | Change |
-|------|--------|
-| `src/pages/SignupPlayerPage.tsx` | Add Google/Apple buttons, use Supabase signup |
-| `src/pages/SignupOrganizerPage.tsx` | Add Google/Apple buttons, use Supabase signup |
-| `supabase/functions/telegram-poll/index.ts` | Fix price/100 → price on lines 733, 1514 |
-| `src/pages/organizer/OrganizeLanding.tsx` | Add share button to activity rows |
-| `src/pages/HelpPage.tsx` | Remove redundant cards, simplify |
 
-No database changes needed. Edge function redeployment needed for telegram-poll.
+| File                                | Change                                            |
+| ----------------------------------- | ------------------------------------------------- |
+| `src/hooks/useAuth.tsx`             | Default role `'user'` instead of `'player'`       |
+| `src/lib/mockData.ts`               | Add `'user'` to MockUser role type                |
+| `src/components/Navbar.tsx`         | Hide role label for regular users                 |
+| `src/pages/SettingsPage.tsx`        | Hide role badge + remove pending organizer notice |
+| `src/pages/player/Events.tsx`       | Remove sport filter buttons, keep search          |
+| `src/pages/SignupPlayerPage.tsx`    | Navigate to dashboard on signup success           |
+| `src/pages/SignupOrganizerPage.tsx` | Navigate to dashboard on signup success           |
+| `src/components/ProtectedRoute.tsx` | Handle `'user'` role in dashboard redirect        |
 
+
+Auth config change: Enable auto-confirm email signups.

@@ -28,7 +28,6 @@ function getEventPhoto(sport: string, imageUrl?: string | null): string {
 
 export default function PlayerEvents() {
   const [search, setSearch] = useState('');
-  const [search, setSearch] = useState('');
   const [activities, setActivities] = useState<Activity[]>([]);
   const [ballotActivities, setBallotActivities] = useState<Activity[]>([]);
   const [sessions, setSessions] = useState<Record<string, ActivitySession[]>>({});
@@ -106,21 +105,19 @@ export default function PlayerEvents() {
   const allBallotActs = showDemo ? ballotActivities : ballotActivities.filter(a => !dataService.isDemoItem(a.id));
 
   const filteredActivities = allActivities.filter(a => {
-    const matchesSport = selectedSport === 'all' || a.sport === selectedSport;
     const matchesSearch = !search ||
       a.title.toLowerCase().includes(search.toLowerCase()) ||
       a.venue.toLowerCase().includes(search.toLowerCase()) ||
       a.sport.toLowerCase().includes(search.toLowerCase());
-    return matchesSport && matchesSearch;
+    return matchesSearch;
   });
 
   const filteredBallotActivities = allBallotActs.filter(a => {
-    const matchesSport = selectedSport === 'all' || a.sport === selectedSport;
     const matchesSearch = !search ||
       a.title.toLowerCase().includes(search.toLowerCase()) ||
       a.venue.toLowerCase().includes(search.toLowerCase()) ||
       a.sport.toLowerCase().includes(search.toLowerCase());
-    return matchesSport && matchesSearch;
+    return matchesSearch;
   });
 
   if (isLoading) {
@@ -173,28 +170,15 @@ export default function PlayerEvents() {
             </span>
           </div>
 
-          {/* Sport filter */}
-          <div ref={scrollRef} className="flex gap-3 overflow-x-auto pb-3 mb-6 scrollbar-none" style={{ scrollbarWidth: 'none' }}>
-            {SPORT_CATEGORIES.map(sport => (
-              <button key={sport.id} onClick={() => setSelectedSport(sport.id)}
-                className="flex-shrink-0 flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold border-2 transition-all hover:scale-105 active:scale-95"
-                style={selectedSport === sport.id
-                  ? { background: sport.color, color: '#fff', borderColor: sport.color }
-                  : { background: sport.bg, color: sport.color, borderColor: `${sport.color}33` }}>
-                <span>{sport.emoji}</span>
-                <span>{sport.label}</span>
-              </button>
-            ))}
-          </div>
 
           {/* Activities grid */}
           {filteredActivities.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-center rounded-2xl border-2 border-dashed bg-muted/20">
               <span className="text-4xl mb-3">🔍</span>
               <h3 className="font-bold text-lg" style={{ color: '#111' }}>No activities found</h3>
-              <p className="text-muted-foreground text-sm mt-1">Try a different sport or clear your search.</p>
-              <Button variant="link" className="mt-3 text-primary font-bold" onClick={() => { setSearch(''); setSelectedSport('all'); }}>
-                Clear filters
+              <p className="text-muted-foreground text-sm mt-1">Try a different search term.</p>
+              <Button variant="link" className="mt-3 text-primary font-bold" onClick={() => setSearch('')}>
+                Clear search
               </Button>
             </div>
           ) : (

@@ -90,7 +90,7 @@ export default function SettingsPage() {
                   </Badge>
                 ) : (
                   <Badge variant="outline" className="font-bold text-amber-600 border-amber-600">
-                    Pending Review
+                    User
                   </Badge>
                 )}
               </div>

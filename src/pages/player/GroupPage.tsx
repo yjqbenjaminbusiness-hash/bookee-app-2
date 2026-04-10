@@ -4,7 +4,7 @@ import { dataService, type Group, type Activity, type ActivitySession } from '..
 import { useAuth } from '../../hooks/useAuth';
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
-import { ArrowLeft, Calendar, Clock, Users, ArrowRight, UserPlus, Check, Loader2, MapPin, Share2, Copy, Link, Shield, Settings, Megaphone, Eye, EyeOff, Bell, Trash2, Plus, Minus, Shuffle } from 'lucide-react';
+import { ArrowLeft, Calendar, Clock, Users, ArrowRight, UserPlus, Check, Loader2, MapPin, Share2, Copy, Link, Shield, Settings, Megaphone, Eye, EyeOff, Bell, Trash2, Plus, Minus, Shuffle, Star } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -25,6 +25,8 @@ export default function GroupPage() {
   const [showManagement, setShowManagement] = useState(false);
   const [selectedActivities, setSelectedActivities] = useState<Set<string>>(new Set());
   const [announcementText, setAnnouncementText] = useState('');
+  const [avgRating, setAvgRating] = useState<number | null>(null);
+  const [ratingCount, setRatingCount] = useState(0);
 
   const isOwner = !!(user && group && user.id === group.organizer_id);
 
@@ -48,6 +50,16 @@ export default function GroupPage() {
 
         if (user) {
           const member = await dataService.isGroupMember(user.id, groupId);
+
+        // Load group ratings
+        supabase.from('session_ratings' as any).select('rating').eq('group_id', groupId)
+          .then(({ data }: any) => {
+            if (data && data.length > 0) {
+              const avg = data.reduce((a: number, r: any) => a + r.rating, 0) / data.length;
+              setAvgRating(Math.round(avg * 10) / 10);
+              setRatingCount(data.length);
+            }
+          });
           setIsMember(member);
         }
 
@@ -147,6 +159,9 @@ export default function GroupPage() {
             )}
             <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
               <span className="flex items-center gap-1"><Users className="h-3.5 w-3.5" /> {memberCount} member{memberCount !== 1 ? 's' : ''}</span>
+              {avgRating && (
+                <span className="flex items-center gap-1"><Star className="h-3.5 w-3.5 text-yellow-500 fill-yellow-500" /> {avgRating} ({ratingCount})</span>
+              )}
             </div>
             {/* Join CTA */}
             {user && !isMember && (

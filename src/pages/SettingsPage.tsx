@@ -14,6 +14,8 @@ export default function SettingsPage() {
   const { user, logout, isSupabaseAuth, supabaseUser, refreshUser } = useAuth();
   const navigate = useNavigate();
   const [username, setUsername] = useState(user?.username || '');
+  const [phone, setPhone] = useState(user?.phone || '');
+  const [telegramHandle, setTelegramHandle] = useState(user?.username || '');
   const [isSaving, setIsSaving] = useState(false);
 
   const handleLogout = () => {
@@ -22,7 +24,7 @@ export default function SettingsPage() {
     navigate('/login');
   };
 
-  const handleSaveUsername = async () => {
+  const handleSaveProfile = async () => {
     if (!isSupabaseAuth || !supabaseUser) {
       toast.error('Only available for authenticated accounts');
       return;
@@ -35,13 +37,16 @@ export default function SettingsPage() {
     try {
       const { error } = await supabase
         .from('profiles')
-        .update({ username: username.trim() })
+        .update({
+          username: username.trim(),
+          phone: phone.trim() || null,
+        })
         .eq('user_id', supabaseUser.id);
       if (error) throw error;
-      toast.success('Username updated!');
+      toast.success('Profile updated!');
       refreshUser();
     } catch (err: any) {
-      toast.error(err.message || 'Failed to update username');
+      toast.error(err.message || 'Failed to update profile');
     } finally {
       setIsSaving(false);
     }
@@ -97,32 +102,50 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          {/* Username Edit */}
+          {/* Profile Edit */}
           {isSupabaseAuth && (
-            <div className="pt-4 border-t space-y-3">
-              <Label htmlFor="username" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Custom Username</Label>
-              <p className="text-xs text-muted-foreground">This will be shown instead of your login name across the app.</p>
-              <div className="flex gap-2">
+            <div className="pt-4 border-t space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="username" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Display Username</Label>
                 <Input
                   id="username"
                   placeholder="Enter a custom username"
                   value={username}
                   onChange={e => setUsername(e.target.value)}
-                  className="flex-1"
                 />
-                <Button onClick={handleSaveUsername} disabled={isSaving} size="sm" className="rounded-full">
-                  {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Save className="h-4 w-4 mr-1" /> Save</>}
-                </Button>
               </div>
-            </div>
-          )}
 
-          {user.phone && (
-            <div className="pt-4 border-t">
-              <div className="grid gap-1.5">
-                <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Phone</p>
-                <code className="text-xs p-3 rounded-xl bg-muted block font-mono">{user.phone}</code>
+              <div className="space-y-2">
+                <Label htmlFor="phone" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Phone Number (optional)</Label>
+                <Input
+                  id="phone"
+                  type="tel"
+                  placeholder="e.g. +65 9123 4567"
+                  value={phone}
+                  onChange={e => setPhone(e.target.value)}
+                />
+                <p className="text-[10px] text-muted-foreground">
+                  Used for WhatsApp contact button on your sessions. Your phone number may be shared with activity organizers for session coordination only.
+                </p>
               </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="telegram" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Telegram Handle (optional)</Label>
+                <Input
+                  id="telegram"
+                  placeholder="e.g. @yourhandle"
+                  value={telegramHandle}
+                  onChange={e => setTelegramHandle(e.target.value)}
+                  disabled
+                />
+                <p className="text-[10px] text-muted-foreground">
+                  Linked to your username. Used for Telegram contact button on your sessions.
+                </p>
+              </div>
+
+              <Button onClick={handleSaveProfile} disabled={isSaving} size="sm" className="rounded-full">
+                {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Save className="h-4 w-4 mr-1" /> Save Profile</>}
+              </Button>
             </div>
           )}
         </CardContent>

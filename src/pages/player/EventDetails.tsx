@@ -1077,6 +1077,9 @@ function SupabaseActivityView({
   const [addGuest, setAddGuest] = useState(false);
   const [guestNameInput, setGuestNameInput] = useState('');
 
+  // Player phone for join
+  const [playerPhone, setPlayerPhone] = useState('');
+
   // Organizer contact
   const [organizerProfile, setOrganizerProfile] = useState<any>(null);
 
@@ -1134,6 +1137,7 @@ function SupabaseActivityView({
     if (userBookingIds.has(sessionId)) { toast.info('You already have a booking for this session'); return; }
     setJoinSessionId(sessionId);
     setSpecialRequest('');
+    setPlayerPhone(user?.phone || '');
     setAddGuest(false);
     setGuestNameInput('');
     setShowJoinDialog(true);
@@ -1158,6 +1162,7 @@ function SupabaseActivityView({
         user_id: user.id,
         player_name: user.username || user.displayName || user.email || 'Player',
         player_username: user.username || undefined,
+        player_phone: playerPhone.trim() || undefined,
         amount: session.price,
         special_request: specialRequest.trim() || undefined,
         reservation_status: isFull ? 'cancelled' : undefined,
@@ -1587,6 +1592,22 @@ function SupabaseActivityView({
                   value={specialRequest}
                   onChange={e => setSpecialRequest(e.target.value)}
                 />
+              </div>
+
+              {/* Phone number (optional) */}
+              <div className="space-y-2">
+                <Label htmlFor="player-phone" className="text-sm font-bold">Phone Number (optional)</Label>
+                <Input
+                  id="player-phone"
+                  type="tel"
+                  placeholder="e.g. +65 9123 4567"
+                  value={playerPhone}
+                  onChange={e => setPlayerPhone(e.target.value)}
+                  className="rounded-xl"
+                />
+                <p className="text-[10px] text-muted-foreground">
+                  By providing your contact, you agree it may be used by the organizer for session coordination.
+                </p>
               </div>
 
               {/* Guest sign-up */}

@@ -1457,7 +1457,7 @@ function SupabaseActivityView({
                                   size="sm"
                                   variant="ghost"
                                   className="h-6 text-[10px] px-2 rounded-full text-destructive hover:text-destructive"
-                                  onClick={() => handleLeaveSession(session.id)}
+                                  onClick={() => setLeaveConfirmSession(session.id)}
                                   disabled={isLeaving === session.id}
                                 >
                                   {isLeaving === session.id ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Leave'}

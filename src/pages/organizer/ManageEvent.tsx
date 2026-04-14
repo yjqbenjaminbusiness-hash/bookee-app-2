@@ -718,6 +718,11 @@ function SupabaseManageView({ activityId, navigate }: { activityId: string | und
   const [guestNote, setGuestNote] = useState<Record<string, string>>({});
   const [isAddingGuest, setIsAddingGuest] = useState(false);
 
+  // Telegram post state
+  const [showTelegramPostDialog, setShowTelegramPostDialog] = useState(false);
+  const [selectedPostSessions, setSelectedPostSessions] = useState<Set<string>>(new Set());
+  const [isPostingTelegram, setIsPostingTelegram] = useState(false);
+
   useEffect(() => {
     if (activity) {
       dataService.listAnnouncementsByActivity(activity.id).then(setAnnouncements);

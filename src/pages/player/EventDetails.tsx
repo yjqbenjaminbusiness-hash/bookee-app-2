@@ -1269,11 +1269,11 @@ function SupabaseActivityView({
   const handleLeaveSession = async (sessionId: string) => {
     const booking = userBookings[sessionId];
     if (!booking) return;
-    if (!confirm('Are you sure you want to leave this session?')) return;
     setIsLeaving(sessionId);
     try {
       await dataService.cancelBooking(booking.id, sessionId);
       toast.success('You have left this session');
+      setLeaveConfirmSession(null);
       // Reload bookings
       const bks = await dataService.listBookingsBySession(sessionId);
       setBookingsBySession(prev => ({ ...prev, [sessionId]: bks }));

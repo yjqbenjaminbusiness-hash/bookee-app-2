@@ -1095,6 +1095,11 @@ function SupabaseManageView({ activityId, navigate }: { activityId: string | und
         const bookings = bookingsBySession[session.id] || [];
         const activeBookings = bookings.filter((b: any) => b.reservation_status !== 'rejected' && b.reservation_status !== 'cancelled');
         const waitlistBookings = bookings.filter((b: any) => b.reservation_status === 'cancelled');
+        const recentCancellations = waitlistBookings.filter((b: any) => {
+          const updatedAt = new Date(b.updated_at);
+          const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+          return updatedAt > oneDayAgo;
+        });
         const pct = session.max_slots > 0 ? (activeBookings.length / session.max_slots) * 100 : 0;
         const isExpanded = expandedSessions.has(session.id);
         const isFull = activeBookings.length >= session.max_slots;

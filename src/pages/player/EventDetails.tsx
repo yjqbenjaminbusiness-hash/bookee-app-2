@@ -1089,6 +1089,7 @@ function SupabaseActivityView({
 
   // Leave session
   const [isLeaving, setIsLeaving] = useState<string | null>(null);
+  const [leaveConfirmSession, setLeaveConfirmSession] = useState<string | null>(null);
 
   // Organizer contact
   const [organizerProfile, setOrganizerProfile] = useState<any>(null);

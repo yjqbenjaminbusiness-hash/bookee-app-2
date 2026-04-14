@@ -1080,6 +1080,16 @@ function SupabaseActivityView({
   // Player phone for join
   const [playerPhone, setPlayerPhone] = useState('');
 
+  // Update reservation dialog
+  const [showUpdateDialog, setShowUpdateDialog] = useState(false);
+  const [updateSessionId, setUpdateSessionId] = useState<string | null>(null);
+  const [updateSpecialRequest, setUpdateSpecialRequest] = useState('');
+  const [updatePhone, setUpdatePhone] = useState('');
+  const [isUpdating, setIsUpdating] = useState(false);
+
+  // Leave session
+  const [isLeaving, setIsLeaving] = useState<string | null>(null);
+
   // Organizer contact
   const [organizerProfile, setOrganizerProfile] = useState<any>(null);
 
@@ -1115,7 +1125,7 @@ function SupabaseActivityView({
         const userBIds = new Set<string>();
         const uBookings: Record<string, any> = {};
         Object.values(bMap).flat().forEach(b => {
-          if (b.user_id === user.id && b.reservation_status !== 'rejected') {
+          if (b.user_id === user.id && b.reservation_status !== 'rejected' && b.reservation_status !== 'cancelled') {
             userBIds.add(b.session_id);
             uBookings[b.session_id] = b;
           }
@@ -1220,6 +1230,66 @@ function SupabaseActivityView({
       toast.error(err.message || 'Failed to update');
     } finally {
       setMarkingPaid(null);
+    }
+  };
+
+  const handleOpenUpdate = (sessionId: string) => {
+    const booking = userBookings[sessionId];
+    if (!booking) return;
+    setUpdateSessionId(sessionId);
+    setUpdateSpecialRequest(booking.special_request || '');
+    setUpdatePhone(booking.player_phone || '');
+    setShowUpdateDialog(true);
+  };
+
+  const handleUpdateReservation = async () => {
+    if (!updateSessionId || !userBookings[updateSessionId]) return;
+    const booking = userBookings[updateSessionId];
+    setIsUpdating(true);
+    try {
+      await dataService.updateBooking(booking.id, {
+        special_request: updateSpecialRequest.trim() || undefined,
+        player_phone: updatePhone.trim() || undefined,
+      });
+      toast.success('Reservation updated!');
+      setShowUpdateDialog(false);
+      // Reload bookings
+      const bks = await dataService.listBookingsBySession(updateSessionId);
+      setBookingsBySession(prev => ({ ...prev, [updateSessionId!]: bks }));
+      const myBooking = bks.find((b: any) => b.user_id === user?.id && !b.player_name.startsWith('Guest of'));
+      if (myBooking) setUserBookings(prev => ({ ...prev, [updateSessionId!]: myBooking }));
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to update');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleLeaveSession = async (sessionId: string) => {
+    const booking = userBookings[sessionId];
+    if (!booking) return;
+    if (!confirm('Are you sure you want to leave this session?')) return;
+    setIsLeaving(sessionId);
+    try {
+      await dataService.cancelBooking(booking.id, sessionId);
+      toast.success('You have left this session');
+      // Reload bookings
+      const bks = await dataService.listBookingsBySession(sessionId);
+      setBookingsBySession(prev => ({ ...prev, [sessionId]: bks }));
+      setUserBookingIds(prev => {
+        const next = new Set(prev);
+        next.delete(sessionId);
+        return next;
+      });
+      setUserBookings(prev => {
+        const next = { ...prev };
+        delete next[sessionId];
+        return next;
+      });
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to leave session');
+    } finally {
+      setIsLeaving(null);
     }
   };
 
@@ -1370,8 +1440,29 @@ function SupabaseActivityView({
                         </div>
                         <div className="flex flex-col items-end gap-2">
                           <p className="text-lg font-bold text-primary">${session.price}</p>
-                          {hasBooked ? (
-                            statusBadge(myStatus) || <Badge className="bg-primary text-primary-foreground">✓ Joined</Badge>
+                          {hasBooked && myStatus !== 'rejected' ? (
+                            <div className="flex flex-col items-end gap-1">
+                              {statusBadge(myStatus) || <Badge className="bg-primary text-primary-foreground">✓ Joined</Badge>}
+                              <div className="flex gap-1">
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-6 text-[10px] px-2 rounded-full text-muted-foreground hover:text-foreground"
+                                  onClick={() => handleOpenUpdate(session.id)}
+                                >
+                                  Edit
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-6 text-[10px] px-2 rounded-full text-destructive hover:text-destructive"
+                                  onClick={() => handleLeaveSession(session.id)}
+                                  disabled={isLeaving === session.id}
+                                >
+                                  {isLeaving === session.id ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Leave'}
+                                </Button>
+                              </div>
+                            </div>
                           ) : isFull ? (
                             <Button
                               size="sm"
@@ -1645,6 +1736,64 @@ function SupabaseActivityView({
                     const active = (bookingsBySession[joinSessionId || ''] || []).filter((b: any) => b.reservation_status !== 'rejected' && b.reservation_status !== 'cancelled');
                     return s && active.length >= s.max_slots ? 'Join Waitlist' : 'Join';
                   })()}
+                </Button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Update Reservation Dialog */}
+      <AnimatePresence>
+        {showUpdateDialog && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+            onClick={() => setShowUpdateDialog(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-background rounded-2xl p-6 w-full max-w-md border shadow-lg space-y-4"
+              onClick={e => e.stopPropagation()}
+            >
+              <h3 className="text-lg font-bold text-foreground">Update Reservation</h3>
+              <p className="text-sm text-muted-foreground">
+                Edit your details for this session. Your existing booking will be updated.
+              </p>
+              <div className="space-y-2">
+                <Label htmlFor="update-special-request" className="text-sm font-bold">Special Request (optional)</Label>
+                <textarea
+                  id="update-special-request"
+                  className="w-full rounded-xl border bg-background p-3 text-sm min-h-[80px] focus:outline-none focus:ring-2 focus:ring-ring"
+                  placeholder="e.g. Preferred position, notes to organizer..."
+                  value={updateSpecialRequest}
+                  onChange={e => setUpdateSpecialRequest(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="update-phone" className="text-sm font-bold">Phone Number (optional)</Label>
+                <Input
+                  id="update-phone"
+                  type="tel"
+                  placeholder="e.g. +65 9123 4567"
+                  value={updatePhone}
+                  onChange={e => setUpdatePhone(e.target.value)}
+                  className="rounded-xl"
+                />
+              </div>
+              <div className="flex gap-2 justify-end">
+                <Button variant="outline" className="rounded-full" onClick={() => setShowUpdateDialog(false)}>Cancel</Button>
+                <Button
+                  className="rounded-full bg-primary text-primary-foreground"
+                  onClick={handleUpdateReservation}
+                  disabled={isUpdating}
+                >
+                  {isUpdating ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Check className="h-4 w-4 mr-1" />}
+                  Save Changes
                 </Button>
               </div>
             </motion.div>

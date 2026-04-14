@@ -139,7 +139,7 @@ export default function SettingsPage() {
                   disabled
                 />
                 <p className="text-[10px] text-muted-foreground">
-                  Linked to your username on Telegram & a source of contact for your sessions.
+                  Linked to your username on Telegram and a source of contact for your sessions.
                 </p>
               </div>
 

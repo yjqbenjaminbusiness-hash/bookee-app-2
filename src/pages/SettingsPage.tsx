@@ -125,7 +125,7 @@ export default function SettingsPage() {
                   onChange={e => setPhone(e.target.value)}
                 />
                 <p className="text-[10px] text-muted-foreground">
-                  Used for WhatsApp contact button on your sessions. Your phone number may be shared with activity organizers for session coordination only.
+                  To enable session coordination, your phone number may be shared with the organizer, and the organizer’s phone number may be shared with you. It will not be used for any other reasons.
                 </p>
               </div>
 
@@ -139,7 +139,7 @@ export default function SettingsPage() {
                   disabled
                 />
                 <p className="text-[10px] text-muted-foreground">
-                  Linked to your username. Used for Telegram contact button on your sessions.
+                  Linked to your username on Telegram & a source of contact for your sessions.
                 </p>
               </div>
 

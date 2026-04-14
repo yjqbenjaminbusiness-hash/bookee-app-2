@@ -36,7 +36,7 @@ export default function PlayerEvents() {
   const [joiningGroupId, setJoiningGroupId] = useState<string | null>(null);
   const [joinedGroupIds, setJoinedGroupIds] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState(true);
-  const [showDemo, setShowDemo] = useState(true);
+  const [showDemo, setShowDemo] = useState(() => localStorage.getItem('bookee_hide_demo') !== 'true');
   const navigate = useNavigate();
   const { user } = useAuth();
 
@@ -137,7 +137,7 @@ export default function PlayerEvents() {
             <p className="text-sm text-muted-foreground">Discover public sessions & community groups</p>
           </div>
           <div className="flex items-center gap-3">
-            <button onClick={() => setShowDemo(!showDemo)}
+            <button onClick={() => { const next = !showDemo; setShowDemo(next); localStorage.setItem('bookee_hide_demo', next ? '' : 'true'); }}
               className="flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-bold transition-all hover:bg-muted"
               style={{ color: showDemo ? '#888' : '#1A7A4A' }}>
               {showDemo ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}

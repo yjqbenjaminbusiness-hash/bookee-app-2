@@ -21,7 +21,7 @@ export default function OrganizeLanding() {
   const [sessionsByActivity, setSessionsByActivity] = useState<Record<string, ActivitySession[]>>({});
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState(true);
-  const [showDemo, setShowDemo] = useState(true);
+  const [showDemo, setShowDemo] = useState(() => localStorage.getItem('bookee_hide_demo') !== 'true');
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -115,7 +115,7 @@ export default function OrganizeLanding() {
         </div>
         <div className="flex gap-2 items-center">
           <button
-            onClick={() => setShowDemo(!showDemo)}
+            onClick={() => { const next = !showDemo; setShowDemo(next); localStorage.setItem('bookee_hide_demo', next ? '' : 'true'); }}
             className="flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-bold transition-all hover:bg-muted"
             style={{ color: showDemo ? 'hsl(var(--muted-foreground))' : 'hsl(var(--primary))' }}
           >

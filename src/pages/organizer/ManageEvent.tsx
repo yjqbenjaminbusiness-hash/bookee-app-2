@@ -718,6 +718,11 @@ function SupabaseManageView({ activityId, navigate }: { activityId: string | und
   const [guestNote, setGuestNote] = useState<Record<string, string>>({});
   const [isAddingGuest, setIsAddingGuest] = useState(false);
 
+  // Telegram post state
+  const [showTelegramPostDialog, setShowTelegramPostDialog] = useState(false);
+  const [selectedPostSessions, setSelectedPostSessions] = useState<Set<string>>(new Set());
+  const [isPostingTelegram, setIsPostingTelegram] = useState(false);
+
   useEffect(() => {
     if (activity) {
       dataService.listAnnouncementsByActivity(activity.id).then(setAnnouncements);
@@ -1024,8 +1029,143 @@ function SupabaseManageView({ activityId, navigate }: { activityId: string | und
           >
             <Users className="h-3 w-3 mr-1" /> Find Participants
           </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="rounded-full"
+            onClick={() => {
+              setSelectedPostSessions(new Set(sessions.map(s => s.id)));
+              setShowTelegramPostDialog(true);
+            }}
+          >
+            <Send className="h-3 w-3 mr-1" /> Post to Telegram
+          </Button>
         </div>
       </div>
+
+      {/* Telegram Post Dialog */}
+      <AnimatePresence>
+        {showTelegramPostDialog && activity && (
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+            onClick={() => setShowTelegramPostDialog(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-background border rounded-lg p-6 w-full max-w-lg shadow-xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 className="text-lg font-bold mb-4">Post to Telegram</h3>
+              
+              {/* Session selection */}
+              <div className="mb-4">
+                <div className="flex items-center justify-between mb-2">
+                  <Label className="text-sm font-medium">Select Sessions</Label>
+                  <button
+                    className="text-xs text-primary hover:underline"
+                    onClick={() => {
+                      if (selectedPostSessions.size === sessions.length) {
+                        setSelectedPostSessions(new Set());
+                      } else {
+                        setSelectedPostSessions(new Set(sessions.map(s => s.id)));
+                      }
+                    }}
+                  >
+                    {selectedPostSessions.size === sessions.length ? 'Deselect All' : 'Select All'}
+                  </button>
+                </div>
+                <div className="space-y-2 max-h-40 overflow-y-auto">
+                  {sessions.map(s => {
+                    const booked = (bookingsBySession[s.id] || []).filter((b: any) => b.reservation_status !== 'rejected' && b.reservation_status !== 'cancelled').length;
+                    const avail = Math.max(0, s.max_slots - booked);
+                    return (
+                      <label key={s.id} className="flex items-center gap-2 text-sm cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={selectedPostSessions.has(s.id)}
+                          onChange={() => {
+                            const next = new Set(selectedPostSessions);
+                            next.has(s.id) ? next.delete(s.id) : next.add(s.id);
+                            setSelectedPostSessions(next);
+                          }}
+                          className="rounded"
+                        />
+                        <span>{s.time_label} — {avail}/{s.max_slots} slots (${s.price})</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Preview */}
+              <div className="mb-4">
+                <Label className="text-sm font-medium mb-1 block">Message Preview</Label>
+                <pre className="text-xs bg-muted p-3 rounded whitespace-pre-wrap max-h-40 overflow-y-auto">
+                  {(() => {
+                    const selected = sessions.filter(s => selectedPostSessions.has(s.id));
+                    if (selected.length === 0) return '(Select sessions to preview)';
+                    let msg = `🏆 ${activity.title}\n📅 ${new Date(activity.date).toLocaleDateString()}\n📍 ${activity.venue}\n`;
+                    selected.forEach(s => {
+                      const booked = (bookingsBySession[s.id] || []).filter((b: any) => b.reservation_status !== 'rejected' && b.reservation_status !== 'cancelled').length;
+                      const avail = Math.max(0, s.max_slots - booked);
+                      msg += `\n⏰ ${s.time_label} — ${avail} slot(s) left ($${s.price})`;
+                    });
+                    msg += `\n\n👉 Join: https://bookee-app.com/player/events/${activity.id}`;
+                    return msg;
+                  })()}
+                </pre>
+              </div>
+
+              <div className="flex gap-2 justify-end">
+                <Button variant="outline" size="sm" onClick={() => setShowTelegramPostDialog(false)}>Cancel</Button>
+                <Button
+                  size="sm"
+                  disabled={selectedPostSessions.size === 0 || isPostingTelegram}
+                  onClick={async () => {
+                    setIsPostingTelegram(true);
+                    try {
+                      // Get organizer's telegram_chat_id
+                      const { data: profile } = await supabase.from('profiles').select('telegram_chat_id').eq('user_id', user?.id || '').single();
+                      if (!profile?.telegram_chat_id) {
+                        toast.error('Link your Telegram account first via @BookeeAppBot');
+                        setIsPostingTelegram(false);
+                        return;
+                      }
+
+                      const selected = sessions.filter(s => selectedPostSessions.has(s.id));
+                      let msg = `🏆 ${activity.title}\n📅 ${new Date(activity.date).toLocaleDateString()}\n📍 ${activity.venue}\n`;
+                      selected.forEach(s => {
+                        const booked = (bookingsBySession[s.id] || []).filter((b: any) => b.reservation_status !== 'rejected' && b.reservation_status !== 'cancelled').length;
+                        const avail = Math.max(0, s.max_slots - booked);
+                        msg += `\n⏰ ${s.time_label} — ${avail} slot(s) left ($${s.price})`;
+                      });
+                      msg += `\n\n👉 Join: https://bookee-app.com/player/events/${activity.id}`;
+
+                      const { data, error } = await supabase.functions.invoke('post-game-telegram', {
+                        body: { chat_id: profile.telegram_chat_id, message: msg },
+                      });
+
+                      if (error) throw error;
+                      if (data?.error) throw new Error(data.error);
+
+                      toast.success('Posted to Telegram!');
+                      setShowTelegramPostDialog(false);
+                    } catch (err: any) {
+                      toast.error(err.message || 'Failed to post to Telegram');
+                    } finally {
+                      setIsPostingTelegram(false);
+                    }
+                  }}
+                >
+                  {isPostingTelegram ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Send className="h-3 w-3 mr-1" />}
+                  Post
+                </Button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Stats */}
       <div className="grid grid-cols-3 gap-4 mb-8">

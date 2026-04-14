@@ -1,79 +1,76 @@
 
 
-# Fix: Participant Confirmation Action Not Updating
+# Add Reservation Update & Leave Session for Players
 
-## Root Cause
+## What This Does
+Adds two actions for players who have already joined a session:
+1. **Update Reservation** — edit special request and phone number on existing booking (overwrites, no new record)
+2. **Leave Session** — cancel booking and decrement filled_slots
 
-The database trigger `enforce_booking_payment_immutability()` silently blocks ALL updates to `reservation_status`, `payment_status`, `stripe_payment_id`, and `reserved_until` for non-service_role users. This includes organizers.
+## Technical Details
 
-```sql
--- Current trigger (problematic):
-IF current_setting('role') != 'service_role' THEN
-    NEW.payment_status := OLD.payment_status;
-    NEW.stripe_payment_id := OLD.stripe_payment_id;
-    NEW.reservation_status := OLD.reservation_status;  -- blocks confirm!
-    NEW.reserved_until := OLD.reserved_until;
-END IF;
+### File 1: `src/lib/data.ts` — Add two new methods
+
+```typescript
+async updateBooking(bookingId: string, updates: {
+  special_request?: string;
+  player_phone?: string;
+}): Promise<void>
+// Updates existing booking record
+
+async cancelBooking(bookingId: string, sessionId: string): Promise<void>
+// Sets reservation_status to 'cancelled', decrements filled_slots on the session
 ```
 
-The organizer clicks "Confirm" → Supabase update runs → trigger reverts the value → no error returned → toast shows "confirmed" → but nothing actually changed.
+### File 2: `src/pages/player/EventDetails.tsx` — SupabaseActivityView
 
-## Fix
+**New state** (~line 1081):
+- `showUpdateDialog` (boolean) + `updateSessionId` (string)
+- `isLeaving` (string | null) for loading state
+- `isUpdating` (boolean)
 
-Modify the trigger to allow organizers (the activity owner) to update these fields, while still blocking regular users from self-escalating. The trigger will check if the current user owns the activity linked to the booking's session.
+**New handlers**:
+- `handleUpdateReservation()` — calls `dataService.updateBooking()` with edited special_request and player_phone, then reloads bookings
+- `handleLeaveSession(sessionId)` — confirmation prompt, calls `dataService.cancelBooking()`, reloads bookings, removes from `userBookingIds`
 
-**Only `stripe_payment_id` remains immutable for non-service_role users** (financial reference should never be changed by any client). `payment_status` and `reservation_status` become updatable by organizers.
+**UI changes** in the session card (lines 1373-1396):
+- When `hasBooked && myStatus !== 'rejected'`, replace the static status badge with action buttons:
+  - "Update" button → opens update dialog (pre-filled with current special_request and phone)
+  - "Leave" button → triggers leave handler with confirmation
+- In participant list (line 1455-1464), add "Leave" button next to "I Have Paid" for the user's own row
 
-### Database Migration
+**Update Dialog**:
+- Reuse same modal pattern as join dialog
+- Pre-fill special_request and phone from existing booking
+- Submit calls `dataService.updateBooking()` (PATCH, not INSERT)
+
+### No database changes needed
+- `bookings` UPDATE RLS already allows `auth.uid() = user_id`
+- The immutability trigger allows users to update non-protected fields (special_request, player_phone)
+- For `cancelBooking`, the trigger now blocks non-organizers from changing `reservation_status` — need to handle via the existing booking owner update path
+
+### Database consideration
+The `enforce_booking_payment_immutability` trigger blocks non-organizers from updating `reservation_status`. For "Leave Session", we need to allow users to cancel **their own** booking. This requires a small trigger update:
 
 ```sql
-CREATE OR REPLACE FUNCTION public.enforce_booking_payment_immutability()
-RETURNS trigger
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path TO 'public'
-AS $$
-DECLARE
-  _is_organizer boolean;
-BEGIN
-  IF current_setting('role') = 'service_role' THEN
-    RETURN NEW;
-  END IF;
-
-  -- Check if the current user is the organizer of this booking's activity
-  SELECT EXISTS (
-    SELECT 1 FROM activity_sessions s
-    JOIN activities a ON a.id = s.activity_id
-    WHERE s.id = NEW.session_id AND a.organizer_id = auth.uid()
-  ) INTO _is_organizer;
-
-  -- Organizers can update reservation_status and payment_status
-  IF NOT _is_organizer THEN
-    NEW.payment_status := OLD.payment_status;
+-- Allow booking owner to cancel their own reservation
+IF NOT _is_organizer THEN
+  -- Allow self-cancellation only
+  IF NEW.reservation_status = 'cancelled' AND OLD.user_id = auth.uid() THEN
+    -- permitted
+  ELSE
     NEW.reservation_status := OLD.reservation_status;
-    NEW.reserved_until := OLD.reserved_until;
   END IF;
-
-  -- stripe_payment_id is always immutable for non-service_role
-  NEW.stripe_payment_id := OLD.stripe_payment_id;
-
-  RETURN NEW;
-END;
-$$;
+  NEW.payment_status := OLD.payment_status;
+  NEW.reserved_until := OLD.reserved_until;
+END IF;
 ```
 
 ## Files Changed
 
 | File | Change |
 |------|--------|
-| New migration SQL | Update `enforce_booking_payment_immutability` trigger function |
-
-No UI code changes needed. The existing handlers (`handleConfirmBooking`, `handleBulkConfirm`, `handleMarkPaid`, etc.) are already correct — they just need the trigger to stop blocking them.
-
-## Verification
-
-1. Organizer confirms a player → `reservation_status` updates to `confirmed` in DB
-2. Organizer marks paid → `payment_status` updates to `paid` in DB
-3. Regular user cannot self-confirm or self-mark-paid (trigger still blocks)
-4. `stripe_payment_id` remains immutable for all non-service_role users
+| `src/lib/data.ts` | Add `updateBooking()` and `cancelBooking()` methods |
+| `src/pages/player/EventDetails.tsx` | Add Update/Leave buttons, update dialog, handlers |
+| New migration SQL | Allow self-cancellation in immutability trigger |
 

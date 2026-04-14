@@ -1125,7 +1125,7 @@ function SupabaseActivityView({
         const userBIds = new Set<string>();
         const uBookings: Record<string, any> = {};
         Object.values(bMap).flat().forEach(b => {
-          if (b.user_id === user.id && b.reservation_status !== 'rejected') {
+          if (b.user_id === user.id && b.reservation_status !== 'rejected' && b.reservation_status !== 'cancelled') {
             userBIds.add(b.session_id);
             uBookings[b.session_id] = b;
           }

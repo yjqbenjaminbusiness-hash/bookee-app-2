@@ -1743,6 +1743,64 @@ function SupabaseActivityView({
         )}
       </AnimatePresence>
 
+      {/* Update Reservation Dialog */}
+      <AnimatePresence>
+        {showUpdateDialog && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+            onClick={() => setShowUpdateDialog(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-background rounded-2xl p-6 w-full max-w-md border shadow-lg space-y-4"
+              onClick={e => e.stopPropagation()}
+            >
+              <h3 className="text-lg font-bold text-foreground">Update Reservation</h3>
+              <p className="text-sm text-muted-foreground">
+                Edit your details for this session. Your existing booking will be updated.
+              </p>
+              <div className="space-y-2">
+                <Label htmlFor="update-special-request" className="text-sm font-bold">Special Request (optional)</Label>
+                <textarea
+                  id="update-special-request"
+                  className="w-full rounded-xl border bg-background p-3 text-sm min-h-[80px] focus:outline-none focus:ring-2 focus:ring-ring"
+                  placeholder="e.g. Preferred position, notes to organizer..."
+                  value={updateSpecialRequest}
+                  onChange={e => setUpdateSpecialRequest(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="update-phone" className="text-sm font-bold">Phone Number (optional)</Label>
+                <Input
+                  id="update-phone"
+                  type="tel"
+                  placeholder="e.g. +65 9123 4567"
+                  value={updatePhone}
+                  onChange={e => setUpdatePhone(e.target.value)}
+                  className="rounded-xl"
+                />
+              </div>
+              <div className="flex gap-2 justify-end">
+                <Button variant="outline" className="rounded-full" onClick={() => setShowUpdateDialog(false)}>Cancel</Button>
+                <Button
+                  className="rounded-full bg-primary text-primary-foreground"
+                  onClick={handleUpdateReservation}
+                  disabled={isUpdating}
+                >
+                  {isUpdating ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Check className="h-4 w-4 mr-1" />}
+                  Save Changes
+                </Button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Custom Slot Request Dialog */}
       <AnimatePresence>
         {showCustomSlotDialog && (

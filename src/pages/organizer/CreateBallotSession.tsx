@@ -22,7 +22,7 @@ export default function CreateBallotSession() {
   const [sport, setSport] = useState('');
   const [location, setLocation] = useState('');
   const [deadline, setDeadline] = useState('');
-  const [slots, setSlots] = useState('10');
+  const [slots, setSlots] = useState('100');
   const [visibility, setVisibility] = useState<'public' | 'private'>('public');
 
   if (!isAuthenticated) {

@@ -1095,6 +1095,11 @@ function SupabaseManageView({ activityId, navigate }: { activityId: string | und
         const bookings = bookingsBySession[session.id] || [];
         const activeBookings = bookings.filter((b: any) => b.reservation_status !== 'rejected' && b.reservation_status !== 'cancelled');
         const waitlistBookings = bookings.filter((b: any) => b.reservation_status === 'cancelled');
+        const recentCancellations = waitlistBookings.filter((b: any) => {
+          const updatedAt = new Date(b.updated_at);
+          const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+          return updatedAt > oneDayAgo;
+        });
         const pct = session.max_slots > 0 ? (activeBookings.length / session.max_slots) * 100 : 0;
         const isExpanded = expandedSessions.has(session.id);
         const isFull = activeBookings.length >= session.max_slots;
@@ -1104,7 +1109,14 @@ function SupabaseManageView({ activityId, navigate }: { activityId: string | und
             <CardHeader className="pb-3 bg-muted/20">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div className="flex flex-col gap-1">
-                  <CardTitle className="text-base">{session.time_label}</CardTitle>
+                  <CardTitle className="text-base flex items-center gap-2">
+                    {session.time_label}
+                    {recentCancellations.length > 0 && (
+                      <Badge variant="outline" className="text-[9px] text-amber-600 border-amber-600/40 animate-pulse">
+                        {recentCancellations.length} left recently
+                      </Badge>
+                    )}
+                  </CardTitle>
                   <CardDescription className="flex items-center gap-2">
                     <DollarSign className="h-3 w-3" /> ${Number(session.price)} / player
                     {isFull && <Badge variant="destructive" className="text-[9px] ml-2">FULL</Badge>}

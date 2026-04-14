@@ -1089,6 +1089,7 @@ function SupabaseActivityView({
 
   // Leave session
   const [isLeaving, setIsLeaving] = useState<string | null>(null);
+  const [leaveConfirmSession, setLeaveConfirmSession] = useState<string | null>(null);
 
   // Organizer contact
   const [organizerProfile, setOrganizerProfile] = useState<any>(null);
@@ -1268,11 +1269,11 @@ function SupabaseActivityView({
   const handleLeaveSession = async (sessionId: string) => {
     const booking = userBookings[sessionId];
     if (!booking) return;
-    if (!confirm('Are you sure you want to leave this session?')) return;
     setIsLeaving(sessionId);
     try {
       await dataService.cancelBooking(booking.id, sessionId);
       toast.success('You have left this session');
+      setLeaveConfirmSession(null);
       // Reload bookings
       const bks = await dataService.listBookingsBySession(sessionId);
       setBookingsBySession(prev => ({ ...prev, [sessionId]: bks }));
@@ -1456,7 +1457,7 @@ function SupabaseActivityView({
                                   size="sm"
                                   variant="ghost"
                                   className="h-6 text-[10px] px-2 rounded-full text-destructive hover:text-destructive"
-                                  onClick={() => handleLeaveSession(session.id)}
+                                  onClick={() => setLeaveConfirmSession(session.id)}
                                   disabled={isLeaving === session.id}
                                 >
                                   {isLeaving === session.id ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Leave'}
@@ -1794,6 +1795,44 @@ function SupabaseActivityView({
                 >
                   {isUpdating ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Check className="h-4 w-4 mr-1" />}
                   Save Changes
+                </Button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Leave Confirmation Dialog */}
+      <AnimatePresence>
+        {leaveConfirmSession && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+            onClick={() => setLeaveConfirmSession(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-background rounded-2xl p-6 w-full max-w-sm border shadow-lg space-y-4"
+              onClick={e => e.stopPropagation()}
+            >
+              <h3 className="text-lg font-bold text-foreground">Leave Session?</h3>
+              <p className="text-sm text-muted-foreground">
+                Are you sure you want to leave this session? Your booking will be cancelled.
+              </p>
+              <div className="flex gap-2 justify-end">
+                <Button variant="outline" className="rounded-full" onClick={() => setLeaveConfirmSession(null)}>Cancel</Button>
+                <Button
+                  variant="destructive"
+                  className="rounded-full"
+                  onClick={() => handleLeaveSession(leaveConfirmSession)}
+                  disabled={isLeaving === leaveConfirmSession}
+                >
+                  {isLeaving === leaveConfirmSession ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <X className="h-4 w-4 mr-1" />}
+                  Leave Session
                 </Button>
               </div>
             </motion.div>

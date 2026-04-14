@@ -1440,8 +1440,29 @@ function SupabaseActivityView({
                         </div>
                         <div className="flex flex-col items-end gap-2">
                           <p className="text-lg font-bold text-primary">${session.price}</p>
-                          {hasBooked ? (
-                            statusBadge(myStatus) || <Badge className="bg-primary text-primary-foreground">✓ Joined</Badge>
+                          {hasBooked && myStatus !== 'rejected' ? (
+                            <div className="flex flex-col items-end gap-1">
+                              {statusBadge(myStatus) || <Badge className="bg-primary text-primary-foreground">✓ Joined</Badge>}
+                              <div className="flex gap-1">
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-6 text-[10px] px-2 rounded-full text-muted-foreground hover:text-foreground"
+                                  onClick={() => handleOpenUpdate(session.id)}
+                                >
+                                  Edit
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-6 text-[10px] px-2 rounded-full text-destructive hover:text-destructive"
+                                  onClick={() => handleLeaveSession(session.id)}
+                                  disabled={isLeaving === session.id}
+                                >
+                                  {isLeaving === session.id ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Leave'}
+                                </Button>
+                              </div>
+                            </div>
                           ) : isFull ? (
                             <Button
                               size="sm"

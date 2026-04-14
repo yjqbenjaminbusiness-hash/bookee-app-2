@@ -1802,6 +1802,44 @@ function SupabaseActivityView({
         )}
       </AnimatePresence>
 
+      {/* Leave Confirmation Dialog */}
+      <AnimatePresence>
+        {leaveConfirmSession && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+            onClick={() => setLeaveConfirmSession(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-background rounded-2xl p-6 w-full max-w-sm border shadow-lg space-y-4"
+              onClick={e => e.stopPropagation()}
+            >
+              <h3 className="text-lg font-bold text-foreground">Leave Session?</h3>
+              <p className="text-sm text-muted-foreground">
+                Are you sure you want to leave this session? Your booking will be cancelled.
+              </p>
+              <div className="flex gap-2 justify-end">
+                <Button variant="outline" className="rounded-full" onClick={() => setLeaveConfirmSession(null)}>Cancel</Button>
+                <Button
+                  variant="destructive"
+                  className="rounded-full"
+                  onClick={() => handleLeaveSession(leaveConfirmSession)}
+                  disabled={isLeaving === leaveConfirmSession}
+                >
+                  {isLeaving === leaveConfirmSession ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <X className="h-4 w-4 mr-1" />}
+                  Leave Session
+                </Button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Custom Slot Request Dialog */}
       <AnimatePresence>
         {showCustomSlotDialog && (

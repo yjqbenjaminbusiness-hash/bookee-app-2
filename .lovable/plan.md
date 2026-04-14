@@ -1,76 +1,68 @@
 
 
-# Add Reservation Update & Leave Session for Players
+# Telegram Post Game + Demo Hide Persistence
 
-## What This Does
-Adds two actions for players who have already joined a session:
-1. **Update Reservation** — edit special request and phone number on existing booking (overwrites, no new record)
-2. **Leave Session** — cancel booking and decrement filled_slots
+## Overview
+Two changes:
+1. **Post Game to Telegram**: Add a button in the Manage Sessions view that lets organizers select sessions and post a formatted message to their linked Telegram chat via BookeeAppBot
+2. **Demo Hide Persistence**: Persist the "hide demo" toggle across page refreshes using localStorage
 
 ## Technical Details
 
-### File 1: `src/lib/data.ts` — Add two new methods
+### 1. Edge Function: `post-game-telegram`
 
-```typescript
-async updateBooking(bookingId: string, updates: {
-  special_request?: string;
-  player_phone?: string;
-}): Promise<void>
-// Updates existing booking record
+New edge function `supabase/functions/post-game-telegram/index.ts` that:
+- Accepts `{ chat_id, message }` in the request body
+- Validates the user is authenticated (checks JWT)
+- Sends the formatted message via the existing Telegram connector gateway (`sendMessage`)
+- Returns success/error
 
-async cancelBooking(bookingId: string, sessionId: string): Promise<void>
-// Sets reservation_status to 'cancelled', decrements filled_slots on the session
+The organizer's `telegram_chat_id` from their profile is used as the target chat. If the organizer hasn't linked their Telegram account, show an error prompting them to link via BookeeAppBot.
+
+### 2. UI: ManageEvent.tsx (`SupabaseManageView`)
+
+**Add "Post to Telegram" button** near the existing "Post Game" / "Find Participants" buttons (~line 999):
+- New state: `showTelegramPostDialog`, `selectedPostSessions` (Set), `isPostingTelegram`
+- Dialog with session checkboxes (all sessions listed with time labels)
+- "Select All" toggle
+- Preview of the combined message
+- "Post" button that calls the edge function
+
+**Message format** (combined, one message for all selected sessions):
+```
+🏆 {activity.title}
+📅 {date}
+📍 {venue}
+
+⏰ {session1.time_label} — {available} slot(s) left (${price})
+⏰ {session2.time_label} — {available} slot(s) left (${price})
+
+👉 Join: {link}
 ```
 
-### File 2: `src/pages/player/EventDetails.tsx` — SupabaseActivityView
+**Error handling**:
+- If organizer has no `telegram_chat_id`: show toast error "Link your Telegram account first via @BookeeAppBot"
+- If posting fails: show toast error with message
+- If posting succeeds: show toast success
 
-**New state** (~line 1081):
-- `showUpdateDialog` (boolean) + `updateSessionId` (string)
-- `isLeaving` (string | null) for loading state
-- `isUpdating` (boolean)
+### 3. Demo Hide Persistence
 
-**New handlers**:
-- `handleUpdateReservation()` — calls `dataService.updateBooking()` with edited special_request and player_phone, then reloads bookings
-- `handleLeaveSession(sessionId)` — confirmation prompt, calls `dataService.cancelBooking()`, reloads bookings, removes from `userBookingIds`
+**localStorage key**: `bookee_hide_demo`
 
-**UI changes** in the session card (lines 1373-1396):
-- When `hasBooked && myStatus !== 'rejected'`, replace the static status badge with action buttons:
-  - "Update" button → opens update dialog (pre-filled with current special_request and phone)
-  - "Leave" button → triggers leave handler with confirmation
-- In participant list (line 1455-1464), add "Leave" button next to "I Have Paid" for the user's own row
+**Files changed**:
+- `src/pages/player/Events.tsx` (~line 39): Initialize `showDemo` from `localStorage.getItem('bookee_hide_demo') !== 'true'`, and update localStorage when toggling
+- `src/pages/organizer/OrganizeLanding.tsx` (~line 24): Same pattern
 
-**Update Dialog**:
-- Reuse same modal pattern as join dialog
-- Pre-fill special_request and phone from existing booking
-- Submit calls `dataService.updateBooking()` (PATCH, not INSERT)
-
-### No database changes needed
-- `bookings` UPDATE RLS already allows `auth.uid() = user_id`
-- The immutability trigger allows users to update non-protected fields (special_request, player_phone)
-- For `cancelBooking`, the trigger now blocks non-organizers from changing `reservation_status` — need to handle via the existing booking owner update path
-
-### Database consideration
-The `enforce_booking_payment_immutability` trigger blocks non-organizers from updating `reservation_status`. For "Leave Session", we need to allow users to cancel **their own** booking. This requires a small trigger update:
-
-```sql
--- Allow booking owner to cancel their own reservation
-IF NOT _is_organizer THEN
-  -- Allow self-cancellation only
-  IF NEW.reservation_status = 'cancelled' AND OLD.user_id = auth.uid() THEN
-    -- permitted
-  ELSE
-    NEW.reservation_status := OLD.reservation_status;
-  END IF;
-  NEW.payment_status := OLD.payment_status;
-  NEW.reserved_until := OLD.reserved_until;
-END IF;
-```
+Both pages read/write the same key so the preference is consistent.
 
 ## Files Changed
 
 | File | Change |
 |------|--------|
-| `src/lib/data.ts` | Add `updateBooking()` and `cancelBooking()` methods |
-| `src/pages/player/EventDetails.tsx` | Add Update/Leave buttons, update dialog, handlers |
-| New migration SQL | Allow self-cancellation in immutability trigger |
+| `supabase/functions/post-game-telegram/index.ts` | New edge function to send message via Telegram gateway |
+| `src/pages/organizer/ManageEvent.tsx` | Add "Post to Telegram" button + session selection dialog in `SupabaseManageView` |
+| `src/pages/player/Events.tsx` | Persist `showDemo` to localStorage |
+| `src/pages/organizer/OrganizeLanding.tsx` | Persist `showDemo` to localStorage |
+
+No database migrations needed. No changes to existing booking/session logic.
 

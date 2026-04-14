@@ -1233,6 +1233,66 @@ function SupabaseActivityView({
     }
   };
 
+  const handleOpenUpdate = (sessionId: string) => {
+    const booking = userBookings[sessionId];
+    if (!booking) return;
+    setUpdateSessionId(sessionId);
+    setUpdateSpecialRequest(booking.special_request || '');
+    setUpdatePhone(booking.player_phone || '');
+    setShowUpdateDialog(true);
+  };
+
+  const handleUpdateReservation = async () => {
+    if (!updateSessionId || !userBookings[updateSessionId]) return;
+    const booking = userBookings[updateSessionId];
+    setIsUpdating(true);
+    try {
+      await dataService.updateBooking(booking.id, {
+        special_request: updateSpecialRequest.trim() || undefined,
+        player_phone: updatePhone.trim() || undefined,
+      });
+      toast.success('Reservation updated!');
+      setShowUpdateDialog(false);
+      // Reload bookings
+      const bks = await dataService.listBookingsBySession(updateSessionId);
+      setBookingsBySession(prev => ({ ...prev, [updateSessionId!]: bks }));
+      const myBooking = bks.find((b: any) => b.user_id === user?.id && !b.player_name.startsWith('Guest of'));
+      if (myBooking) setUserBookings(prev => ({ ...prev, [updateSessionId!]: myBooking }));
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to update');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleLeaveSession = async (sessionId: string) => {
+    const booking = userBookings[sessionId];
+    if (!booking) return;
+    if (!confirm('Are you sure you want to leave this session?')) return;
+    setIsLeaving(sessionId);
+    try {
+      await dataService.cancelBooking(booking.id, sessionId);
+      toast.success('You have left this session');
+      // Reload bookings
+      const bks = await dataService.listBookingsBySession(sessionId);
+      setBookingsBySession(prev => ({ ...prev, [sessionId]: bks }));
+      setUserBookingIds(prev => {
+        const next = new Set(prev);
+        next.delete(sessionId);
+        return next;
+      });
+      setUserBookings(prev => {
+        const next = { ...prev };
+        delete next[sessionId];
+        return next;
+      });
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to leave session');
+    } finally {
+      setIsLeaving(null);
+    }
+  };
+
   const getMyStatus = (sessionId: string) => {
     const booking = userBookings[sessionId];
     if (!booking) return null;

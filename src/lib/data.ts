@@ -458,6 +458,38 @@ export const dataService = {
     if (error) throw new Error(error.message);
   },
 
+  async updateBooking(bookingId: string, updates: {
+    special_request?: string;
+    player_phone?: string;
+  }): Promise<void> {
+    const { error } = await supabase
+      .from('bookings')
+      .update(updates)
+      .eq('id', bookingId);
+    if (error) throw new Error(error.message);
+  },
+
+  async cancelBooking(bookingId: string, sessionId: string): Promise<void> {
+    const { error: bookingErr } = await supabase
+      .from('bookings')
+      .update({ reservation_status: 'cancelled' as any })
+      .eq('id', bookingId);
+    if (bookingErr) throw new Error(bookingErr.message);
+
+    // Decrement filled_slots on the session
+    const { data: session } = await supabase
+      .from('activity_sessions')
+      .select('filled_slots')
+      .eq('id', sessionId)
+      .maybeSingle();
+    if (session && session.filled_slots > 0) {
+      await supabase
+        .from('activity_sessions')
+        .update({ filled_slots: session.filled_slots - 1 })
+        .eq('id', sessionId);
+    }
+  },
+
   // ─── Image Upload ───────────────────────────────────────────
   async uploadActivityImage(file: File, activityId: string): Promise<string | null> {
     const ext = file.name.split('.').pop();

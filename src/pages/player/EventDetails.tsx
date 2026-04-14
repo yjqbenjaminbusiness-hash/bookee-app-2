@@ -1080,6 +1080,16 @@ function SupabaseActivityView({
   // Player phone for join
   const [playerPhone, setPlayerPhone] = useState('');
 
+  // Update reservation dialog
+  const [showUpdateDialog, setShowUpdateDialog] = useState(false);
+  const [updateSessionId, setUpdateSessionId] = useState<string | null>(null);
+  const [updateSpecialRequest, setUpdateSpecialRequest] = useState('');
+  const [updatePhone, setUpdatePhone] = useState('');
+  const [isUpdating, setIsUpdating] = useState(false);
+
+  // Leave session
+  const [isLeaving, setIsLeaving] = useState<string | null>(null);
+
   // Organizer contact
   const [organizerProfile, setOrganizerProfile] = useState<any>(null);
 

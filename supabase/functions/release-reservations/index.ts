@@ -5,9 +5,41 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+function parseJwtClaims(token: string): Record<string, unknown> | null {
+  const parts = token.split(".");
+  if (parts.length < 2) return null;
+  try {
+    const payload = parts[1]
+      .replaceAll("-", "+")
+      .replaceAll("_", "/")
+      .padEnd(Math.ceil(parts[1].length / 4) * 4, "=");
+    return JSON.parse(atob(payload)) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
+  }
+
+  // Authenticate: only service_role can invoke this function
+  const authHeader = req.headers.get("Authorization");
+  if (!authHeader?.startsWith("Bearer ")) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  const token = authHeader.slice("Bearer ".length).trim();
+  const claims = parseJwtClaims(token);
+  if (claims?.role !== "service_role") {
+    return new Response(JSON.stringify({ error: "Forbidden" }), {
+      status: 403,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -24,17 +56,21 @@ Deno.serve(async (req) => {
     .lt("reserved_until", now);
 
   if (fetchErr) {
-    return new Response(JSON.stringify({ error: fetchErr.message }), { status: 500 });
+    return new Response(JSON.stringify({ error: fetchErr.message }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 
   if (!expired || expired.length === 0) {
-    return new Response(JSON.stringify({ ok: true, released: 0 }));
+    return new Response(JSON.stringify({ ok: true, released: 0 }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 
   let released = 0;
 
   for (const booking of expired) {
-    // Cancel the booking
     const { error: updateErr } = await supabase
       .from("bookings")
       .update({ reservation_status: "cancelled" })
@@ -45,7 +81,6 @@ Deno.serve(async (req) => {
       continue;
     }
 
-    // Decrement filled_slots
     const { data: sess } = await supabase
       .from("activity_sessions")
       .select("filled_slots")
@@ -63,5 +98,7 @@ Deno.serve(async (req) => {
   }
 
   console.log(`Released ${released} expired reservations`);
-  return new Response(JSON.stringify({ ok: true, released }));
+  return new Response(JSON.stringify({ ok: true, released }), {
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
 });

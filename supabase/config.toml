@@ -15,3 +15,5 @@ project_id = "oqcnonsmhcbrufmjdzdf"
     verify_jwt = true
   [functions.post-game-telegram]
     verify_jwt = false
+  [functions.release-reservations]
+    verify_jwt = true

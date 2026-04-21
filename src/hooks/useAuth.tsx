@@ -187,7 +187,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signupPlayerSupabase = useCallback(async (email: string, password: string, displayName: string): Promise<boolean> => {
     const { data, error } = await supabase.auth.signUp({
       email, password,
-      options: { data: { display_name: displayName }, emailRedirectTo: window.location.origin },
+      options: { data: { display_name: displayName }, emailRedirectTo: `${window.location.origin}/` },
     });
     if (error) throw error;
     return !!data.user;
@@ -196,7 +196,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signupOrganizerSupabase = useCallback(async (email: string, password: string, displayName: string): Promise<boolean> => {
     const { data, error } = await supabase.auth.signUp({
       email, password,
-      options: { data: { display_name: displayName }, emailRedirectTo: window.location.origin },
+      options: { data: { display_name: displayName }, emailRedirectTo: `${window.location.origin}/` },
     });
     if (error) throw error;
     if (data.user) {

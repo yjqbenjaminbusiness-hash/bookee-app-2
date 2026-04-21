@@ -1,68 +1,51 @@
 
 
-# Telegram Post Game + Demo Hide Persistence
+# Fix Email Delivery (Auth + Transactional)
 
-## Overview
-Two changes:
-1. **Post Game to Telegram**: Add a button in the Manage Sessions view that lets organizers select sessions and post a formatted message to their linked Telegram chat via BookeeAppBot
-2. **Demo Hide Persistence**: Persist the "hide demo" toggle across page refreshes using localStorage
+## Diagnosis
 
-## Technical Details
+| Check | Result |
+|---|---|
+| Domain `notify.bookee-app.com` verified | ✅ Yes |
+| Edge functions deployed (`auth-email-hook`, `send-transactional-email`, `process-email-queue`) | ✅ Yes |
+| `email_send_log` rows | ❌ 0 (no email ever enqueued) |
+| `auth-email-hook` invocation logs | ❌ 0 (Supabase Auth not calling hook) |
+| `process-email-queue` invocation logs | ❌ 0 (cron not firing) |
+| `email_send_state` | ✅ exists |
 
-### 1. Edge Function: `post-game-telegram`
+**Conclusion:** Signup works at the Auth layer, but emails are never enqueued or sent because (a) the auth email hook is not activated in **Cloud → Emails**, and (b) the queue dispatcher cron job is missing.
 
-New edge function `supabase/functions/post-game-telegram/index.ts` that:
-- Accepts `{ chat_id, message }` in the request body
-- Validates the user is authenticated (checks JWT)
-- Sends the formatted message via the existing Telegram connector gateway (`sendMessage`)
-- Returns success/error
+## Fix Steps
 
-The organizer's `telegram_chat_id` from their profile is used as the target chat. If the organizer hasn't linked their Telegram account, show an error prompting them to link via BookeeAppBot.
+### Step 1 — Re-run email infrastructure setup
+Call `email_domain--setup_email_infra`. This is idempotent and will:
+- Recreate the `process-email-queue` pg_cron job (every 5s)
+- Refresh the Vault secret used by the cron job to authenticate
+- Verify pgmq queues `auth_emails` and `transactional_emails` exist
 
-### 2. UI: ManageEvent.tsx (`SupabaseManageView`)
+### Step 2 — Redeploy the email edge functions
+Deploy `auth-email-hook`, `send-transactional-email`, and `process-email-queue` to ensure the latest code is live.
 
-**Add "Post to Telegram" button** near the existing "Post Game" / "Find Participants" buttons (~line 999):
-- New state: `showTelegramPostDialog`, `selectedPostSessions` (Set), `isPostingTelegram`
-- Dialog with session checkboxes (all sessions listed with time labels)
-- "Select All" toggle
-- Preview of the combined message
-- "Post" button that calls the edge function
+### Step 3 — Activate the auth hook
+The `auth-email-hook` exists in code but Supabase Auth must be told to route emails to it. This activation lives in the **Cloud → Emails** panel (which you currently have open). After Step 1+2 finish, the system will reconcile and activate the hook automatically. If it stays inactive, you'll click **Rerun Setup** in Cloud → Emails.
 
-**Message format** (combined, one message for all selected sessions):
-```
-🏆 {activity.title}
-📅 {date}
-📍 {venue}
+### Step 4 — Verify end-to-end
+- Trigger a signup with a real inbox
+- Query `email_send_log` — expect `pending` row, then `sent`
+- Check `auth-email-hook` logs — expect 200 response
+- Check `process-email-queue` logs — expect "processed N messages"
+- Test a transactional email by submitting the in-app feedback dialog (calls `send-transactional-email` with the `feedback` template)
 
-⏰ {session1.time_label} — {available} slot(s) left (${price})
-⏰ {session2.time_label} — {available} slot(s) left (${price})
+### Step 5 — If still failing
+Inspect `email_send_log.error_message` for the exact failure (rate limit, suppression, render error). Re-scaffold the auth hook with overwrite if it's still using an outdated direct-send pattern.
 
-👉 Join: {link}
-```
+## Files / Changes
 
-**Error handling**:
-- If organizer has no `telegram_chat_id`: show toast error "Link your Telegram account first via @BookeeAppBot"
-- If posting fails: show toast error with message
-- If posting succeeds: show toast success
+No code changes expected. All work is infrastructure-level (cron job + hook activation). If Step 5 reveals a hook code issue, `auth-email-hook/index.ts` will be re-scaffolded.
 
-### 3. Demo Hide Persistence
+## Success Criteria
 
-**localStorage key**: `bookee_hide_demo`
-
-**Files changed**:
-- `src/pages/player/Events.tsx` (~line 39): Initialize `showDemo` from `localStorage.getItem('bookee_hide_demo') !== 'true'`, and update localStorage when toggling
-- `src/pages/organizer/OrganizeLanding.tsx` (~line 24): Same pattern
-
-Both pages read/write the same key so the preference is consistent.
-
-## Files Changed
-
-| File | Change |
-|------|--------|
-| `supabase/functions/post-game-telegram/index.ts` | New edge function to send message via Telegram gateway |
-| `src/pages/organizer/ManageEvent.tsx` | Add "Post to Telegram" button + session selection dialog in `SupabaseManageView` |
-| `src/pages/player/Events.tsx` | Persist `showDemo` to localStorage |
-| `src/pages/organizer/OrganizeLanding.tsx` | Persist `showDemo` to localStorage |
-
-No database migrations needed. No changes to existing booking/session logic.
+- New signup produces a `sent` row in `email_send_log` within 10 seconds
+- Recipient receives the verification email at `notify.bookee-app.com` From: address
+- Feedback dialog submission produces a `sent` row for `template_name = 'feedback'`
 

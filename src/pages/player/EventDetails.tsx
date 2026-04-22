@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { dataService, type Activity, type ActivitySession } from '../../lib/data';
 import { store, type MockEvent, type MockTimeslot, type MockBooking, type MockWaitlistEntry, getPlayerDisplayName } from '../../lib/mockData';
@@ -1059,6 +1059,7 @@ function SupabaseActivityView({
   user: any;
   navigate: ReturnType<typeof import('react-router-dom').useNavigate>;
 }) {
+  const location = useLocation();
   const [selectedSession, setSelectedSession] = useState<string | null>(null);
   const [bookingsBySession, setBookingsBySession] = useState<Record<string, any[]>>({});
   const [userBookingIds, setUserBookingIds] = useState<Set<string>>(new Set());
@@ -1079,6 +1080,9 @@ function SupabaseActivityView({
 
   // Player phone for join
   const [playerPhone, setPlayerPhone] = useState('');
+  const [showJoinSuccess, setShowJoinSuccess] = useState(false);
+  const [joinedSessionId, setJoinedSessionId] = useState<string | null>(null);
+  const [detailsExpanded, setDetailsExpanded] = useState(false);
 
   // Update reservation dialog
   const [showUpdateDialog, setShowUpdateDialog] = useState(false);
@@ -1101,6 +1105,17 @@ function SupabaseActivityView({
   const [customSlotEnd, setCustomSlotEnd] = useState('20:00');
   const [customSlotNote, setCustomSlotNote] = useState('');
   const [isSubmittingCustomSlot, setIsSubmittingCustomSlot] = useState(false);
+
+  const joinReturnPath = `${location.pathname}${location.search}`;
+  const joinSession = sessions.find((session) => session.id === joinSessionId);
+  const joinedSession = sessions.find((session) => session.id === joinedSessionId);
+  const joinFlowStatus = useMemo(() => {
+    if (!joinSessionId) return null;
+    const activeBookings = (bookingsBySession[joinSessionId] || []).filter(
+      (booking: any) => booking.reservation_status !== 'rejected' && booking.reservation_status !== 'cancelled'
+    );
+    return activeBookings.length >= (joinSession?.max_slots || 0) ? 'waitlist' : 'join';
+  }, [bookingsBySession, joinSession, joinSessionId]);
 
   useEffect(() => {
     const loadOrgProfile = async () => {
@@ -1142,15 +1157,24 @@ function SupabaseActivityView({
   }, [sessions, user, activity.id]);
 
   const initiateJoin = (sessionId: string) => {
-    if (!user) { toast.error('Please log in to join'); return; }
     const session = sessions.find(s => s.id === sessionId);
     if (!session) return;
     if (userBookingIds.has(sessionId)) { toast.info('You already have a booking for this session'); return; }
+    if (!user) {
+      navigate(`/login?join=${encodeURIComponent(joinReturnPath)}`, {
+        state: {
+          from: { pathname: joinReturnPath },
+          pendingJoinSessionId: sessionId,
+        },
+      });
+      return;
+    }
     setJoinSessionId(sessionId);
     setSpecialRequest('');
     setPlayerPhone(user?.phone || '');
     setAddGuest(false);
     setGuestNameInput('');
+    setDetailsExpanded(false);
     setShowJoinDialog(true);
   };
 
@@ -1165,7 +1189,6 @@ function SupabaseActivityView({
     const isFull = activeBookings.length >= session.max_slots;
 
     setIsJoining(true);
-    setShowJoinDialog(false);
     try {
       // Create main booking
       await dataService.createBooking({
@@ -1193,8 +1216,13 @@ function SupabaseActivityView({
         });
         toast.success(isFull ? 'You & guest added to waitlist!' : 'Joined! Guest requires organizer approval.');
       } else {
-        toast.success(isFull ? 'Added to waitlist!' : 'You have joined this session!');
+        toast.success(isFull ? 'Added to waitlist!' : 'You are in!');
       }
+
+      setJoinedSessionId(joinSessionId);
+      setShowJoinDialog(false);
+      setShowJoinSuccess(true);
+      setDetailsExpanded(false);
 
       // Reload bookings
       const bks = await dataService.listBookingsBySession(joinSessionId);
@@ -1209,11 +1237,32 @@ function SupabaseActivityView({
     }
   };
 
+  const closeJoinSuccess = () => {
+    setShowJoinSuccess(false);
+    setJoinedSessionId(null);
+    setJoinSessionId(null);
+    setSpecialRequest('');
+    setPlayerPhone(user?.phone || '');
+    setAddGuest(false);
+    setGuestNameInput('');
+    setDetailsExpanded(false);
+  };
+
   const handleJoinWaitlist = async (sessionId: string) => {
-    if (!user) { toast.error('Please log in to join'); return; }
     if (userBookingIds.has(sessionId)) { toast.info('You already have a booking'); return; }
+    if (!user) {
+      navigate(`/login?join=${encodeURIComponent(joinReturnPath)}`, {
+        state: {
+          from: { pathname: joinReturnPath },
+          pendingJoinSessionId: sessionId,
+        },
+      });
+      return;
+    }
     setJoinSessionId(sessionId);
     setSpecialRequest('');
+    setPlayerPhone(user?.phone || '');
+    setDetailsExpanded(false);
     setShowJoinDialog(true);
   };
 
@@ -1304,6 +1353,20 @@ function SupabaseActivityView({
     if (booking.payment_status === 'pending') return 'pending-payment';
     return 'pending';
   };
+
+  useEffect(() => {
+    const pendingJoinSessionId = (location.state as any)?.pendingJoinSessionId;
+    if (!user || !pendingJoinSessionId || userBookingIds.has(pendingJoinSessionId)) return;
+
+    setJoinSessionId(pendingJoinSessionId);
+    setSpecialRequest('');
+    setPlayerPhone(user?.phone || '');
+    setAddGuest(false);
+    setGuestNameInput('');
+    setDetailsExpanded(false);
+    setShowJoinDialog(true);
+    navigate(location.pathname + location.search, { replace: true, state: {} });
+  }, [location.pathname, location.search, location.state, navigate, user, userBookingIds]);
 
   const statusBadge = (status: string | null) => {
     switch (status) {
@@ -1465,26 +1528,53 @@ function SupabaseActivityView({
                               </div>
                             </div>
                           ) : isFull ? (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="rounded-full font-bold text-amber-600 border-amber-600/40"
-                              onClick={() => handleJoinWaitlist(session.id)}
-                              disabled={isJoining}
-                            >
-                              {isJoining ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <List className="h-3 w-3 mr-1" />}
-                              Join Waitlist
-                            </Button>
+                            <div className="flex flex-col items-end gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="rounded-full font-bold text-amber-600 border-amber-600/40"
+                                onClick={() => handleJoinWaitlist(session.id)}
+                                disabled={isJoining}
+                              >
+                                {isJoining ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <List className="h-3 w-3 mr-1" />}
+                                Join Waitlist
+                              </Button>
+                              {organizerProfile?.phone && (
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-7 rounded-full px-0 text-[11px] text-primary hover:text-primary"
+                                  onClick={() => window.open(`https://wa.me/${organizerProfile.phone.replace(/\D/g, '')}?text=${encodeURIComponent(`Hi, I’m interested in ${activity.title} at ${session.time_label}. I have a quick question before joining.`)}`, '_blank')}
+                                >
+                                  <MessageCircle className="mr-1.5 h-3 w-3" /> Questions? WhatsApp organizer
+                                </Button>
+                              )}
+                            </div>
                           ) : (
-                            <Button
-                              size="sm"
-                              className="rounded-full font-bold bg-primary text-primary-foreground hover:bg-primary/90"
-                              onClick={() => initiateJoin(session.id)}
-                              disabled={isJoining}
-                            >
-                              {isJoining ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <UserPlus className="h-3 w-3 mr-1" />}
-                              Sign Up
-                            </Button>
+                            <div className="flex flex-col items-end gap-2">
+                              <Button
+                                size="sm"
+                                className="rounded-full font-bold bg-primary text-primary-foreground hover:bg-primary/90"
+                                onClick={() => initiateJoin(session.id)}
+                                disabled={isJoining}
+                              >
+                                {isJoining ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <UserPlus className="h-3 w-3 mr-1" />}
+                                Join Session
+                              </Button>
+                              <div className="text-right space-y-1">
+                                <p className="text-[11px] text-muted-foreground">No phone required to join. You can edit or leave later.</p>
+                                {organizerProfile?.phone && (
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-7 rounded-full px-0 text-[11px] text-primary hover:text-primary"
+                                    onClick={() => window.open(`https://wa.me/${organizerProfile.phone.replace(/\D/g, '')}?text=${encodeURIComponent(`Hi, I’m interested in ${activity.title} at ${session.time_label}. I have a quick question before joining.`)}`, '_blank')}
+                                  >
+                                    <MessageCircle className="mr-1.5 h-3 w-3" /> Questions? WhatsApp organizer
+                                  </Button>
+                                )}
+                              </div>
+                            </div>
                           )}
                         </div>
                       </div>
@@ -1649,7 +1739,7 @@ function SupabaseActivityView({
         </section>
       </div>
 
-      {/* Join Dialog with Special Request */}
+      {/* Join Dialog */}
       <AnimatePresence>
         {showJoinDialog && (
           <motion.div
@@ -1666,78 +1756,172 @@ function SupabaseActivityView({
               className="bg-background rounded-2xl p-6 w-full max-w-md border shadow-lg space-y-4"
               onClick={e => e.stopPropagation()}
             >
-              <h3 className="text-lg font-bold text-foreground">Join Session</h3>
-              <p className="text-sm text-muted-foreground">
-                {(() => {
-                  const s = sessions.find(s => s.id === joinSessionId);
-                  const active = (bookingsBySession[joinSessionId || ''] || []).filter((b: any) => b.reservation_status !== 'rejected' && b.reservation_status !== 'cancelled');
-                  const full = s && active.length >= s.max_slots;
-                  return full ? 'This session is full. You will be added to the waitlist.' : `Joining: ${s?.time_label || 'session'}`;
-                })()}
-              </p>
               <div className="space-y-2">
-                <Label htmlFor="special-request" className="text-sm font-bold">Special Request (optional)</Label>
-                <textarea
-                  id="special-request"
-                  className="w-full rounded-xl border bg-background p-3 text-sm min-h-[80px] focus:outline-none focus:ring-2 focus:ring-ring"
-                  placeholder="e.g. Preferred position, notes to organizer..."
-                  value={specialRequest}
-                  onChange={e => setSpecialRequest(e.target.value)}
-                />
-              </div>
-
-              {/* Phone number (optional) */}
-              <div className="space-y-2">
-                <Label htmlFor="player-phone" className="text-sm font-bold">Phone Number (optional)</Label>
-                <Input
-                  id="player-phone"
-                  type="tel"
-                  placeholder="e.g. +65 9123 4567"
-                  value={playerPhone}
-                  onChange={e => setPlayerPhone(e.target.value)}
-                  className="rounded-xl"
-                />
-                <p className="text-[10px] text-muted-foreground">
-                  By providing your contact, you agree it may be used by the organizer for session coordination.
+                <h3 className="text-lg font-bold text-foreground">Confirm {joinFlowStatus === 'waitlist' ? 'Waitlist Spot' : 'Join'}</h3>
+                <p className="text-sm text-muted-foreground">
+                  {joinFlowStatus === 'waitlist'
+                    ? `This session is full. Join ${joinSession?.time_label || 'this session'} and we’ll place you on the waitlist.`
+                    : `Reserve ${joinSession?.time_label || 'this session'} now. Optional details come after you're in.`}
                 </p>
               </div>
 
-              {/* Guest sign-up */}
-              <div className="space-y-2">
-                {!addGuest ? (
-                  <button
-                    type="button"
-                    className="text-sm font-bold text-primary hover:underline flex items-center gap-1"
-                    onClick={() => setAddGuest(true)}
-                  >
-                    <UserPlus className="h-3.5 w-3.5" /> + Add Guest
-                  </button>
-                ) : (
-                  <div className="space-y-2 p-3 rounded-xl border bg-muted/20">
-                    <div className="flex items-center justify-between">
-                      <Label className="text-sm font-bold">Guest Name</Label>
-                      <button type="button" className="text-xs text-destructive hover:underline" onClick={() => { setAddGuest(false); setGuestNameInput(''); }}>Remove</button>
-                    </div>
-                    <Input
-                      placeholder="Guest's full name"
-                      value={guestNameInput}
-                      onChange={e => setGuestNameInput(e.target.value)}
-                      className="rounded-xl"
-                    />
-                    <p className="text-[10px] text-muted-foreground">Guest requires organizer approval and counts toward the slot limit.</p>
+              <div className="rounded-xl border bg-muted/20 p-4 space-y-2">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="font-bold text-foreground">{joinSession?.time_label || 'Selected session'}</p>
+                    <p className="text-xs text-muted-foreground">{joinSession ? `$${joinSession.price} • ${Math.max(joinSession.max_slots - ((bookingsBySession[joinSession.id] || []).filter((booking: any) => booking.reservation_status !== 'rejected' && booking.reservation_status !== 'cancelled').length), 0)} spots left` : 'Review before confirming'}</p>
                   </div>
-                )}
+                  <Badge variant={joinFlowStatus === 'waitlist' ? 'outline' : 'secondary'} className="text-[10px]">
+                    {joinFlowStatus === 'waitlist' ? 'Waitlist' : 'Fast join'}
+                  </Badge>
+                </div>
+                <div className="space-y-1 text-[11px] text-muted-foreground">
+                  <p>No phone required to join.</p>
+                  <p>You can edit details or leave later.</p>
+                  <p>Need help first? Ask on WhatsApp.</p>
+                </div>
               </div>
+
+              {organizerProfile?.phone && (
+                <Button
+                  variant="ghost"
+                  className="h-9 rounded-full px-0 text-sm text-primary hover:text-primary"
+                  onClick={() => window.open(`https://wa.me/${organizerProfile.phone.replace(/\D/g, '')}?text=${encodeURIComponent(`Hi, I’m interested in ${activity.title} at ${joinSession?.time_label || 'this session'}. I have a quick question before joining.`)}`, '_blank')}
+                >
+                  <MessageCircle className="mr-2 h-4 w-4" /> Questions? WhatsApp organizer
+                </Button>
+              )}
+
               <div className="flex gap-2 justify-end">
                 <Button variant="outline" className="rounded-full" onClick={() => setShowJoinDialog(false)}>Cancel</Button>
                 <Button className="rounded-full bg-primary text-primary-foreground" onClick={handleJoin} disabled={isJoining}>
                   {isJoining ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <UserPlus className="h-4 w-4 mr-1" />}
-                  {(() => {
-                    const s = sessions.find(s => s.id === joinSessionId);
-                    const active = (bookingsBySession[joinSessionId || ''] || []).filter((b: any) => b.reservation_status !== 'rejected' && b.reservation_status !== 'cancelled');
-                    return s && active.length >= s.max_slots ? 'Join Waitlist' : 'Join';
-                  })()}
+                  {joinFlowStatus === 'waitlist' ? 'Join Waitlist' : 'Join Session'}
                 </Button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Join Success Dialog */}
+      <AnimatePresence>
+        {showJoinSuccess && joinedSession && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+            onClick={closeJoinSuccess}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-background rounded-2xl p-6 w-full max-w-md border shadow-lg space-y-4"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="space-y-2">
+                <div className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
+                  <Check className="h-5 w-5" />
+                </div>
+                <h3 className="text-xl font-bold text-foreground">You're in</h3>
+                <p className="text-sm text-muted-foreground">{joinedSession.time_label} is saved. Add anything else only if you need it.</p>
+              </div>
+
+              <div className="rounded-xl border bg-muted/20 p-4 space-y-2">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="font-bold text-foreground">{joinedSession.time_label}</p>
+                    <p className="text-xs text-muted-foreground">Payment status: {getMyStatus(joinedSession.id) === 'pending-payment' ? 'Pending payment' : 'Pending organizer confirmation'}</p>
+                  </div>
+                  {statusBadge(getMyStatus(joinedSession.id))}
+                </div>
+                <p className="text-[11px] text-muted-foreground">Phone is only visible to the organizer when you choose to share it.</p>
+              </div>
+
+              <div className="rounded-xl border p-4 space-y-3">
+                <button
+                  type="button"
+                  className="flex w-full items-center justify-between text-left"
+                  onClick={() => setDetailsExpanded(prev => !prev)}
+                >
+                  <div>
+                    <p className="font-bold text-foreground">Add details (optional)</p>
+                    <p className="text-xs text-muted-foreground">Note for organizer, phone for coordination, or a guest.</p>
+                  </div>
+                  {detailsExpanded ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+                </button>
+
+                {detailsExpanded && (
+                  <div className="space-y-3">
+                    <div className="space-y-2">
+                      <Label htmlFor="special-request" className="text-sm font-bold">Add note (optional)</Label>
+                      <Textarea
+                        id="special-request"
+                        className="rounded-xl min-h-[88px]"
+                        placeholder="Anything the organizer should know?"
+                        value={specialRequest}
+                        onChange={e => setSpecialRequest(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="player-phone" className="text-sm font-bold">Share phone with organizer (optional)</Label>
+                      <Input
+                        id="player-phone"
+                        type="tel"
+                        placeholder="e.g. +65 9123 4567"
+                        value={playerPhone}
+                        onChange={e => setPlayerPhone(e.target.value)}
+                        className="rounded-xl"
+                      />
+                    </div>
+                    {!addGuest ? (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="rounded-full"
+                        onClick={() => setAddGuest(true)}
+                      >
+                        <UserPlus className="mr-2 h-4 w-4" /> Add guest
+                      </Button>
+                    ) : (
+                      <div className="space-y-2 rounded-xl border bg-muted/20 p-3">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-sm font-bold">Guest name</Label>
+                          <button type="button" className="text-xs text-destructive hover:underline" onClick={() => { setAddGuest(false); setGuestNameInput(''); }}>Remove</button>
+                        </div>
+                        <Input
+                          placeholder="Guest's full name"
+                          value={guestNameInput}
+                          onChange={e => setGuestNameInput(e.target.value)}
+                          className="rounded-xl"
+                        />
+                      </div>
+                    )}
+                    <Button
+                      className="w-full rounded-full bg-primary text-primary-foreground"
+                      onClick={handleUpdateReservation}
+                      disabled={isUpdating || !joinedSessionId || !userBookings[joinedSessionId]}
+                    >
+                      {isUpdating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
+                      Save optional details
+                    </Button>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex flex-wrap gap-2 justify-end">
+                {organizerProfile?.phone && (
+                  <Button
+                    variant="outline"
+                    className="rounded-full"
+                    onClick={() => window.open(`https://wa.me/${organizerProfile.phone.replace(/\D/g, '')}?text=${encodeURIComponent(`Hi, I just joined ${activity.title} at ${joinedSession.time_label}.` )}`, '_blank')}
+                  >
+                    <MessageCircle className="mr-2 h-4 w-4" /> Message organizer
+                  </Button>
+                )}
+                <Button variant="ghost" className="rounded-full" onClick={closeJoinSuccess}>Done</Button>
               </div>
             </motion.div>
           </motion.div>

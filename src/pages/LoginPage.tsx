@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '../components/ui/button';
@@ -39,19 +39,6 @@ export default function LoginPage() {
   const telegramChatId = searchParams.get('telegram_chat_id');
   const returnToTelegram = searchParams.get('return') === 'telegram';
   const redirectPath = searchParams.get('redirect');
-  const pendingJoinPath = searchParams.get('join');
-  const authTargetPath = useMemo(() => {
-    const joinTarget = pendingJoinPath ? decodeURIComponent(pendingJoinPath) : null;
-    return joinTarget || redirectPath || (location.state as any)?.from?.pathname || null;
-  }, [pendingJoinPath, redirectPath, location.state]);
-
-  useEffect(() => {
-    if (authTargetPath) {
-      sessionStorage.setItem('bookee_auth_callback_path', authTargetPath);
-    } else {
-      sessionStorage.removeItem('bookee_auth_callback_path');
-    }
-  }, [authTargetPath]);
 
   // Link telegram and redirect after auth
   useEffect(() => {
@@ -69,12 +56,12 @@ export default function LoginPage() {
           window.location.href = 'https://t.me/BookeeAppBot?start=linked';
           return;
         }
-        const from = authTargetPath;
+        const from = redirectPath || (location.state as any)?.from?.pathname;
         navigate(from || getDashboardPath(user.role, user.verified), { replace: true });
       };
       linkAndRedirect();
     }
-  }, [isAuthenticated, user, supabaseUser, navigate, authTargetPath, telegramChatId, returnToTelegram]);
+  }, [isAuthenticated, user, supabaseUser, navigate, location.state, telegramChatId, returnToTelegram]);
 
   const doLogin = async (loginEmail: string, loginPw: string) => {
     if (isLoading) return;
@@ -87,7 +74,7 @@ export default function LoginPage() {
         window.location.href = 'https://t.me/BookeeAppBot?start=linked';
         return;
       }
-      const from = authTargetPath;
+      const from = redirectPath || (location.state as any)?.from?.pathname;
       navigate(from || getDashboardPath(mockUser.role, mockUser.verified), { replace: true });
     } else {
       // Try Supabase auth
@@ -210,7 +197,7 @@ export default function LoginPage() {
 
           <div className="text-center text-sm">
             <span className="text-muted-foreground">Don't have an account? </span>
-            <Button variant="link" className="p-0 h-auto" onClick={() => navigate(authTargetPath ? `/signup/player?join=${encodeURIComponent(authTargetPath)}` : '/signup/player')}>Sign up</Button>
+            <Button variant="link" className="p-0 h-auto" onClick={() => navigate('/signup/player')}>Sign up</Button>
           </div>
         </CardContent>
 

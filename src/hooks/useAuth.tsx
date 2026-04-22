@@ -46,12 +46,6 @@ const defaultAuthContext: AuthContextType = {
 
 const AuthContext = createContext<AuthContextType>(defaultAuthContext);
 
-const getAuthRedirectUrl = () => {
-  const authCallbackPath = sessionStorage.getItem('bookee_auth_callback_path') || '/login';
-  const normalizedPath = authCallbackPath.startsWith('/') ? authCallbackPath : `/${authCallbackPath}`;
-  return `${window.location.origin}${normalizedPath}`;
-};
-
 function supabaseUserToMockUser(profile: any, role: string): MockUser {
   return {
     id: profile.user_id,
@@ -212,16 +206,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signInWithGoogle = useCallback(async () => {
-    await lovable.auth.signInWithOAuth('google', { redirect_uri: getAuthRedirectUrl() });
+    await lovable.auth.signInWithOAuth('google', { redirect_uri: window.location.origin });
   }, []);
 
   const signInWithApple = useCallback(async () => {
-    await lovable.auth.signInWithOAuth('apple', { redirect_uri: getAuthRedirectUrl() });
+    await lovable.auth.signInWithOAuth('apple', { redirect_uri: window.location.origin });
   }, []);
 
   const signInWithMagicLink = useCallback(async (email: string) => {
     const { error } = await supabase.auth.signInWithOtp({
-      email, options: { emailRedirectTo: getAuthRedirectUrl() },
+      email, options: { emailRedirectTo: window.location.origin },
     });
     if (error) throw error;
   }, []);

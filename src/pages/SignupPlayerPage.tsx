@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
@@ -14,20 +14,7 @@ export default function SignupPlayerPage() {
   const [displayName, setDisplayName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
   const { signupPlayerSupabase, signInWithGoogle, signInWithApple } = useAuth();
-  const joinPath = useMemo(() => {
-    const value = searchParams.get('join');
-    return value ? decodeURIComponent(value) : null;
-  }, [searchParams]);
-
-  useEffect(() => {
-    if (joinPath) {
-      sessionStorage.setItem('bookee_auth_callback_path', joinPath);
-    } else {
-      sessionStorage.removeItem('bookee_auth_callback_path');
-    }
-  }, [joinPath]);
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,7 +22,7 @@ export default function SignupPlayerPage() {
     try {
       await signupPlayerSupabase(email, password, displayName);
       toast.success('Account created! Welcome to Bookee.');
-      navigate(joinPath || '/player/dashboard');
+      navigate('/player/dashboard');
     } catch (error: any) {
       toast.error(error.message || 'Failed to create account.');
     } finally {
@@ -100,13 +87,13 @@ export default function SignupPlayerPage() {
           </form>
           <div className="mt-4 text-center text-sm">
             <span className="text-muted-foreground">Already have an account? </span>
-            <Button variant="link" className="p-0 h-auto" onClick={() => navigate(joinPath ? `/login?join=${encodeURIComponent(joinPath)}` : '/login')}>Log in</Button>
+            <Button variant="link" className="p-0 h-auto" onClick={() => navigate('/login')}>Log in</Button>
           </div>
         </CardContent>
         <CardFooter className="border-t bg-muted/30 p-4 text-center">
           <p className="text-xs text-muted-foreground">
             Want to organize events?{' '}
-            <Button variant="link" className="p-0 h-auto text-xs" onClick={() => navigate(joinPath ? `/signup/organizer?join=${encodeURIComponent(joinPath)}` : '/signup/organizer')}>Sign up as Organizer</Button>
+            <Button variant="link" className="p-0 h-auto text-xs" onClick={() => navigate('/signup/organizer')}>Sign up as Organizer</Button>
           </p>
         </CardFooter>
       </Card>

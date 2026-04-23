@@ -1,53 +1,162 @@
 
+# Email Status Check + Fix Plan
 
-# Verify Email Delivery End-to-End
+## What’s happening now
 
-## What I Found
+### Auth emails
+Auth emails are not currently working the way you expect because the app is configured for auto-confirm signup, not verification-email signup.
 
-| Component | Status |
-|---|---|
-| Email infrastructure (cron, queues, tables, domain) | ✅ Healthy |
-| `auth-email-hook` invocations | ❌ Never called by Supabase Auth |
-| `send-transactional-email` invocations | ❌ Never called by frontend |
-| New signups in last 24h | ❌ 0 (signup is failing client-side) |
+Evidence from the project:
+- The sender domain `notify.bookee-app.com` is verified.
+- The email queue cron job exists and is active.
+- `auth-email-hook`, `send-transactional-email`, and `process-email-queue` have no recent invocation logs.
+- Recent signup records in the backend show users being created with `email_confirmed_at` already set and `confirmation_sent_at` empty.
+- Project memory explicitly says mandatory email verification is disabled for a low-friction flow.
+- The signup pages currently show “Account created! Welcome to Bookee.” and immediately navigate into the app.
 
-## Root Causes
+Result: signup is succeeding, but no verification email is supposed to be sent in the current setup.
 
-1. **Auth hook not activated** — The custom hook exists but Supabase Auth isn't routing to it. Activation lives in Cloud → Emails.
-2. **Signup never reached the backend** — `auth.users` shows 0 new rows in 24h, so the signup attempt failed before email could be triggered.
+### App emails
+The app email system is not fully wired for the scenarios you mentioned.
 
-## Fix Steps
+What exists now:
+- There is one existing app email trigger: the `FeedbackDialog` calls the shared email sender.
+- The email templates registry contains `feedback`, `booking-confirmation`, and `welcome`.
 
-### Step 1 — Activate the auth hook
-Open **Cloud → Emails** and confirm the auth hook shows as **Active**. If it shows **Inactive** or **Setup pending**, click **Rerun Setup**. This is a one-click activation in the Cloud UI — no code changes.
+What is missing:
+- No frontend/backend trigger currently sends `booking-confirmation`.
+- No code path currently sends activity update emails when organizers post announcements/updates.
+- No code path currently sends organizer alert emails for new bookings or related activity.
+- The current organizer “announcements” flow in `ManageEvent.tsx` is still local/demo-style and not connected to a real participant email pipeline.
 
-### Step 2 — Diagnose the signup failure
-Inspect the signup flow to find why no user was created:
-- Read `src/pages/SignupPlayerPage.tsx` and `src/hooks/useAuth.tsx` (`signupPlayerSupabase`) to confirm the call shape
-- Check browser console + network logs from a fresh signup attempt for the actual error (rate limit, validation, RLS on profiles, missing redirect URL, etc.)
-- Verify `emailRedirectTo` is set to a valid URL in `supabase.auth.signUp(...)` — missing or wrong redirect URL is the most common reason auth signup silently fails in Lovable projects
+Result: feedback email may work once triggered, but booking confirmations, activity updates, and organizer alerts are not implemented end-to-end yet.
 
-### Step 3 — Add a test verification email
-Once the hook is active, send a one-time test from Cloud → Emails ("Send test email") to the user's inbox to confirm the full pipeline (hook → enqueue → cron → send) without needing a real signup.
+## Approved direction based on your choices
+You chose:
+- Require verification email on signup
+- Make these app emails work first:
+  - Booking confirmations
+  - Activity updates
+  - Organizer alerts
 
-### Step 4 — Verify transactional path
-Open the in-app feedback dialog and submit a test message. Then query `email_send_log` for `template_name = 'feedback'` — expect a `pending` row followed by `sent` within ~10 seconds.
+## Implementation plan
 
-### Step 5 — If signup still fails after Step 2
-Likely culprit is a missing/invalid `emailRedirectTo` in the signup call. Patch `signupPlayerSupabase` and `signupOrganizerSupabase` in `src/hooks/useAuth.tsx` to pass `{ emailRedirectTo: \`${window.location.origin}/\` }`.
+### 1. Restore real verification-email signup
+Update authentication so new email/password signups require email confirmation instead of instant access.
 
-## Success Criteria
+Work:
+- Change the backend auth setting from auto-confirm to email verification required.
+- Verify the auth email hook is active and receiving auth events.
+- Keep the existing branded auth email templates and queue flow in place.
 
-- Cloud → Emails shows auth hook **Active**
-- A new signup creates a row in `auth.users` AND a `sent` row in `email_send_log` within 10s
-- The recipient receives the verification email from `notify.bookee-app.com`
-- A feedback submission produces a `sent` row for `template_name = 'feedback'`
+Code/UI updates:
+- Update player and organizer signup flows so they no longer route users straight into the dashboard after signup.
+- Replace the current success message with a “Check your email to verify your account” flow.
+- Make post-signup UX consistent for both player and organizer signups.
+- Review magic-link and OAuth behavior so they still work correctly alongside required verification.
 
-## Files Potentially Changed
+Expected outcome:
+- New email/password signups create unconfirmed users.
+- Verification emails are generated and logged.
+- Users only continue after verifying.
 
-| File | Change |
-|---|---|
-| `src/hooks/useAuth.tsx` | Add `emailRedirectTo` to `signUp()` calls (only if Step 2 confirms it's missing) |
+### 2. Verify and harden the auth email pipeline
+After switching signup mode, validate the full auth email path.
 
-No other code changes expected — the rest is Cloud UI activation + verification.
+Work:
+- Confirm auth events reach the email hook.
+- Confirm messages are written to the email log as `pending` then `sent`.
+- Check for any hook activation/config gap if logs still remain empty after a fresh signup.
+- If needed, refresh the auth email setup so the managed hook is fully active again.
 
+Expected outcome:
+- Signup produces a real verification email.
+- Password reset and magic link emails can use the same pipeline.
+
+### 3. Wire booking confirmation app emails
+Implement a real booking-confirmation trigger where a participant expects an email immediately after booking.
+
+Work:
+- Find the authoritative booking creation path(s) in the live booking flow.
+- Invoke the existing app email sender after a successful booking insert/update.
+- Pass real booking/session/activity details into the `booking-confirmation` template.
+- Use an idempotency key derived from the booking record so retries never duplicate sends.
+
+Expected outcome:
+- Every successful booking can enqueue one confirmation email to the participant.
+- Email status is visible in the send log.
+
+### 4. Implement activity update emails to participants
+Connect organizer activity/session updates to participant notifications.
+
+Work:
+- Replace the current local/demo announcement behavior with a backend-backed flow where needed.
+- Identify the participant list for the affected session/activity.
+- Send one app email per participant when an organizer posts a relevant update.
+- Keep the content clearly transactional: session change/update notification, not marketing.
+- Add filtering so cancelled/rejected participants are excluded.
+
+Important note:
+- This requires real backend-backed announcement/update data for the live activity flow, not just local mock state.
+
+Expected outcome:
+- Participants receive update emails when organizers publish important session/activity changes.
+
+### 5. Implement organizer alert emails
+Send app emails to organizers for key operational events.
+
+First alerts to support:
+- New booking received
+- Important booking status change if applicable
+
+Work:
+- Add email triggers on the relevant booking lifecycle events.
+- Route organizer notifications to the activity owner/organizer email.
+- Create or extend template coverage if an existing template is not appropriate.
+- Use event-based idempotency keys to prevent duplicates.
+
+Expected outcome:
+- Organizers receive timely operational emails for real activity changes.
+
+### 6. Add delivery visibility and test checkpoints
+Make the system easy to verify during rollout.
+
+Work:
+- Validate each new email path against the send log.
+- Check inbox delivery and spam-folder behavior for test messages.
+- Confirm that failures, suppressions, or DLQ cases are visible for debugging.
+- Optionally add a lightweight admin-facing delivery view later if you want ongoing monitoring.
+
+## Files likely to change
+
+### Auth flow
+- `src/hooks/useAuth.tsx`
+- `src/pages/SignupPlayerPage.tsx`
+- `src/pages/SignupOrganizerPage.tsx`
+- Possibly auth configuration / managed email activation
+
+### App email triggers
+- Booking flow files in `src/pages/player/*` and/or shared data hooks where the real booking write happens
+- `src/pages/organizer/ManageEvent.tsx` for organizer update triggers
+- Possibly additional organizer/player pages where real activity updates are created
+
+### Email templates / functions
+- `supabase/functions/send-transactional-email/index.ts` only if template wiring needs extension
+- `supabase/functions/_shared/transactional-email-templates/*.tsx`
+- `supabase/functions/_shared/transactional-email-templates/registry.ts`
+- Possibly auth email setup if the hook needs reactivation/re-scaffolding
+
+## Technical notes
+- No evidence suggests the verified sender domain is the current blocker.
+- The main auth blocker is product configuration: signup is set to auto-confirm, so no verification email is emitted.
+- The main app-email blocker is missing trigger wiring for the flows you want.
+- Only the feedback email path currently invokes the app email sender from the UI.
+- Booking confirmations, activity updates, and organizer alerts need explicit trigger implementation.
+
+## Success criteria
+- A fresh email/password signup sends a verification email and does not auto-enter the app.
+- The send log records auth email activity.
+- A successful booking sends one booking confirmation email to the participant.
+- Posting an activity/session update sends emails to the relevant participants.
+- A new booking sends an alert email to the organizer.
+- Each flow appears in the email send log with final status visible.

@@ -5,10 +5,19 @@ import { dataService, type Group, type Activity, type ActivitySession } from '..
 import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
-import { Clock, Shuffle, CalendarDays, Plus, ChevronDown, ChevronRight, Users, MapPin, Calendar, ArrowRight, Loader2, Settings, Activity as ActivityIcon, UsersRound, Eye, EyeOff, Share2 } from 'lucide-react';
+import { Clock, Shuffle, CalendarDays, Plus, ChevronDown, ChevronRight, Users, MapPin, Calendar, ArrowRight, Loader2, Settings, Activity as ActivityIcon, UsersRound, Eye, EyeOff, Share2, FolderInput, FolderMinus, History } from 'lucide-react';
 import FeedbackDialog from '../../components/FeedbackDialog';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
+import { buildShareMessage } from '../../lib/share';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '../../components/ui/dropdown-menu';
 
 export default function OrganizeLanding() {
   const { isAuthenticated, user } = useAuth();

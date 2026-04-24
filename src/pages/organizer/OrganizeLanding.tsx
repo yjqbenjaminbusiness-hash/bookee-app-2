@@ -449,28 +449,106 @@ export default function OrganizeLanding() {
           })}
 
           {/* Unlinked Activities */}
-          {unlinkedActivities.length > 0 && (
-            <>
-              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mt-6 mb-2">
-                Unlinked Activities ({unlinkedActivities.length})
-              </p>
-              <div className="rounded-2xl border-2 overflow-hidden bg-card p-4 space-y-2">
-                {unlinkedActivities.map((act) => renderActivityRow(act, today))}
-              </div>
-            </>
-          )}
+          {unlinkedActivities.length > 0 && (() => {
+            const upcoming = unlinkedActivities.filter(a => a.date >= today);
+            const past = unlinkedActivities
+              .filter(a => a.date < today)
+              .sort((a, b) => b.date.localeCompare(a.date));
+            const pastKey = 'unlinked-acts';
+            const showPast = showPastFor.has(pastKey);
+            return (
+              <>
+                <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mt-6 mb-2">
+                  Unlinked Activities ({upcoming.length}{past.length > 0 ? ` upcoming · ${past.length} past` : ''})
+                </p>
+                <div className="rounded-2xl border-2 overflow-hidden bg-card p-4 space-y-2">
+                  {upcoming.length === 0 && past.length > 0 && (
+                    <p className="text-xs text-muted-foreground italic">No upcoming unlinked activities.</p>
+                  )}
+                  {upcoming.map((act) => renderActivityRow(act, today))}
+                  {past.length > 0 && (
+                    <div className="pt-2">
+                      <button
+                        type="button"
+                        onClick={() => togglePast(pastKey)}
+                        className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        <History className="h-3 w-3" />
+                        Past Activities ({past.length})
+                        {showPast ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                      </button>
+                      <AnimatePresence>
+                        {showPast && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.2 }}
+                            className="overflow-hidden"
+                          >
+                            <div className="space-y-2 pt-2 opacity-70">
+                              {past.map((act) => renderActivityRow(act, today))}
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  )}
+                </div>
+              </>
+            );
+          })()}
 
           {/* Unlinked Ballot Activities */}
-          {unlinkedBallotActivities.length > 0 && (
-            <>
-              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mt-6 mb-2">
-                Unlinked Ballots ({unlinkedBallotActivities.length})
-              </p>
-              <div className="rounded-2xl border-2 overflow-hidden bg-card p-4 space-y-2">
-                {unlinkedBallotActivities.map((ballot) => renderBallotActivityRow(ballot, today))}
-              </div>
-            </>
-          )}
+          {unlinkedBallotActivities.length > 0 && (() => {
+            const upcoming = unlinkedBallotActivities.filter(a => a.date >= today);
+            const past = unlinkedBallotActivities
+              .filter(a => a.date < today)
+              .sort((a, b) => b.date.localeCompare(a.date));
+            const pastKey = 'unlinked-ballots';
+            const showPast = showPastFor.has(pastKey);
+            return (
+              <>
+                <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mt-6 mb-2">
+                  Unlinked Ballots ({upcoming.length}{past.length > 0 ? ` upcoming · ${past.length} past` : ''})
+                </p>
+                <div className="rounded-2xl border-2 overflow-hidden bg-card p-4 space-y-2">
+                  {upcoming.length === 0 && past.length > 0 && (
+                    <p className="text-xs text-muted-foreground italic">No upcoming unlinked ballots.</p>
+                  )}
+                  {upcoming.map((ballot) => renderBallotActivityRow(ballot, today))}
+                  {past.length > 0 && (
+                    <div className="pt-2">
+                      <button
+                        type="button"
+                        onClick={() => togglePast(pastKey)}
+                        className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        <History className="h-3 w-3" />
+                        Past Ballots ({past.length})
+                        {showPast ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                      </button>
+                      <AnimatePresence>
+                        {showPast && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.2 }}
+                            className="overflow-hidden"
+                          >
+                            <div className="space-y-2 pt-2 opacity-70">
+                              {past.map((ballot) => renderBallotActivityRow(ballot, today))}
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  )}
+                </div>
+              </>
+            );
+          })()}
         </div>
       )}
     </div>

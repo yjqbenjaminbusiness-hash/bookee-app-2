@@ -195,11 +195,11 @@ export default function PlayerDashboard() {
                 <div className="flex flex-col gap-3">
                   <div className="flex items-start justify-between">
                     <div className="p-3 rounded-xl"
-                      style={{ background: b.status === 'confirmed' ? '#E8F7EF' : '#FEF3C7', color: b.status === 'confirmed' ? '#1A7A4A' : '#C47A00' }}>
-                      {b.status === 'confirmed' ? (b.isPast ? <CheckCircle2 className="h-5 w-5" /> : <TrendingUp className="h-5 w-5" />) : <Clock className="h-5 w-5" />}
+                      style={{ background: b.status === 'rejected' ? '#FEE2E2' : '#E8F7EF', color: b.status === 'rejected' ? '#B91C1C' : '#1A7A4A' }}>
+                      {b.status === 'rejected' ? <Clock className="h-5 w-5" /> : (b.isPast ? <CheckCircle2 className="h-5 w-5" /> : <TrendingUp className="h-5 w-5" />)}
                     </div>
-                    <Badge style={{ background: b.status === 'confirmed' ? '#1A7A4A' : '#C47A00', color: '#fff', border: 'none' }}>
-                      {b.status?.toUpperCase()}
+                    <Badge style={{ background: b.status === 'rejected' ? '#B91C1C' : '#1A7A4A', color: '#fff', border: 'none' }}>
+                      {b.status === 'rejected' ? 'REJECTED' : b.status === 'confirmed' ? 'CONFIRMED' : 'JOINED'}
                     </Badge>
                   </div>
                   <div>
@@ -239,7 +239,7 @@ export default function PlayerDashboard() {
         </Card>
         <Card className="border-2 bg-[#FEF3C7] border-[#C47A00]/20">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-bold uppercase tracking-widest" style={{ color: '#C47A00' }}>Pending</CardTitle>
+            <CardTitle className="text-sm font-bold uppercase tracking-widest" style={{ color: '#C47A00' }}>Joined</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-4xl font-bold" style={{ color: '#C47A00' }}>{bookings.length - confirmed}</div>

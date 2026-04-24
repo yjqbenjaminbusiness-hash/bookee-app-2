@@ -1,92 +1,56 @@
-# End-to-End Email Delivery Test
 
-## What's actually working today
+# Instant "Joined" Status & UI Cleanup
 
-I queried the email send log directly — **0 emails sent in the last 7 days** (auth or app). That means:
+## Goal
+Make joining feel instant (WhatsApp-style) and remove broken/misleading buttons. No DB schema changes, no flow changes, no email rework.
 
-| Flow | Status |
-|---|---|
-| Signup verification email | Hook deployed, but never invoked (no recent signups completed) |
-| Booking confirmation | ❌ No trigger exists in code |
-| Activity/announcement update | ❌ No trigger exists in code |
-| Organizer alert (new booking) | ❌ No trigger exists in code |
-| Feedback email | ✅ Trigger exists in `FeedbackDialog.tsx` |
+## Approach (UI-layer only)
 
-Only the `feedback` template is wired into the UI. `booking-confirmation` and `welcome` templates exist in the registry but nothing calls them. There are no `activity-update` or `organizer-alert` templates at all.
+We will **not** modify the `enforce_booking_defaults` DB trigger or the `reservation_status` enum. The trigger still forces new bookings into `pending` (this protects payment integrity). Instead, we relabel `pending` to **"Joined"** wherever a participant sees it, so users feel immediately included while organizers retain `pending → confirmed/rejected` controls underneath.
 
-So before we can run an end-to-end test, the missing pieces need to be built. Then we run a real, automated test that exercises every path and verifies delivery in the send log.
+### Status display mapping
 
----
+| DB status     | Player sees   | Organizer sees           |
+|---------------|---------------|--------------------------|
+| `pending`     | ✓ Joined (green) | ✓ Joined (neutral)    |
+| `confirmed`   | ✓ Confirmed   | ✓ Confirmed              |
+| `waitlisted`  | Waitlist      | Waitlist                 |
+| `rejected`    | (hidden)      | Removed                  |
+| `cancelled`   | (hidden)      | Cancelled                |
 
-## Plan
+## Changes
 
-### Step 1 — Add the missing templates and triggers
+### 1. Player-facing status relabel
+- **`src/pages/player/EventDetails.tsx`** — In `getBookingDisplayStatus` / status badge logic and the `SupabaseActivityView` participant rendering, render `pending` as "✓ Joined" with green styling (instead of "⏳ Pending" / yellow).
+- **`src/pages/player/Dashboard.tsx`** — In the "My Bookee" activity cards (the badge + icon block), treat `pending` the same as `confirmed` for display: green pill labeled "JOINED", check icon. Stats card "Pending" → "Joined".
+- **`src/pages/player/Bookings.tsx`** — Status badge for `pending` becomes "JOINED" with the green (`bg-jade-green`) style; keep "Pay Now" CTA logic untouched (payment still required for paid sessions).
 
-**Templates to create** in `supabase/functions/_shared/transactional-email-templates/`:
-- `activity-update.tsx` — sent to participants when an organizer posts an announcement on a session
-- `organizer-alert.tsx` — sent to the organizer when a new booking is created on their session
+### 2. Organizer-facing relabel (lightweight)
+- **`src/pages/organizer/ManageEvent.tsx`** — Replace "⏳ Pending" badge with neutral "✓ Joined" badge in the participant row. Keep all existing per-row actions intact: **Confirm**, **Move to Waitlist**, **Remove** (reject). No new approval workflow.
 
-Both registered in `registry.ts`. `booking-confirmation` already exists.
+### 3. Remove non-functional buttons
+In **`src/pages/organizer/ManageEvent.tsx`** (Supabase view, around the action button row):
+- Remove **"Post to Telegram"** button + the `TelegramPostDialog` component and related state (`showTelegramPostDialog`, `telegramSessionId`, etc.)
+- Remove **"Post Game"** button and its handler invocation of `post-game-telegram`.
+- Remove **"Find Participants"** button if present and not wired to a working flow.
+- Keep the **"Copy Link"** / share functionality fully intact.
 
-**Triggers to wire into `src/lib/data.ts`** (or the booking/announcement helpers):
-
-| Event | Template | Recipient | Idempotency key |
-|---|---|---|---|
-| `bookings` insert (status=confirmed) | `booking-confirmation` | participant | `booking-confirm-<booking_id>` |
-| `bookings` insert (status=confirmed) | `organizer-alert` | session organizer | `organizer-alert-<booking_id>` |
-| `announcements` insert on a session | `activity-update` | each confirmed participant | `activity-update-<announcement_id>-<user_id>` |
-
-Recipients are resolved server-side via an Edge Function (`fan-out-activity-update`) because RLS prevents the client from reading other users' emails from `profiles`. The fan-out function uses the service role and calls `send-transactional-email` once per recipient.
-
-### Step 2 — Build the end-to-end test
-
-A single Deno test file at `supabase/functions/send-transactional-email/e2e_test.ts` that runs the full flow against the live backend:
-
-```
-1. Sign up a fresh disposable email via supabase.auth.signUp()
-   → assert auth.users row created
-   → poll email_send_log for template_name='auth_emails', status='sent', recipient=<test email> within 30s
-
-2. Confirm the test user (via service-role admin API) so we can act as them
-   Create a test session/activity owned by a separate test organizer
-
-3. Insert a booking for the test user on that session
-   → poll email_send_log for booking-confirm-<id>, status='sent'
-   → poll email_send_log for organizer-alert-<id>, status='sent'
-
-4. Insert an announcement on that session
-   → poll email_send_log for activity-update-<announcement_id>-<user_id>, status='sent'
-
-5. Cleanup: delete announcement, booking, session, both test users
-```
-
-Each poll uses `DISTINCT ON (message_id)` ordered by `created_at DESC` so a `pending` row doesn't false-positive as a missing send.
-
-### Step 3 — Run the test
-
-Execute via the edge function test runner. The test reports per-step pass/fail with the specific log row that confirmed (or the timeout that failed) each email.
-
-### Step 4 — Manual receipt confirmation
-
-The send log only proves the email was handed to the provider. To confirm actual inbox delivery, after the automated test passes I'll provide you a one-liner: sign up with your real email at `/signup-player`, then I query the log to show the `sent` row for your address. You then check your inbox.
-
----
+### 4. Things explicitly NOT changed
+- ❌ No DB migration. `reservation_status` enum stays. `enforce_booking_defaults` trigger stays.
+- ❌ No changes to the email/notification system (deferred).
+- ❌ No changes to payment gating (paid sessions still need payment to confirm).
+- ❌ No changes to organizer "Confirm/Reject/Waitlist" controls — they remain available for cases where the organizer needs to step in.
+- ❌ "Copy Link" sharing is preserved as-is.
 
 ## Success criteria
+- A user joining a session immediately sees "✓ Joined" (green) — no "Pending" anywhere player-facing.
+- Organizer sees the same participant as "Joined" with Confirm / Waitlist / Remove actions still available.
+- "Post to Telegram" / "Post Game" / "Find Participants" buttons are gone; no dead dialogs remain.
+- "Copy Link" still works.
+- No regressions to payment flow or email triggers.
 
-- All 4 emails appear in `email_send_log` with `status = 'sent'` within 30 seconds of their trigger
-- The Deno test file passes end-to-end with no skipped assertions
-- A manual signup with your real email produces both a log entry AND a verification email in your inbox
-
-## Files that will change
-
-| File | Change |
-|---|---|
-| `supabase/functions/_shared/transactional-email-templates/activity-update.tsx` | new |
-| `supabase/functions/_shared/transactional-email-templates/organizer-alert.tsx` | new |
-| `supabase/functions/_shared/transactional-email-templates/registry.ts` | register 2 new templates |
-| `supabase/functions/fan-out-activity-update/index.ts` | new — service-role fan-out for announcements |
-| `src/lib/data.ts` (or booking/announcement helpers) | invoke `send-transactional-email` after booking insert and `fan-out-activity-update` after announcement insert |
-| `supabase/functions/send-transactional-email/e2e_test.ts` | new — the end-to-end test |
-
-After Step 1 lands, all subsequent emails (real user activity, not just the test) will start flowing too.
+## Files touched
+- `src/pages/player/EventDetails.tsx`
+- `src/pages/player/Dashboard.tsx`
+- `src/pages/player/Bookings.tsx`
+- `src/pages/organizer/ManageEvent.tsx`

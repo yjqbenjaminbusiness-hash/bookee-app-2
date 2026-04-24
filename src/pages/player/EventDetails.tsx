@@ -1310,7 +1310,7 @@ function SupabaseActivityView({
       case 'confirmed-paid': return <Badge className="bg-primary text-primary-foreground text-[10px]">✓ Confirmed & Paid</Badge>;
       case 'confirmed': return <Badge className="bg-primary text-primary-foreground text-[10px]">✓ Confirmed</Badge>;
       case 'pending-payment': return <Badge variant="secondary" className="text-[10px] text-amber-600">⏳ Pending Payment</Badge>;
-      case 'pending': return <Badge variant="secondary" className="text-[10px]">⏳ Pending</Badge>;
+      case 'pending': return <Badge className="bg-primary text-primary-foreground text-[10px]">✓ Joined</Badge>;
       case 'waitlisted': return <Badge variant="outline" className="text-[10px] text-amber-600 border-amber-600">📋 Waitlisted</Badge>;
       case 'rejected': return <Badge variant="destructive" className="text-[10px]">✕ Rejected</Badge>;
       default: return null;
@@ -1538,11 +1538,11 @@ function SupabaseActivityView({
                                         variant="outline"
                                         className="text-[10px]"
                                         style={{
-                                          color: b.reservation_status === 'rejected' ? 'hsl(var(--destructive))' : b.reservation_status === 'confirmed' ? 'hsl(var(--primary))' : b.payment_status === 'pending' ? '#C47A00' : undefined,
-                                          borderColor: b.reservation_status === 'rejected' ? 'hsl(var(--destructive))' : b.reservation_status === 'confirmed' ? 'hsl(var(--primary))' : b.payment_status === 'pending' ? '#C47A00' : undefined,
+                                          color: b.reservation_status === 'rejected' ? 'hsl(var(--destructive))' : b.reservation_status === 'confirmed' ? 'hsl(var(--primary))' : b.payment_status === 'pending' ? '#C47A00' : b.payment_status === 'paid' ? 'hsl(var(--primary))' : 'hsl(var(--primary))',
+                                          borderColor: b.reservation_status === 'rejected' ? 'hsl(var(--destructive))' : b.reservation_status === 'confirmed' ? 'hsl(var(--primary))' : b.payment_status === 'pending' ? '#C47A00' : b.payment_status === 'paid' ? 'hsl(var(--primary))' : 'hsl(var(--primary))',
                                         }}
                                       >
-                                        {b.reservation_status === 'rejected' ? '✕ Rejected' : b.reservation_status === 'confirmed' ? '✓ Going' : b.payment_status === 'pending' ? '⏳ Payment Sent' : b.payment_status === 'paid' ? '✓ Paid' : '○ Pending'}
+                                        {b.reservation_status === 'rejected' ? '✕ Rejected' : b.reservation_status === 'confirmed' ? '✓ Going' : b.payment_status === 'pending' ? '⏳ Payment Sent' : b.payment_status === 'paid' ? '✓ Paid' : '✓ Joined'}
                                       </Badge>
                                       {isMe && b.payment_status === 'unpaid' && b.reservation_status !== 'rejected' && (
                                         <Button

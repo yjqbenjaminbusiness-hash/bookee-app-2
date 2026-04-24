@@ -149,6 +149,17 @@ export const dataService = {
     return data as Activity;
   },
 
+  async updateActivityGroup(activityId: string, groupId: string | null): Promise<void> {
+    const { error } = await supabase
+      .from('activities')
+      .update({ group_id: groupId } as any)
+      .eq('id', activityId);
+    if (error) {
+      console.error('[dataService] updateActivityGroup error:', error);
+      throw new Error(error.message);
+    }
+  },
+
   // ─── Activity Sessions ──────────────────────────────────────
   async listSessionsByActivity(activityId: string): Promise<ActivitySession[]> {
     const { data, error } = await supabase

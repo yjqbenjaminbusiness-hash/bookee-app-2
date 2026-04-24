@@ -1001,6 +1001,45 @@ function SupabaseManageView({ activityId, navigate }: { activityId: string | und
             >
             {(activity as any).visibility === 'private' ? <><Lock className="h-3 w-3 mr-1" /> Private</> : <><Globe className="h-3 w-3 mr-1" /> Public</>}
             </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  size="sm"
+                  className="rounded-full font-bold bg-primary text-primary-foreground"
+                >
+                  <Share2 className="h-3 w-3 mr-1" /> Share Session
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel>Share session</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => {
+                    const msg = buildShareMessage(activity, sessions);
+                    navigator.clipboard.writeText(msg);
+                    toast.success('Session details copied — paste in WhatsApp/Telegram');
+                  }}
+                >
+                  <Copy className="h-3.5 w-3.5 mr-2" /> Copy message
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => {
+                    const msg = buildShareMessage(activity, sessions);
+                    window.open(whatsappShareUrl(msg), '_blank', 'noopener,noreferrer');
+                  }}
+                >
+                  <MessageCircle className="h-3.5 w-3.5 mr-2" /> Share to WhatsApp
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => {
+                    const msg = buildShareMessage(activity, sessions);
+                    window.open(telegramShareUrl(activity, msg), '_blank', 'noopener,noreferrer');
+                  }}
+                >
+                  <Send className="h-3.5 w-3.5 mr-2" /> Share to Telegram
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
         {activity.description && <p className="text-sm text-muted-foreground mt-2">{activity.description}</p>}

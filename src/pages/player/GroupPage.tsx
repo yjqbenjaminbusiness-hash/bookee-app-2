@@ -422,7 +422,11 @@ export default function GroupPage() {
                   const isPast = act.date < today;
                   const actSessions = sessions[act.id] || [];
                   const totalSlots = actSessions.reduce((a, s) => a + s.max_slots, 0);
-                  const filledSlots = actSessions.reduce((a, s) => a + s.filled_slots, 0);
+                  const liveCounts = activeCounts[act.id] || {};
+                  const filledSlots = actSessions.reduce(
+                    (a, s) => a + (typeof liveCounts[s.id] === 'number' ? liveCounts[s.id] : s.filled_slots),
+                    0,
+                  );
 
                   return (
                     <motion.div key={act.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}

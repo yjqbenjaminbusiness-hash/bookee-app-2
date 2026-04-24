@@ -347,7 +347,7 @@ export default function PlayerEvents() {
         </section>
 
         {/* Ballot Sessions */}
-        {filteredBallotActivities.length > 0 && (
+        {(upcomingBallotActivities.length > 0 || pastBallotActivities.length > 0) && (
           <>
             <div className="flex items-center gap-4">
               <div className="flex-1 h-px bg-border" />
@@ -362,18 +362,23 @@ export default function PlayerEvents() {
                   <h2 className="text-xl font-bold text-foreground">Ballot Sessions</h2>
                 </div>
                 <span className="text-xs text-muted-foreground px-3 py-1 rounded-full bg-muted/60 font-medium">
-                  {filteredBallotActivities.length} ballot{filteredBallotActivities.length !== 1 ? 's' : ''}
+                  {upcomingBallotActivities.length} upcoming{pastBallotActivities.length > 0 ? ` · ${pastBallotActivities.length} closed` : ''}
                 </span>
               </div>
 
+              {upcomingBallotActivities.length === 0 ? (
+                <div className="text-center py-8 rounded-2xl border border-dashed bg-muted/10 text-sm text-muted-foreground">
+                  No upcoming ballots right now.
+                </div>
+              ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                {filteredBallotActivities.map((activity, i) => {
+                {upcomingBallotActivities.map((activity, i) => {
                   const actSessions = sessions[activity.id] || [];
                   const totalSpots = actSessions.reduce((a, s) => a + s.max_slots, 0);
-                  const takenSpots = actSessions.reduce((a, s) => a + s.filled_slots, 0);
+                  const takenSpots = actSessions.reduce((a, s) => a + getLiveCount(activity.id, s.id, s.filled_slots), 0);
                   const fillPct = totalSpots > 0 ? (takenSpots / totalSpots) * 100 : 0;
                   const sportCat = { id: activity.sport, label: activity.sport, emoji: '🏅', color: '#1A7A4A', bg: '#E8F7EF' };
-                  const isPast = activity.date < new Date().toISOString().split('T')[0];
+                  const isPast = activity.date < todayISO;
                   const isDemo = dataService.isDemoItem(activity.id);
 
                   return (
@@ -434,6 +439,58 @@ export default function PlayerEvents() {
                   );
                 })}
               </div>
+              )}
+
+              {/* Past ballots - collapsible */}
+              {pastBallotActivities.length > 0 && (
+                <div className="mt-6">
+                  <button
+                    type="button"
+                    onClick={() => setShowPastBallots(v => !v)}
+                    className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    <History className="h-3 w-3" />
+                    Past Ballots ({pastBallotActivities.length})
+                    {showPastBallots ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                  </button>
+                  {showPastBallots && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 mt-4 opacity-70">
+                      {pastBallotActivities.map((activity, i) => {
+                        const actSessions = sessions[activity.id] || [];
+                        const totalSpots = actSessions.reduce((a, s) => a + s.max_slots, 0);
+                        const takenSpots = actSessions.reduce((a, s) => a + getLiveCount(activity.id, s.id, s.filled_slots), 0);
+                        return (
+                          <motion.div key={activity.id}
+                            initial={{ opacity: 0, y: 8 }}
+                            animate={{ opacity: 0.9, y: 0 }}
+                            transition={{ duration: 0.2, delay: i * 0.03 }}
+                            className="rounded-2xl border-2 overflow-hidden hover:shadow-md transition-all cursor-pointer bg-white"
+                            style={{ borderColor: '#e5e5e5' }}
+                            onClick={() => navigate(`/player/events/${activity.id}`)}>
+                            <div className="relative h-32 overflow-hidden bg-muted">
+                              <img src={getEventPhoto(activity.sport, activity.image_url)} alt={activity.title}
+                                className="w-full h-full object-cover grayscale" />
+                              <div className="absolute inset-0 bg-black/20" />
+                              <span className="absolute top-2 right-2 text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/90 text-muted-foreground">
+                                Closed
+                              </span>
+                            </div>
+                            <div className="p-4 space-y-1.5">
+                              <h3 className="font-bold text-sm" style={{ color: '#555' }}>{activity.title}</h3>
+                              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                                <Calendar className="h-3 w-3" /> Deadline: {new Date(activity.date).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })}
+                              </p>
+                              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                                <Users className="h-3 w-3" /> {takenSpots}/{totalSpots} entries
+                              </p>
+                            </div>
+                          </motion.div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
             </section>
           </>
         )}

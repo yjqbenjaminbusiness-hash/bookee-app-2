@@ -160,6 +160,38 @@ export const dataService = {
     }
   },
 
+  // ─── Live Participant Counts ─────────────────────────────────
+  // Returns { sessionId: activeBookingCount } for an activity.
+  // Uses SECURITY DEFINER RPC so counts match the Activity page everywhere.
+  async listActiveBookingCountsByActivity(activityId: string): Promise<Record<string, number>> {
+    const { data, error } = await supabase.rpc('get_active_booking_counts' as any, {
+      p_activity_id: activityId,
+    });
+    if (error) {
+      console.error('listActiveBookingCountsByActivity error:', error);
+      return {};
+    }
+    const counts: Record<string, number> = {};
+    (data as Array<{ session_id: string; active_count: number }> || []).forEach(r => {
+      counts[r.session_id] = r.active_count;
+    });
+    return counts;
+  },
+
+  // Same as above, but for many activities at once.
+  async listActiveBookingCountsForActivities(
+    activityIds: string[],
+  ): Promise<Record<string, Record<string, number>>> {
+    const result: Record<string, Record<string, number>> = {};
+    if (!activityIds.length) return result;
+    await Promise.all(
+      activityIds.map(async (aid) => {
+        result[aid] = await dataService.listActiveBookingCountsByActivity(aid);
+      }),
+    );
+    return result;
+  },
+
   // ─── Activity Sessions ──────────────────────────────────────
   async listSessionsByActivity(activityId: string): Promise<ActivitySession[]> {
     const { data, error } = await supabase

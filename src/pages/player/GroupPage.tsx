@@ -20,6 +20,7 @@ export default function GroupPage() {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [ballotActivities, setBallotActivities] = useState<Activity[]>([]);
   const [sessions, setSessions] = useState<Record<string, ActivitySession[]>>({});
+  const [activeCounts, setActiveCounts] = useState<Record<string, Record<string, number>>>({});
   const [memberCount, setMemberCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [showManagement, setShowManagement] = useState(false);
@@ -70,6 +71,12 @@ export default function GroupPage() {
           sessMap[a.id] = await dataService.listSessionsByActivity(a.id);
         }));
         setSessions(sessMap);
+
+        // Live participant counts (matches Activity page)
+        const counts = await dataService.listActiveBookingCountsForActivities(
+          allItems.map(a => a.id),
+        );
+        setActiveCounts(counts);
       } catch (err) {
         console.error('Error loading group:', err);
       } finally {
@@ -339,7 +346,11 @@ export default function GroupPage() {
                 displayedActivities.map((act, i) => {
                   const actSessions = sessions[act.id] || [];
                   const totalSlots = actSessions.reduce((a, s) => a + s.max_slots, 0);
-                  const filledSlots = actSessions.reduce((a, s) => a + s.filled_slots, 0);
+                  const liveCounts = activeCounts[act.id] || {};
+                  const filledSlots = actSessions.reduce(
+                    (a, s) => a + (typeof liveCounts[s.id] === 'number' ? liveCounts[s.id] : s.filled_slots),
+                    0,
+                  );
                   const fillPct = totalSlots > 0 ? (filledSlots / totalSlots) * 100 : 0;
                   const minPrice = actSessions.length > 0 ? Math.min(...actSessions.map(s => s.price)) : 0;
 
@@ -411,7 +422,11 @@ export default function GroupPage() {
                   const isPast = act.date < today;
                   const actSessions = sessions[act.id] || [];
                   const totalSlots = actSessions.reduce((a, s) => a + s.max_slots, 0);
-                  const filledSlots = actSessions.reduce((a, s) => a + s.filled_slots, 0);
+                  const liveCounts = activeCounts[act.id] || {};
+                  const filledSlots = actSessions.reduce(
+                    (a, s) => a + (typeof liveCounts[s.id] === 'number' ? liveCounts[s.id] : s.filled_slots),
+                    0,
+                  );
 
                   return (
                     <motion.div key={act.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}

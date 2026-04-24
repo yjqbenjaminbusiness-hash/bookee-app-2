@@ -1,76 +1,83 @@
 
-# Manage Sessions, Past/Upcoming Sorting & Share Session
+## Root cause
 
-## Goal
-Make organizing simpler: let organizers attach/detach sessions from groups, hide past clutter from the main organizer view, and bring back a clear "Share Session" action that copies a useful preformatted message (not just a bare link).
+There are two independent ways the app computes "how many people joined a session":
 
-## Scope (UI + a tiny data helper — no schema changes, no flow changes)
+1. **Activity page (`EventDetails.tsx`)** — counts real rows in `bookings` filtered as `reservation_status NOT IN ('rejected','cancelled')`. This is the **truth**.
+2. **Explore page (`Events.tsx`)**, **Organizer dashboard**, and several cards — read `activity_sessions.filled_slots`, a denormalized counter column.
 
-### 1. Manage Sessions inside Groups (organizer)
-**Where**: `src/pages/organizer/OrganizeLanding.tsx` (the expanded group panel).
+`filled_slots` is **never automatically incremented** when a booking is inserted (no DB trigger maintains it; it only gets decremented in `cancelBooking`). So Explore shows 0 while the Activity page correctly shows 3. Same root cause for any other view reading `filled_slots`.
 
-For each activity row inside a group, add a small **"Remove from group"** action (icon button, confirm via `toast`). It calls a new `dataService.updateActivityGroup(activityId, null)` which simply runs `supabase.from('activities').update({ group_id: null })`. The activity then shows up under "Unlinked Activities".
+Additionally, **Explore shows past activities** because there is no `date >= today` filter on either Public Activities or Ballot Sessions.
 
-For attaching, add an **"Add to group"** control on each unlinked activity row that opens a small dropdown of the organizer's groups; selecting one calls `dataService.updateActivityGroup(activityId, groupId)`.
+## Fix strategy (UI-layer, no DB migration)
 
-The existing per-group "Quick Create" buttons (Activity / Ballot / Event with `?group=<id>`) already handle "add a brand-new session to a group" — keep them as-is.
+Make `bookings` the single source of truth for participant counts everywhere. Compute counts client-side from the bookings table (which is already what the Activity page does and trusts). This guarantees Activity and Explore match.
 
-**No new pages, no migrations.** RLS already allows organizers to update their own activities (`auth.uid() = organizer_id`).
+### 1. Add a shared helper in `src/lib/data.ts`
 
-### 2. Sort Activities: Upcoming vs Past (CRITICAL)
-**Where**: `src/pages/organizer/OrganizeLanding.tsx`.
-
-Currently the expanded group panel and the "Unlinked Activities" section render every activity regardless of date. Change to:
-
-- **Default view per group**: render only `date >= today` activities.
-- Add a collapsed **"Past Activities (N)"** disclosure at the bottom of each group panel — clicking expands to show past sessions in a muted style. Same for the "Unlinked Activities" / "Unlinked Ballots" sections (split into upcoming list + collapsed "Past" group).
-- Sort upcoming **ascending** by date (soonest first), past **descending** (most recent first).
-
-Player views (`Dashboard.tsx`, `GroupPage.tsx`) already separate upcoming/past via tabs — no change needed there.
-
-### 3. Restore + rename "Find Participants" → "Share Session"
-**Where**: `src/pages/organizer/ManageEvent.tsx` (header area of `SupabaseManageView`, around the "Players Visible / Public" buttons, lines ~978–996).
-
-Add a single primary **"Share Session"** button (with a `Share2` icon) next to the visibility toggles. Clicking it builds and copies a preformatted message based on the activity + its sessions:
-
-```
-Wed 8pm · Badminton @ ActiveSG Bishan
-
-6/8 slots filled · 2 slots left
-
-Join here:
-https://bookee-app.com/player/events/<activity-id>
+```ts
+// Returns counts keyed by session_id, counting only active bookings
+async listActiveBookingCountsByActivity(activityId: string): Promise<Record<string, number>> {
+  // join via activity_sessions.activity_id
+  const { data: sess } = await supabase
+    .from('activity_sessions').select('id').eq('activity_id', activityId);
+  const ids = (sess || []).map(s => s.id);
+  if (!ids.length) return {};
+  const { data: bks } = await supabase
+    .from('bookings')
+    .select('session_id, reservation_status')
+    .in('session_id', ids)
+    .not('reservation_status', 'in', '(rejected,cancelled)');
+  const counts: Record<string, number> = {};
+  ids.forEach(id => counts[id] = 0);
+  (bks || []).forEach(b => { counts[b.session_id] = (counts[b.session_id] || 0) + 1; });
+  return counts;
+}
 ```
 
-Implementation:
-- One handler `handleShareSession()` that composes the string from `activity.title`, formatted date, `venue`, aggregated `filledSlots`/`totalSlots`, and the canonical link `https://bookee-app.com/player/events/${activity.id}`.
-- Copies via `navigator.clipboard.writeText(...)` and `toast.success('Session details copied — paste in WhatsApp/Telegram')`.
-- Add a small dropdown next to it with two optional deep-link shortcuts: **WhatsApp** (`https://wa.me/?text=<encoded>`) and **Telegram** (`https://t.me/share/url?url=<link>&text=<encoded>`). Both open in a new tab. Direct copy remains the primary path.
+(RLS already permits SELECT on bookings for "participant or organizer or admin", but we only need the count — not the rows. Since unauth users can't see other users' bookings under current RLS, we will instead expose the count via a public read path: see step 2.)
 
-### 4. Reduce ManageEvent UI clutter
-**Where**: `src/pages/organizer/ManageEvent.tsx` (`SupabaseManageView` only — the legacy mock view stays untouched).
+### 2. Make counts publicly visible (small DB function, no schema change)
 
-- Keep: Share Session, Players Visible toggle, Public/Private toggle, Add Timeslot, slot adjusters, per-row Confirm / Mark Paid / Waitlist / Remove, Add Guest, Announcements, bulk actions bar.
-- Remove the redundant **"Remind"** bulk action (no working notification path; consistent with prior cleanup of broken broadcast buttons).
-- Keep the existing row "Status" badge logic ("✓ Joined" / "✓ Confirmed" / "✕ Rejected") — already correct from the previous iteration.
+Create a `SECURITY DEFINER` SQL function `public.get_active_booking_counts(p_activity_id uuid)` that returns `(session_id uuid, count int)` aggregated from `bookings` where `reservation_status NOT IN ('rejected','cancelled')`. Call via `supabase.rpc('get_active_booking_counts', { p_activity_id })`. This bypasses RLS safely because it returns only counts (no PII), matching what the Activity page already shows.
 
-### 5. Things explicitly NOT changed
-- ❌ No DB schema/migration.
-- ❌ No changes to `enforce_booking_defaults` trigger or RLS.
-- ❌ No changes to email/notification system.
-- ❌ No changes to payment gating.
-- ❌ Player Dashboard / GroupPage past/upcoming tabs already exist — left as-is.
-- ❌ Existing `Share2` icon link in OrganizeLanding rows (copies bare URL) is replaced by the same preformatted message used in ManageEvent, for consistency.
+This keeps Activity and Explore numerically identical for **any** viewer (logged in or not).
 
-## Files touched
-- `src/lib/data.ts` — add `updateActivityGroup(activityId: string, groupId: string | null): Promise<void>` and a small shared helper `buildShareMessage(activity, sessions): string`.
-- `src/pages/organizer/OrganizeLanding.tsx` — add per-row "Remove from group" / "Add to group" actions; split each section into upcoming + collapsible "Past Activities (N)"; switch the row Share button to copy the preformatted message.
-- `src/pages/organizer/ManageEvent.tsx` (`SupabaseManageView`) — add **"Share Session"** button + WhatsApp/Telegram quick-share dropdown in the header; remove the "Remind" bulk action.
+### 3. Update Explore (`src/pages/player/Events.tsx`)
 
-## Success criteria
-- Organizer can move any activity into or out of a group from `/organize` without leaving the page.
-- The default `/organize` view shows only upcoming activities; past ones are tucked into a collapsed "Past Activities (N)" section per group / unlinked list.
-- "Share Session" appears on the activity manage page; clicking copies a multi-line message with title, date/venue, slot fill, and canonical link.
-- Optional WhatsApp / Telegram quick-share opens a prefilled compose window.
-- "Copy Link" / share UX in OrganizeLanding rows now copies the same useful preformatted message instead of a bare URL.
-- No new broken/dead buttons; no DB migrations; no regressions to payment, RLS, or email flows.
+- After loading sessions, also call the new RPC for each activity and store `Record<activityId, Record<sessionId, number>>`.
+- Replace `s.filled_slots` in the cards with the RPC count (fallback to `filled_slots` if RPC fails).
+- Add **upcoming-only** filter: `a.date >= todayISO` for both Public Activities and Ballot Sessions (sorted ascending by date).
+- Add a collapsed "Past Activities" disclosure at the bottom that lists past public activities (descending), styled muted — same pattern already used on `OrganizeLanding.tsx`.
+
+### 4. Update Organizer landing (`src/pages/organizer/OrganizeLanding.tsx`)
+
+- Use the same RPC counts to compute `totalParticipants` instead of summing `filled_slots`. This keeps the dashboard metric consistent with the Activity page.
+
+### 5. Apply the same source on Group page cards (`src/pages/player/GroupPage.tsx`)
+
+- Same RPC-driven counts so a session shown inside a group card matches the Activity page.
+
+## What stays the same
+
+- DB schema and existing triggers (`enforce_booking_defaults`, `enforce_booking_payment_immutability`) — untouched.
+- "Copy Link" / Share Session flow — untouched.
+- "Joined" relabeling on bookings — untouched.
+- Email infrastructure — untouched.
+- `filled_slots` column remains in place as a fallback and continues to be decremented on cancel; we just stop relying on it as the display value.
+
+## Files changed
+
+- `supabase/migrations/<new>.sql` — add `get_active_booking_counts(uuid)` SECURITY DEFINER function (returns only counts).
+- `src/lib/data.ts` — add `listActiveBookingCountsByActivity` wrapper around the RPC.
+- `src/pages/player/Events.tsx` — use RPC counts; add upcoming/past split for both Public and Ballot sections.
+- `src/pages/organizer/OrganizeLanding.tsx` — switch `totalParticipants` metric to RPC counts.
+- `src/pages/player/GroupPage.tsx` — switch session card counts to RPC counts.
+
+## Success criteria mapping
+
+- **Counts match across pages** → both pages now read the same source (active bookings via RPC).
+- **Past activities hidden in Explore by default** → date filter + collapsed "Past Activities" section.
+- **Real-time consistency** → counts are computed from live `bookings` rows on each page load, no stale denormalized field.
+- **No conflicting info** → single source of truth.

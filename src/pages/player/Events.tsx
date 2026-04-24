@@ -4,7 +4,7 @@ import { dataService, type Activity, type ActivitySession, type Group } from '..
 import { useAuth } from '../../hooks/useAuth';
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
-import { Search, ArrowRight, Users, Star, Calendar, MapPin, ChevronRight, Clock, UserPlus, Check, Loader2, Eye, EyeOff, Shuffle } from 'lucide-react';
+import { Search, ArrowRight, Users, Star, Calendar, MapPin, ChevronRight, Clock, UserPlus, Check, Loader2, Eye, EyeOff, Shuffle, History, ChevronDown } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 
@@ -31,12 +31,15 @@ export default function PlayerEvents() {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [ballotActivities, setBallotActivities] = useState<Activity[]>([]);
   const [sessions, setSessions] = useState<Record<string, ActivitySession[]>>({});
+  const [activeCounts, setActiveCounts] = useState<Record<string, Record<string, number>>>({});
   const [groups, setGroups] = useState<Group[]>([]);
   const [groupMap, setGroupMap] = useState<Record<string, Group>>({});
   const [joiningGroupId, setJoiningGroupId] = useState<string | null>(null);
   const [joinedGroupIds, setJoinedGroupIds] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState(true);
   const [showDemo, setShowDemo] = useState(() => localStorage.getItem('bookee_hide_demo') !== 'true');
+  const [showPastActivities, setShowPastActivities] = useState(false);
+  const [showPastBallots, setShowPastBallots] = useState(false);
   const navigate = useNavigate();
   const { user } = useAuth();
 
@@ -66,6 +69,12 @@ export default function PlayerEvents() {
           sessMap[a.id] = await dataService.listSessionsByActivity(a.id);
         }));
         setSessions(sessMap);
+
+        // Load LIVE participant counts (matches Activity-page logic)
+        const counts = await dataService.listActiveBookingCountsForActivities(
+          allActs.map(a => a.id),
+        );
+        setActiveCounts(counts);
 
         // Check group membership
         if (user) {
@@ -103,21 +112,34 @@ export default function PlayerEvents() {
   const allGroups = showDemo ? groups : groups.filter(g => !dataService.isDemoItem(g.id));
   const allBallotActs = showDemo ? ballotActivities : ballotActivities.filter(a => !dataService.isDemoItem(a.id));
 
-  const filteredActivities = allActivities.filter(a => {
-    const matchesSearch = !search ||
-      a.title.toLowerCase().includes(search.toLowerCase()) ||
-      a.venue.toLowerCase().includes(search.toLowerCase()) ||
-      a.sport.toLowerCase().includes(search.toLowerCase());
-    return matchesSearch;
-  });
+  const todayISO = new Date().toISOString().split('T')[0];
 
-  const filteredBallotActivities = allBallotActs.filter(a => {
-    const matchesSearch = !search ||
-      a.title.toLowerCase().includes(search.toLowerCase()) ||
-      a.venue.toLowerCase().includes(search.toLowerCase()) ||
-      a.sport.toLowerCase().includes(search.toLowerCase());
-    return matchesSearch;
-  });
+  const matchesSearch = (a: Activity) => !search ||
+    a.title.toLowerCase().includes(search.toLowerCase()) ||
+    a.venue.toLowerCase().includes(search.toLowerCase()) ||
+    a.sport.toLowerCase().includes(search.toLowerCase());
+
+  const filteredActivities = allActivities.filter(matchesSearch);
+  const upcomingActivities = filteredActivities
+    .filter(a => a.date >= todayISO)
+    .sort((a, b) => a.date.localeCompare(b.date));
+  const pastActivities = filteredActivities
+    .filter(a => a.date < todayISO)
+    .sort((a, b) => b.date.localeCompare(a.date));
+
+  const filteredBallotActivities = allBallotActs.filter(matchesSearch);
+  const upcomingBallotActivities = filteredBallotActivities
+    .filter(a => a.date >= todayISO)
+    .sort((a, b) => a.date.localeCompare(b.date));
+  const pastBallotActivities = filteredBallotActivities
+    .filter(a => a.date < todayISO)
+    .sort((a, b) => b.date.localeCompare(a.date));
+
+  // Helper: live participant count, falls back to filled_slots if RPC failed
+  const getLiveCount = (activityId: string, sessionId: string, fallback: number): number => {
+    const c = activeCounts[activityId]?.[sessionId];
+    return typeof c === 'number' ? c : fallback;
+  };
 
   if (isLoading) {
     return (
@@ -165,13 +187,13 @@ export default function PlayerEvents() {
               <h2 className="text-xl font-bold" style={{ color: '#111' }}>Public Activities</h2>
             </div>
             <span className="text-xs text-muted-foreground px-3 py-1 rounded-full bg-muted/60 font-medium">
-              {filteredActivities.length} session{filteredActivities.length !== 1 ? 's' : ''}
+              {upcomingActivities.length} upcoming{pastActivities.length > 0 ? ` · ${pastActivities.length} past` : ''}
             </span>
           </div>
 
 
           {/* Activities grid */}
-          {filteredActivities.length === 0 ? (
+          {upcomingActivities.length === 0 && pastActivities.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-center rounded-2xl border-2 border-dashed bg-muted/20">
               <span className="text-4xl mb-3">🔍</span>
               <h3 className="font-bold text-lg" style={{ color: '#111' }}>No activities found</h3>
@@ -181,18 +203,24 @@ export default function PlayerEvents() {
               </Button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-              {filteredActivities.map((activity, i) => {
-                const actSessions = sessions[activity.id] || [];
-                const minPrice = actSessions.length > 0 ? Math.min(...actSessions.map(s => s.price)) : 0;
-                const totalSpots = actSessions.reduce((a, s) => a + s.max_slots, 0);
-                const takenSpots = actSessions.reduce((a, s) => a + s.filled_slots, 0);
-                const fillPct = totalSpots > 0 ? (takenSpots / totalSpots) * 100 : 0;
-                const sportCat = { id: activity.sport, label: activity.sport, emoji: '🏅', color: '#1A7A4A', bg: '#E8F7EF' };
-                const isDemo = dataService.isDemoItem(activity.id);
-                const linkedGroup = activity.group_id ? (groupMap[activity.group_id] || null) : null;
+            <>
+              {upcomingActivities.length === 0 ? (
+                <div className="text-center py-8 rounded-2xl border border-dashed bg-muted/10 text-sm text-muted-foreground">
+                  No upcoming public activities right now.
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                  {upcomingActivities.map((activity, i) => {
+                    const actSessions = sessions[activity.id] || [];
+                    const minPrice = actSessions.length > 0 ? Math.min(...actSessions.map(s => s.price)) : 0;
+                    const totalSpots = actSessions.reduce((a, s) => a + s.max_slots, 0);
+                    const takenSpots = actSessions.reduce((a, s) => a + getLiveCount(activity.id, s.id, s.filled_slots), 0);
+                    const fillPct = totalSpots > 0 ? (takenSpots / totalSpots) * 100 : 0;
+                    const sportCat = { id: activity.sport, label: activity.sport, emoji: '🏅', color: '#1A7A4A', bg: '#E8F7EF' };
+                    const isDemo = dataService.isDemoItem(activity.id);
+                    const linkedGroup = activity.group_id ? (groupMap[activity.group_id] || null) : null;
 
-                return (
+                    return (
                   <motion.div key={activity.id}
                     initial={{ opacity: 0, y: 16 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -256,14 +284,70 @@ export default function PlayerEvents() {
                       </div>
                     </div>
                   </motion.div>
-                );
-              })}
-            </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Past activities - collapsible */}
+              {pastActivities.length > 0 && (
+                <div className="mt-6">
+                  <button
+                    type="button"
+                    onClick={() => setShowPastActivities(v => !v)}
+                    className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    <History className="h-3 w-3" />
+                    Past Activities ({pastActivities.length})
+                    {showPastActivities ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                  </button>
+                  {showPastActivities && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 mt-4 opacity-70">
+                      {pastActivities.map((activity, i) => {
+                        const actSessions = sessions[activity.id] || [];
+                        const totalSpots = actSessions.reduce((a, s) => a + s.max_slots, 0);
+                        const takenSpots = actSessions.reduce((a, s) => a + getLiveCount(activity.id, s.id, s.filled_slots), 0);
+                        const sportCat = { id: activity.sport, label: activity.sport, emoji: '🏅', color: '#888', bg: '#eee' };
+                        const isDemo = dataService.isDemoItem(activity.id);
+                        return (
+                          <motion.div key={activity.id}
+                            initial={{ opacity: 0, y: 8 }}
+                            animate={{ opacity: 0.9, y: 0 }}
+                            transition={{ duration: 0.2, delay: i * 0.03 }}
+                            className={`rounded-2xl border-2 overflow-hidden hover:shadow-md transition-all cursor-pointer ${isDemo ? 'border-dashed' : 'bg-white'}`}
+                            style={{ borderColor: '#e5e5e5' }}
+                            onClick={() => !isDemo && navigate(`/player/events/${activity.id}`)}>
+                            <div className="relative h-32 overflow-hidden bg-muted">
+                              <img src={getEventPhoto(activity.sport, activity.image_url)} alt={activity.title}
+                                className="w-full h-full object-cover grayscale" />
+                              <div className="absolute inset-0 bg-black/20" />
+                              <span className="absolute top-2 right-2 text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/90 text-muted-foreground">
+                                Past
+                              </span>
+                            </div>
+                            <div className="p-4 space-y-1.5">
+                              <h3 className="font-bold text-sm" style={{ color: '#555' }}>{activity.title}</h3>
+                              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                                <Calendar className="h-3 w-3" />
+                                {new Date(activity.date).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })}
+                              </p>
+                              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                                <Users className="h-3 w-3" /> {takenSpots}/{totalSpots} booked
+                              </p>
+                            </div>
+                          </motion.div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+            </>
           )}
         </section>
 
         {/* Ballot Sessions */}
-        {filteredBallotActivities.length > 0 && (
+        {(upcomingBallotActivities.length > 0 || pastBallotActivities.length > 0) && (
           <>
             <div className="flex items-center gap-4">
               <div className="flex-1 h-px bg-border" />
@@ -278,18 +362,23 @@ export default function PlayerEvents() {
                   <h2 className="text-xl font-bold text-foreground">Ballot Sessions</h2>
                 </div>
                 <span className="text-xs text-muted-foreground px-3 py-1 rounded-full bg-muted/60 font-medium">
-                  {filteredBallotActivities.length} ballot{filteredBallotActivities.length !== 1 ? 's' : ''}
+                  {upcomingBallotActivities.length} upcoming{pastBallotActivities.length > 0 ? ` · ${pastBallotActivities.length} closed` : ''}
                 </span>
               </div>
 
+              {upcomingBallotActivities.length === 0 ? (
+                <div className="text-center py-8 rounded-2xl border border-dashed bg-muted/10 text-sm text-muted-foreground">
+                  No upcoming ballots right now.
+                </div>
+              ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                {filteredBallotActivities.map((activity, i) => {
+                {upcomingBallotActivities.map((activity, i) => {
                   const actSessions = sessions[activity.id] || [];
                   const totalSpots = actSessions.reduce((a, s) => a + s.max_slots, 0);
-                  const takenSpots = actSessions.reduce((a, s) => a + s.filled_slots, 0);
+                  const takenSpots = actSessions.reduce((a, s) => a + getLiveCount(activity.id, s.id, s.filled_slots), 0);
                   const fillPct = totalSpots > 0 ? (takenSpots / totalSpots) * 100 : 0;
                   const sportCat = { id: activity.sport, label: activity.sport, emoji: '🏅', color: '#1A7A4A', bg: '#E8F7EF' };
-                  const isPast = activity.date < new Date().toISOString().split('T')[0];
+                  const isPast = activity.date < todayISO;
                   const isDemo = dataService.isDemoItem(activity.id);
 
                   return (
@@ -350,6 +439,58 @@ export default function PlayerEvents() {
                   );
                 })}
               </div>
+              )}
+
+              {/* Past ballots - collapsible */}
+              {pastBallotActivities.length > 0 && (
+                <div className="mt-6">
+                  <button
+                    type="button"
+                    onClick={() => setShowPastBallots(v => !v)}
+                    className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    <History className="h-3 w-3" />
+                    Past Ballots ({pastBallotActivities.length})
+                    {showPastBallots ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                  </button>
+                  {showPastBallots && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 mt-4 opacity-70">
+                      {pastBallotActivities.map((activity, i) => {
+                        const actSessions = sessions[activity.id] || [];
+                        const totalSpots = actSessions.reduce((a, s) => a + s.max_slots, 0);
+                        const takenSpots = actSessions.reduce((a, s) => a + getLiveCount(activity.id, s.id, s.filled_slots), 0);
+                        return (
+                          <motion.div key={activity.id}
+                            initial={{ opacity: 0, y: 8 }}
+                            animate={{ opacity: 0.9, y: 0 }}
+                            transition={{ duration: 0.2, delay: i * 0.03 }}
+                            className="rounded-2xl border-2 overflow-hidden hover:shadow-md transition-all cursor-pointer bg-white"
+                            style={{ borderColor: '#e5e5e5' }}
+                            onClick={() => navigate(`/player/events/${activity.id}`)}>
+                            <div className="relative h-32 overflow-hidden bg-muted">
+                              <img src={getEventPhoto(activity.sport, activity.image_url)} alt={activity.title}
+                                className="w-full h-full object-cover grayscale" />
+                              <div className="absolute inset-0 bg-black/20" />
+                              <span className="absolute top-2 right-2 text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/90 text-muted-foreground">
+                                Closed
+                              </span>
+                            </div>
+                            <div className="p-4 space-y-1.5">
+                              <h3 className="font-bold text-sm" style={{ color: '#555' }}>{activity.title}</h3>
+                              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                                <Calendar className="h-3 w-3" /> Deadline: {new Date(activity.date).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })}
+                              </p>
+                              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                                <Users className="h-3 w-3" /> {takenSpots}/{totalSpots} entries
+                              </p>
+                            </div>
+                          </motion.div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
             </section>
           </>
         )}

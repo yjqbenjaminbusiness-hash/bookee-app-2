@@ -554,12 +554,13 @@ export default function OrganizeLanding() {
     </div>
   );
 
-  function renderBallotActivityRow(act: Activity, today: string) {
+  function renderBallotActivityRow(act: Activity, today: string, opts: { inGroup?: boolean } = {}) {
     const isDemo = dataService.isDemoItem(act.id);
     const actSessions = sessionsByActivity[act.id] || [];
     const totalSlots = actSessions.reduce((a, s) => a + s.max_slots, 0);
     const filledSlots = actSessions.reduce((a, s) => a + s.filled_slots, 0);
     const isPast = act.date < today;
+    const otherGroups = groups.filter(g => g.id !== act.group_id && !dataService.isDemoItem(g.id));
 
     return (
       <div
@@ -594,21 +595,29 @@ export default function OrganizeLanding() {
           <Badge variant={isPast ? 'secondary' : 'default'} className="text-xs">
             {isPast ? 'Closed' : 'Open'}
           </Badge>
-          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); const url = `https://bookee-app.com/player/events/${act.id}`; navigator.clipboard.writeText(url); toast.success('Link copied!'); }}>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7"
+            title="Copy share message"
+            onClick={(e) => { e.stopPropagation(); handleShareRow(act); }}
+          >
             <Share2 className="h-3.5 w-3.5 text-muted-foreground" />
           </Button>
+          {!isDemo && renderGroupActions(act, opts.inGroup, otherGroups)}
           <ArrowRight className="h-4 w-4 text-muted-foreground" />
         </div>
       </div>
     );
   }
 
-  function renderActivityRow(act: Activity, today: string) {
+  function renderActivityRow(act: Activity, today: string, opts: { inGroup?: boolean } = {}) {
     const isDemo = dataService.isDemoItem(act.id);
     const actSessions = sessionsByActivity[act.id] || [];
     const totalSlots = actSessions.reduce((a, s) => a + s.max_slots, 0);
     const filledSlots = actSessions.reduce((a, s) => a + s.filled_slots, 0);
     const isPast = act.date < today;
+    const otherGroups = groups.filter(g => g.id !== act.group_id && !dataService.isDemoItem(g.id));
 
     return (
       <div
@@ -640,12 +649,63 @@ export default function OrganizeLanding() {
           <Badge variant={isPast ? 'secondary' : 'default'} className="text-xs">
             {isPast ? 'Past' : act.status === 'active' ? 'Active' : act.status}
           </Badge>
-          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); const url = `https://bookee-app.com/player/events/${act.id}`; navigator.clipboard.writeText(url); toast.success('Link copied!'); }}>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7"
+            title="Copy share message"
+            onClick={(e) => { e.stopPropagation(); handleShareRow(act); }}
+          >
             <Share2 className="h-3.5 w-3.5 text-muted-foreground" />
           </Button>
+          {!isDemo && renderGroupActions(act, opts.inGroup, otherGroups)}
           <ArrowRight className="h-4 w-4 text-muted-foreground" />
         </div>
       </div>
+    );
+  }
+
+  function renderGroupActions(act: Activity, inGroup: boolean | undefined, otherGroups: Group[]) {
+    if (inGroup) {
+      return (
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7 text-muted-foreground hover:text-destructive"
+          title="Remove from group"
+          onClick={(e) => { e.stopPropagation(); handleRemoveFromGroup(act.id); }}
+        >
+          <FolderMinus className="h-3.5 w-3.5" />
+        </Button>
+      );
+    }
+    if (otherGroups.length === 0) return null;
+    return (
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 text-muted-foreground hover:text-primary"
+            title="Add to group"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <FolderInput className="h-3.5 w-3.5" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+          <DropdownMenuLabel>Add to group</DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          {otherGroups.map((g) => (
+            <DropdownMenuItem
+              key={g.id}
+              onClick={(e) => { e.stopPropagation(); handleAddToGroup(act.id, g.id); }}
+            >
+              {g.name}
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
     );
   }
 }

@@ -346,7 +346,11 @@ export default function GroupPage() {
                 displayedActivities.map((act, i) => {
                   const actSessions = sessions[act.id] || [];
                   const totalSlots = actSessions.reduce((a, s) => a + s.max_slots, 0);
-                  const filledSlots = actSessions.reduce((a, s) => a + s.filled_slots, 0);
+                  const liveCounts = activeCounts[act.id] || {};
+                  const filledSlots = actSessions.reduce(
+                    (a, s) => a + (typeof liveCounts[s.id] === 'number' ? liveCounts[s.id] : s.filled_slots),
+                    0,
+                  );
                   const fillPct = totalSlots > 0 ? (filledSlots / totalSlots) * 100 : 0;
                   const minPrice = actSessions.length > 0 ? Math.min(...actSessions.map(s => s.price)) : 0;
 

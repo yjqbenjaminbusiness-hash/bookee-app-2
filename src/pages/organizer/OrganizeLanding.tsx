@@ -28,6 +28,7 @@ export default function OrganizeLanding() {
   const [activitiesByGroup, setActivitiesByGroup] = useState<Record<string, Activity[]>>({});
   const [ballotActivitiesByGroup, setBallotActivitiesByGroup] = useState<Record<string, Activity[]>>({});
   const [sessionsByActivity, setSessionsByActivity] = useState<Record<string, ActivitySession[]>>({});
+  const [activeCounts, setActiveCounts] = useState<Record<string, Record<string, number>>>({});
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const [showPastFor, setShowPastFor] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState(true);
@@ -73,6 +74,12 @@ export default function OrganizeLanding() {
           sessMap[a.id] = await dataService.listSessionsByActivity(a.id);
         }));
         setSessionsByActivity(sessMap);
+
+        // Live counts (single source of truth — matches Activity page)
+        const counts = await dataService.listActiveBookingCountsForActivities(
+          allItems.map(a => a.id),
+        );
+        setActiveCounts(counts);
       } catch (err) {
         console.error('Failed to load organizer data:', err);
         toast.error('Failed to load your groups');
@@ -164,7 +171,10 @@ export default function OrganizeLanding() {
   const displayedActivities = showDemo ? allActivities : allActivities.filter(a => !dataService.isDemoItem(a.id));
   const displayedBallotActivities = showDemo ? allBallotActivities : allBallotActivities.filter(a => !dataService.isDemoItem(a.id));
   const upcomingActivities = displayedActivities.filter(a => a.date >= today);
-  const totalParticipants = Object.values(sessionsByActivity).flat().reduce((acc, s) => acc + s.filled_slots, 0);
+  const totalParticipants = Object.entries(activeCounts).reduce(
+    (acc, [, sessionCounts]) => acc + Object.values(sessionCounts).reduce((a, n) => a + n, 0),
+    0,
+  );
   const totalSessions = Object.values(sessionsByActivity).flat().length;
   const unlinkedActivities = displayedActivities.filter(a => !a.group_id).sort((a, b) => a.date.localeCompare(b.date));
   const unlinkedBallotActivities = displayedBallotActivities.filter(a => !a.group_id).sort((a, b) => a.date.localeCompare(b.date));

@@ -1192,9 +1192,6 @@ function SupabaseManageView({ activityId, navigate }: { activityId: string | und
                     <Button size="sm" variant="outline" className="h-7 text-xs rounded-full" onClick={handleBulkMarkPaid}>
                       <DollarSign className="mr-1 h-3 w-3" /> Mark Paid
                     </Button>
-                    <Button size="sm" variant="outline" className="h-7 text-xs rounded-full" onClick={handleBulkRemind}>
-                      <Bell className="mr-1 h-3 w-3" /> Remind
-                    </Button>
                     <Button size="sm" variant="outline" className="h-7 text-xs rounded-full text-amber-600 border-amber-600/30" onClick={handleBulkWaitlist}>
                       <List className="mr-1 h-3 w-3" /> Waitlist
                     </Button>

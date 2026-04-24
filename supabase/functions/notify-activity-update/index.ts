@@ -44,7 +44,9 @@ Deno.serve(async (req) => {
     })
   }
 
-  const admin = createClient(supabaseUrl, serviceKey)
+  const admin = createClient(supabaseUrl, serviceKey, {
+    global: { headers: { Authorization: `Bearer ${serviceKey}` } },
+  })
 
   // Look up announcement + activity
   const { data: announcement, error: annErr } = await admin

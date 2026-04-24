@@ -90,7 +90,8 @@ Deno.test({
 
     const result = await pollSendLog({
       recipientEmail: email,
-      templateName: "auth_emails",
+      // Auth hook logs with the action_type as template (e.g. 'signup', 'magiclink')
+      templateName: "signup",
       desiredStatuses: ["sent", "pending", "dlq", "failed", "suppressed"],
       timeoutMs: 45_000,
     });

@@ -382,10 +382,63 @@ export default function OrganizeLanding() {
                             <p className="text-sm text-muted-foreground">No activities or ballots in this group yet</p>
                           </div>
                         ) : (
-                          <>
-                            {groupActs.map((act) => renderActivityRow(act, today))}
-                            {groupBlts.map((ballot) => renderBallotActivityRow(ballot, today))}
-                          </>
+                          (() => {
+                            const upcomingActs = groupActs
+                              .filter(a => a.date >= today)
+                              .sort((a, b) => a.date.localeCompare(b.date));
+                            const pastActs = groupActs
+                              .filter(a => a.date < today)
+                              .sort((a, b) => b.date.localeCompare(a.date));
+                            const upcomingBlts = groupBlts
+                              .filter(b => b.date >= today)
+                              .sort((a, b) => a.date.localeCompare(b.date));
+                            const pastBlts = groupBlts
+                              .filter(b => b.date < today)
+                              .sort((a, b) => b.date.localeCompare(a.date));
+                            const pastKey = `group-${group.id}`;
+                            const showPast = showPastFor.has(pastKey);
+                            const totalPast = pastActs.length + pastBlts.length;
+                            return (
+                              <>
+                                {upcomingActs.length === 0 && upcomingBlts.length === 0 && (
+                                  <div className="text-center py-4 rounded-xl border border-dashed bg-background text-xs text-muted-foreground">
+                                    No upcoming activities — create one above.
+                                  </div>
+                                )}
+                                {upcomingActs.map((act) => renderActivityRow(act, today, { inGroup: true }))}
+                                {upcomingBlts.map((ballot) => renderBallotActivityRow(ballot, today, { inGroup: true }))}
+                                {totalPast > 0 && (
+                                  <div className="pt-2">
+                                    <button
+                                      type="button"
+                                      onClick={() => togglePast(pastKey)}
+                                      className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors"
+                                    >
+                                      <History className="h-3 w-3" />
+                                      Past Activities ({totalPast})
+                                      {showPast ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                                    </button>
+                                    <AnimatePresence>
+                                      {showPast && (
+                                        <motion.div
+                                          initial={{ height: 0, opacity: 0 }}
+                                          animate={{ height: 'auto', opacity: 1 }}
+                                          exit={{ height: 0, opacity: 0 }}
+                                          transition={{ duration: 0.2 }}
+                                          className="overflow-hidden"
+                                        >
+                                          <div className="space-y-2 pt-2 opacity-70">
+                                            {pastActs.map((act) => renderActivityRow(act, today, { inGroup: true }))}
+                                            {pastBlts.map((ballot) => renderBallotActivityRow(ballot, today, { inGroup: true }))}
+                                          </div>
+                                        </motion.div>
+                                      )}
+                                    </AnimatePresence>
+                                  </div>
+                                )}
+                              </>
+                            );
+                          })()
                         )}
                       </div>
                     </motion.div>

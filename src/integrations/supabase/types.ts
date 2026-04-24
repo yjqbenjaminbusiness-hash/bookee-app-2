@@ -741,6 +741,13 @@ export type Database = {
         Args: { payload: Json; queue_name: string }
         Returns: number
       }
+      get_active_booking_counts: {
+        Args: { p_activity_id: string }
+        Returns: {
+          active_count: number
+          session_id: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

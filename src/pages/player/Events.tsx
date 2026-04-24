@@ -4,7 +4,7 @@ import { dataService, type Activity, type ActivitySession, type Group } from '..
 import { useAuth } from '../../hooks/useAuth';
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
-import { Search, ArrowRight, Users, Star, Calendar, MapPin, ChevronRight, Clock, UserPlus, Check, Loader2, Eye, EyeOff, Shuffle } from 'lucide-react';
+import { Search, ArrowRight, Users, Star, Calendar, MapPin, ChevronRight, Clock, UserPlus, Check, Loader2, Eye, EyeOff, Shuffle, History, ChevronDown } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 
@@ -31,12 +31,15 @@ export default function PlayerEvents() {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [ballotActivities, setBallotActivities] = useState<Activity[]>([]);
   const [sessions, setSessions] = useState<Record<string, ActivitySession[]>>({});
+  const [activeCounts, setActiveCounts] = useState<Record<string, Record<string, number>>>({});
   const [groups, setGroups] = useState<Group[]>([]);
   const [groupMap, setGroupMap] = useState<Record<string, Group>>({});
   const [joiningGroupId, setJoiningGroupId] = useState<string | null>(null);
   const [joinedGroupIds, setJoinedGroupIds] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState(true);
   const [showDemo, setShowDemo] = useState(() => localStorage.getItem('bookee_hide_demo') !== 'true');
+  const [showPastActivities, setShowPastActivities] = useState(false);
+  const [showPastBallots, setShowPastBallots] = useState(false);
   const navigate = useNavigate();
   const { user } = useAuth();
 
@@ -66,6 +69,12 @@ export default function PlayerEvents() {
           sessMap[a.id] = await dataService.listSessionsByActivity(a.id);
         }));
         setSessions(sessMap);
+
+        // Load LIVE participant counts (matches Activity-page logic)
+        const counts = await dataService.listActiveBookingCountsForActivities(
+          allActs.map(a => a.id),
+        );
+        setActiveCounts(counts);
 
         // Check group membership
         if (user) {
@@ -103,21 +112,34 @@ export default function PlayerEvents() {
   const allGroups = showDemo ? groups : groups.filter(g => !dataService.isDemoItem(g.id));
   const allBallotActs = showDemo ? ballotActivities : ballotActivities.filter(a => !dataService.isDemoItem(a.id));
 
-  const filteredActivities = allActivities.filter(a => {
-    const matchesSearch = !search ||
-      a.title.toLowerCase().includes(search.toLowerCase()) ||
-      a.venue.toLowerCase().includes(search.toLowerCase()) ||
-      a.sport.toLowerCase().includes(search.toLowerCase());
-    return matchesSearch;
-  });
+  const todayISO = new Date().toISOString().split('T')[0];
 
-  const filteredBallotActivities = allBallotActs.filter(a => {
-    const matchesSearch = !search ||
-      a.title.toLowerCase().includes(search.toLowerCase()) ||
-      a.venue.toLowerCase().includes(search.toLowerCase()) ||
-      a.sport.toLowerCase().includes(search.toLowerCase());
-    return matchesSearch;
-  });
+  const matchesSearch = (a: Activity) => !search ||
+    a.title.toLowerCase().includes(search.toLowerCase()) ||
+    a.venue.toLowerCase().includes(search.toLowerCase()) ||
+    a.sport.toLowerCase().includes(search.toLowerCase());
+
+  const filteredActivities = allActivities.filter(matchesSearch);
+  const upcomingActivities = filteredActivities
+    .filter(a => a.date >= todayISO)
+    .sort((a, b) => a.date.localeCompare(b.date));
+  const pastActivities = filteredActivities
+    .filter(a => a.date < todayISO)
+    .sort((a, b) => b.date.localeCompare(a.date));
+
+  const filteredBallotActivities = allBallotActs.filter(matchesSearch);
+  const upcomingBallotActivities = filteredBallotActivities
+    .filter(a => a.date >= todayISO)
+    .sort((a, b) => a.date.localeCompare(b.date));
+  const pastBallotActivities = filteredBallotActivities
+    .filter(a => a.date < todayISO)
+    .sort((a, b) => b.date.localeCompare(a.date));
+
+  // Helper: live participant count, falls back to filled_slots if RPC failed
+  const getLiveCount = (activityId: string, sessionId: string, fallback: number): number => {
+    const c = activeCounts[activityId]?.[sessionId];
+    return typeof c === 'number' ? c : fallback;
+  };
 
   if (isLoading) {
     return (

@@ -74,9 +74,9 @@ export default function PlayerBookings() {
                     <div className="flex items-center gap-1 font-bold text-lg" style={{ color: '#111' }}><DollarSign className="h-4 w-4" /> {b.amount}</div>
                   </TableCell>
                   <TableCell>
-                    <Badge className={b.status === 'confirmed' ? 'bg-jade-green border-none' : 'bg-mustard-yellow border-none'}>
-                      {b.status === 'confirmed' ? <CheckCircle2 className="h-3 w-3 mr-1" /> : <AlertCircle className="h-3 w-3 mr-1" />}
-                      {b.status.toUpperCase()}
+                    <Badge className="bg-jade-green border-none">
+                      <CheckCircle2 className="h-3 w-3 mr-1" />
+                      {b.status === 'confirmed' ? 'CONFIRMED' : 'JOINED'}
                     </Badge>
                   </TableCell>
                   <TableCell className="font-mono text-[10px] text-muted-foreground">{b.paymentRef || '—'}</TableCell>

@@ -9,11 +9,20 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../..
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/table';
 import { Badge } from '../../components/ui/badge';
 import { toast } from 'sonner';
-import { MapPin, Calendar, ArrowLeft, CheckCircle2, XCircle, Clock, DollarSign, ChevronDown, ChevronUp, UserMinus, List, MessageCircle, Unlock, Plus, Trash2, Star, MessageSquare, Minus, AlertTriangle, Globe, Lock, CheckSquare, Square, Send, Bell, Users, Loader2, UserPlus } from 'lucide-react';
+import { MapPin, Calendar, ArrowLeft, CheckCircle2, XCircle, Clock, DollarSign, ChevronDown, ChevronUp, UserMinus, List, MessageCircle, Unlock, Plus, Trash2, Star, MessageSquare, Minus, AlertTriangle, Globe, Lock, CheckSquare, Square, Send, Bell, Users, Loader2, UserPlus, Share2, Copy } from 'lucide-react';
 import { Progress } from '../../components/ui/progress';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { motion, AnimatePresence } from 'framer-motion';
+import { buildShareMessage, whatsappShareUrl, telegramShareUrl } from '../../lib/share';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '../../components/ui/dropdown-menu';
 
 export default function ManageEvent() {
   const { id } = useParams<{ id: string }>();

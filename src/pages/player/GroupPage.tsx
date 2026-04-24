@@ -20,6 +20,7 @@ export default function GroupPage() {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [ballotActivities, setBallotActivities] = useState<Activity[]>([]);
   const [sessions, setSessions] = useState<Record<string, ActivitySession[]>>({});
+  const [activeCounts, setActiveCounts] = useState<Record<string, Record<string, number>>>({});
   const [memberCount, setMemberCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [showManagement, setShowManagement] = useState(false);
@@ -70,6 +71,12 @@ export default function GroupPage() {
           sessMap[a.id] = await dataService.listSessionsByActivity(a.id);
         }));
         setSessions(sessMap);
+
+        // Live participant counts (matches Activity page)
+        const counts = await dataService.listActiveBookingCountsForActivities(
+          allItems.map(a => a.id),
+        );
+        setActiveCounts(counts);
       } catch (err) {
         console.error('Error loading group:', err);
       } finally {

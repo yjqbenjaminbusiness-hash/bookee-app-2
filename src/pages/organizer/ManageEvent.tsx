@@ -832,12 +832,6 @@ function SupabaseManageView({ activityId, navigate }: { activityId: string | und
     reloadBookings();
   };
 
-  const handleBulkRemind = () => {
-    if (selectedBookings.size === 0) { toast.error('Select at least one player'); return; }
-    toast.success(`Reminder sent to ${selectedBookings.size} player(s)`);
-    setSelectedBookings(new Set());
-  };
-
   const handleBulkWaitlist = async () => {
     if (selectedBookings.size === 0) { toast.error('Select at least one player'); return; }
     const ids = Array.from(selectedBookings);

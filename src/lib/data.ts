@@ -447,6 +447,12 @@ export const dataService = {
       console.error('[dataService] createBooking error:', error);
       throw new Error(error.message);
     }
+    // Fire-and-forget: send booking confirmation + organizer alert
+    if (data?.id) {
+      supabase.functions.invoke('notify-booking', {
+        body: { bookingId: data.id },
+      }).catch((e) => console.error('notify-booking invoke error:', e));
+    }
     return data;
   },
 
@@ -541,6 +547,12 @@ export const dataService = {
       .select()
       .single();
     if (error) throw new Error(error.message);
+    // Fire-and-forget: notify all confirmed participants
+    if (data?.id) {
+      supabase.functions.invoke('notify-activity-update', {
+        body: { announcementId: data.id },
+      }).catch((e) => console.error('notify-activity-update invoke error:', e));
+    }
     return data;
   },
 

@@ -9,11 +9,20 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../..
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/table';
 import { Badge } from '../../components/ui/badge';
 import { toast } from 'sonner';
-import { MapPin, Calendar, ArrowLeft, CheckCircle2, XCircle, Clock, DollarSign, ChevronDown, ChevronUp, UserMinus, List, MessageCircle, Unlock, Plus, Trash2, Star, MessageSquare, Minus, AlertTriangle, Globe, Lock, CheckSquare, Square, Send, Bell, Users, Loader2, UserPlus } from 'lucide-react';
+import { MapPin, Calendar, ArrowLeft, CheckCircle2, XCircle, Clock, DollarSign, ChevronDown, ChevronUp, UserMinus, List, MessageCircle, Unlock, Plus, Trash2, Star, MessageSquare, Minus, AlertTriangle, Globe, Lock, CheckSquare, Square, Send, Bell, Users, Loader2, UserPlus, Share2, Copy } from 'lucide-react';
 import { Progress } from '../../components/ui/progress';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { motion, AnimatePresence } from 'framer-motion';
+import { buildShareMessage, whatsappShareUrl, telegramShareUrl } from '../../lib/share';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '../../components/ui/dropdown-menu';
 
 export default function ManageEvent() {
   const { id } = useParams<{ id: string }>();
@@ -823,12 +832,6 @@ function SupabaseManageView({ activityId, navigate }: { activityId: string | und
     reloadBookings();
   };
 
-  const handleBulkRemind = () => {
-    if (selectedBookings.size === 0) { toast.error('Select at least one player'); return; }
-    toast.success(`Reminder sent to ${selectedBookings.size} player(s)`);
-    setSelectedBookings(new Set());
-  };
-
   const handleBulkWaitlist = async () => {
     if (selectedBookings.size === 0) { toast.error('Select at least one player'); return; }
     const ids = Array.from(selectedBookings);
@@ -992,6 +995,45 @@ function SupabaseManageView({ activityId, navigate }: { activityId: string | und
             >
             {(activity as any).visibility === 'private' ? <><Lock className="h-3 w-3 mr-1" /> Private</> : <><Globe className="h-3 w-3 mr-1" /> Public</>}
             </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  size="sm"
+                  className="rounded-full font-bold bg-primary text-primary-foreground"
+                >
+                  <Share2 className="h-3 w-3 mr-1" /> Share Session
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel>Share session</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => {
+                    const msg = buildShareMessage(activity, sessions);
+                    navigator.clipboard.writeText(msg);
+                    toast.success('Session details copied — paste in WhatsApp/Telegram');
+                  }}
+                >
+                  <Copy className="h-3.5 w-3.5 mr-2" /> Copy message
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => {
+                    const msg = buildShareMessage(activity, sessions);
+                    window.open(whatsappShareUrl(msg), '_blank', 'noopener,noreferrer');
+                  }}
+                >
+                  <MessageCircle className="h-3.5 w-3.5 mr-2" /> Share to WhatsApp
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => {
+                    const msg = buildShareMessage(activity, sessions);
+                    window.open(telegramShareUrl(activity, msg), '_blank', 'noopener,noreferrer');
+                  }}
+                >
+                  <Send className="h-3.5 w-3.5 mr-2" /> Share to Telegram
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
         {activity.description && <p className="text-sm text-muted-foreground mt-2">{activity.description}</p>}
@@ -1143,9 +1185,6 @@ function SupabaseManageView({ activityId, navigate }: { activityId: string | und
                     </Button>
                     <Button size="sm" variant="outline" className="h-7 text-xs rounded-full" onClick={handleBulkMarkPaid}>
                       <DollarSign className="mr-1 h-3 w-3" /> Mark Paid
-                    </Button>
-                    <Button size="sm" variant="outline" className="h-7 text-xs rounded-full" onClick={handleBulkRemind}>
-                      <Bell className="mr-1 h-3 w-3" /> Remind
                     </Button>
                     <Button size="sm" variant="outline" className="h-7 text-xs rounded-full text-amber-600 border-amber-600/30" onClick={handleBulkWaitlist}>
                       <List className="mr-1 h-3 w-3" /> Waitlist

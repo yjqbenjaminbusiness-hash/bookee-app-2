@@ -5,10 +5,19 @@ import { dataService, type Group, type Activity, type ActivitySession } from '..
 import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
-import { Clock, Shuffle, CalendarDays, Plus, ChevronDown, ChevronRight, Users, MapPin, Calendar, ArrowRight, Loader2, Settings, Activity as ActivityIcon, UsersRound, Eye, EyeOff, Share2 } from 'lucide-react';
+import { Clock, Shuffle, CalendarDays, Plus, ChevronDown, ChevronRight, Users, MapPin, Calendar, ArrowRight, Loader2, Settings, Activity as ActivityIcon, UsersRound, Eye, EyeOff, Share2, FolderInput, FolderMinus, History } from 'lucide-react';
 import FeedbackDialog from '../../components/FeedbackDialog';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
+import { buildShareMessage } from '../../lib/share';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '../../components/ui/dropdown-menu';
 
 export default function OrganizeLanding() {
   const { isAuthenticated, user } = useAuth();
@@ -20,6 +29,7 @@ export default function OrganizeLanding() {
   const [ballotActivitiesByGroup, setBallotActivitiesByGroup] = useState<Record<string, Activity[]>>({});
   const [sessionsByActivity, setSessionsByActivity] = useState<Record<string, ActivitySession[]>>({});
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+  const [showPastFor, setShowPastFor] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState(true);
   const [showDemo, setShowDemo] = useState(() => localStorage.getItem('bookee_hide_demo') !== 'true');
 
@@ -79,6 +89,60 @@ export default function OrganizeLanding() {
       next.has(groupId) ? next.delete(groupId) : next.add(groupId);
       return next;
     });
+  };
+
+  const togglePast = (key: string) => {
+    setShowPastFor(prev => {
+      const next = new Set(prev);
+      next.has(key) ? next.delete(key) : next.add(key);
+      return next;
+    });
+  };
+
+  const reload = async () => {
+    if (!user) return;
+    const [grps, acts, blts] = await Promise.all([
+      dataService.listGroupsByOrganizer(user.id),
+      dataService.listActivitiesByOrganizer(user.id),
+      dataService.listBallotActivitiesByOrganizer(user.id),
+    ]);
+    setGroups(grps);
+    const regularActs = acts.filter(a => a.session_type !== 'ballot');
+    setAllActivities(regularActs);
+    setAllBallotActivities(blts);
+    const actMap: Record<string, Activity[]> = {};
+    for (const g of grps) actMap[g.id] = regularActs.filter(a => a.group_id === g.id).sort((a, b) => a.date.localeCompare(b.date));
+    setActivitiesByGroup(actMap);
+    const bltMap: Record<string, Activity[]> = {};
+    for (const g of grps) bltMap[g.id] = blts.filter(b => b.group_id === g.id).sort((a, b) => a.date.localeCompare(b.date));
+    setBallotActivitiesByGroup(bltMap);
+  };
+
+  const handleAddToGroup = async (activityId: string, groupId: string) => {
+    try {
+      await dataService.updateActivityGroup(activityId, groupId);
+      toast.success('Added to group');
+      await reload();
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to add to group');
+    }
+  };
+
+  const handleRemoveFromGroup = async (activityId: string) => {
+    try {
+      await dataService.updateActivityGroup(activityId, null);
+      toast.success('Removed from group');
+      await reload();
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to remove from group');
+    }
+  };
+
+  const handleShareRow = (act: Activity) => {
+    const sessions = sessionsByActivity[act.id] || [];
+    const msg = buildShareMessage(act, sessions);
+    navigator.clipboard.writeText(msg);
+    toast.success('Session details copied — paste in WhatsApp/Telegram');
   };
 
   const createOptions = [
@@ -318,10 +382,63 @@ export default function OrganizeLanding() {
                             <p className="text-sm text-muted-foreground">No activities or ballots in this group yet</p>
                           </div>
                         ) : (
-                          <>
-                            {groupActs.map((act) => renderActivityRow(act, today))}
-                            {groupBlts.map((ballot) => renderBallotActivityRow(ballot, today))}
-                          </>
+                          (() => {
+                            const upcomingActs = groupActs
+                              .filter(a => a.date >= today)
+                              .sort((a, b) => a.date.localeCompare(b.date));
+                            const pastActs = groupActs
+                              .filter(a => a.date < today)
+                              .sort((a, b) => b.date.localeCompare(a.date));
+                            const upcomingBlts = groupBlts
+                              .filter(b => b.date >= today)
+                              .sort((a, b) => a.date.localeCompare(b.date));
+                            const pastBlts = groupBlts
+                              .filter(b => b.date < today)
+                              .sort((a, b) => b.date.localeCompare(a.date));
+                            const pastKey = `group-${group.id}`;
+                            const showPast = showPastFor.has(pastKey);
+                            const totalPast = pastActs.length + pastBlts.length;
+                            return (
+                              <>
+                                {upcomingActs.length === 0 && upcomingBlts.length === 0 && (
+                                  <div className="text-center py-4 rounded-xl border border-dashed bg-background text-xs text-muted-foreground">
+                                    No upcoming activities — create one above.
+                                  </div>
+                                )}
+                                {upcomingActs.map((act) => renderActivityRow(act, today, { inGroup: true }))}
+                                {upcomingBlts.map((ballot) => renderBallotActivityRow(ballot, today, { inGroup: true }))}
+                                {totalPast > 0 && (
+                                  <div className="pt-2">
+                                    <button
+                                      type="button"
+                                      onClick={() => togglePast(pastKey)}
+                                      className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors"
+                                    >
+                                      <History className="h-3 w-3" />
+                                      Past Activities ({totalPast})
+                                      {showPast ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                                    </button>
+                                    <AnimatePresence>
+                                      {showPast && (
+                                        <motion.div
+                                          initial={{ height: 0, opacity: 0 }}
+                                          animate={{ height: 'auto', opacity: 1 }}
+                                          exit={{ height: 0, opacity: 0 }}
+                                          transition={{ duration: 0.2 }}
+                                          className="overflow-hidden"
+                                        >
+                                          <div className="space-y-2 pt-2 opacity-70">
+                                            {pastActs.map((act) => renderActivityRow(act, today, { inGroup: true }))}
+                                            {pastBlts.map((ballot) => renderBallotActivityRow(ballot, today, { inGroup: true }))}
+                                          </div>
+                                        </motion.div>
+                                      )}
+                                    </AnimatePresence>
+                                  </div>
+                                )}
+                              </>
+                            );
+                          })()
                         )}
                       </div>
                     </motion.div>
@@ -332,39 +449,118 @@ export default function OrganizeLanding() {
           })}
 
           {/* Unlinked Activities */}
-          {unlinkedActivities.length > 0 && (
-            <>
-              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mt-6 mb-2">
-                Unlinked Activities ({unlinkedActivities.length})
-              </p>
-              <div className="rounded-2xl border-2 overflow-hidden bg-card p-4 space-y-2">
-                {unlinkedActivities.map((act) => renderActivityRow(act, today))}
-              </div>
-            </>
-          )}
+          {unlinkedActivities.length > 0 && (() => {
+            const upcoming = unlinkedActivities.filter(a => a.date >= today);
+            const past = unlinkedActivities
+              .filter(a => a.date < today)
+              .sort((a, b) => b.date.localeCompare(a.date));
+            const pastKey = 'unlinked-acts';
+            const showPast = showPastFor.has(pastKey);
+            return (
+              <>
+                <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mt-6 mb-2">
+                  Unlinked Activities ({upcoming.length}{past.length > 0 ? ` upcoming · ${past.length} past` : ''})
+                </p>
+                <div className="rounded-2xl border-2 overflow-hidden bg-card p-4 space-y-2">
+                  {upcoming.length === 0 && past.length > 0 && (
+                    <p className="text-xs text-muted-foreground italic">No upcoming unlinked activities.</p>
+                  )}
+                  {upcoming.map((act) => renderActivityRow(act, today))}
+                  {past.length > 0 && (
+                    <div className="pt-2">
+                      <button
+                        type="button"
+                        onClick={() => togglePast(pastKey)}
+                        className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        <History className="h-3 w-3" />
+                        Past Activities ({past.length})
+                        {showPast ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                      </button>
+                      <AnimatePresence>
+                        {showPast && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.2 }}
+                            className="overflow-hidden"
+                          >
+                            <div className="space-y-2 pt-2 opacity-70">
+                              {past.map((act) => renderActivityRow(act, today))}
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  )}
+                </div>
+              </>
+            );
+          })()}
 
           {/* Unlinked Ballot Activities */}
-          {unlinkedBallotActivities.length > 0 && (
-            <>
-              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mt-6 mb-2">
-                Unlinked Ballots ({unlinkedBallotActivities.length})
-              </p>
-              <div className="rounded-2xl border-2 overflow-hidden bg-card p-4 space-y-2">
-                {unlinkedBallotActivities.map((ballot) => renderBallotActivityRow(ballot, today))}
-              </div>
-            </>
-          )}
+          {unlinkedBallotActivities.length > 0 && (() => {
+            const upcoming = unlinkedBallotActivities.filter(a => a.date >= today);
+            const past = unlinkedBallotActivities
+              .filter(a => a.date < today)
+              .sort((a, b) => b.date.localeCompare(a.date));
+            const pastKey = 'unlinked-ballots';
+            const showPast = showPastFor.has(pastKey);
+            return (
+              <>
+                <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mt-6 mb-2">
+                  Unlinked Ballots ({upcoming.length}{past.length > 0 ? ` upcoming · ${past.length} past` : ''})
+                </p>
+                <div className="rounded-2xl border-2 overflow-hidden bg-card p-4 space-y-2">
+                  {upcoming.length === 0 && past.length > 0 && (
+                    <p className="text-xs text-muted-foreground italic">No upcoming unlinked ballots.</p>
+                  )}
+                  {upcoming.map((ballot) => renderBallotActivityRow(ballot, today))}
+                  {past.length > 0 && (
+                    <div className="pt-2">
+                      <button
+                        type="button"
+                        onClick={() => togglePast(pastKey)}
+                        className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        <History className="h-3 w-3" />
+                        Past Ballots ({past.length})
+                        {showPast ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                      </button>
+                      <AnimatePresence>
+                        {showPast && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.2 }}
+                            className="overflow-hidden"
+                          >
+                            <div className="space-y-2 pt-2 opacity-70">
+                              {past.map((ballot) => renderBallotActivityRow(ballot, today))}
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  )}
+                </div>
+              </>
+            );
+          })()}
         </div>
       )}
     </div>
   );
 
-  function renderBallotActivityRow(act: Activity, today: string) {
+  function renderBallotActivityRow(act: Activity, today: string, opts: { inGroup?: boolean } = {}) {
     const isDemo = dataService.isDemoItem(act.id);
     const actSessions = sessionsByActivity[act.id] || [];
     const totalSlots = actSessions.reduce((a, s) => a + s.max_slots, 0);
     const filledSlots = actSessions.reduce((a, s) => a + s.filled_slots, 0);
     const isPast = act.date < today;
+    const otherGroups = groups.filter(g => g.id !== act.group_id && !dataService.isDemoItem(g.id));
 
     return (
       <div
@@ -399,21 +595,29 @@ export default function OrganizeLanding() {
           <Badge variant={isPast ? 'secondary' : 'default'} className="text-xs">
             {isPast ? 'Closed' : 'Open'}
           </Badge>
-          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); const url = `https://bookee-app.com/player/events/${act.id}`; navigator.clipboard.writeText(url); toast.success('Link copied!'); }}>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7"
+            title="Copy share message"
+            onClick={(e) => { e.stopPropagation(); handleShareRow(act); }}
+          >
             <Share2 className="h-3.5 w-3.5 text-muted-foreground" />
           </Button>
+          {!isDemo && renderGroupActions(act, opts.inGroup, otherGroups)}
           <ArrowRight className="h-4 w-4 text-muted-foreground" />
         </div>
       </div>
     );
   }
 
-  function renderActivityRow(act: Activity, today: string) {
+  function renderActivityRow(act: Activity, today: string, opts: { inGroup?: boolean } = {}) {
     const isDemo = dataService.isDemoItem(act.id);
     const actSessions = sessionsByActivity[act.id] || [];
     const totalSlots = actSessions.reduce((a, s) => a + s.max_slots, 0);
     const filledSlots = actSessions.reduce((a, s) => a + s.filled_slots, 0);
     const isPast = act.date < today;
+    const otherGroups = groups.filter(g => g.id !== act.group_id && !dataService.isDemoItem(g.id));
 
     return (
       <div
@@ -445,12 +649,63 @@ export default function OrganizeLanding() {
           <Badge variant={isPast ? 'secondary' : 'default'} className="text-xs">
             {isPast ? 'Past' : act.status === 'active' ? 'Active' : act.status}
           </Badge>
-          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); const url = `https://bookee-app.com/player/events/${act.id}`; navigator.clipboard.writeText(url); toast.success('Link copied!'); }}>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7"
+            title="Copy share message"
+            onClick={(e) => { e.stopPropagation(); handleShareRow(act); }}
+          >
             <Share2 className="h-3.5 w-3.5 text-muted-foreground" />
           </Button>
+          {!isDemo && renderGroupActions(act, opts.inGroup, otherGroups)}
           <ArrowRight className="h-4 w-4 text-muted-foreground" />
         </div>
       </div>
+    );
+  }
+
+  function renderGroupActions(act: Activity, inGroup: boolean | undefined, otherGroups: Group[]) {
+    if (inGroup) {
+      return (
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7 text-muted-foreground hover:text-destructive"
+          title="Remove from group"
+          onClick={(e) => { e.stopPropagation(); handleRemoveFromGroup(act.id); }}
+        >
+          <FolderMinus className="h-3.5 w-3.5" />
+        </Button>
+      );
+    }
+    if (otherGroups.length === 0) return null;
+    return (
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 text-muted-foreground hover:text-primary"
+            title="Add to group"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <FolderInput className="h-3.5 w-3.5" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+          <DropdownMenuLabel>Add to group</DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          {otherGroups.map((g) => (
+            <DropdownMenuItem
+              key={g.id}
+              onClick={(e) => { e.stopPropagation(); handleAddToGroup(act.id, g.id); }}
+            >
+              {g.name}
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
     );
   }
 }

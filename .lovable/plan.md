@@ -1,56 +1,76 @@
 
-# Instant "Joined" Status & UI Cleanup
+# Manage Sessions, Past/Upcoming Sorting & Share Session
 
 ## Goal
-Make joining feel instant (WhatsApp-style) and remove broken/misleading buttons. No DB schema changes, no flow changes, no email rework.
+Make organizing simpler: let organizers attach/detach sessions from groups, hide past clutter from the main organizer view, and bring back a clear "Share Session" action that copies a useful preformatted message (not just a bare link).
 
-## Approach (UI-layer only)
+## Scope (UI + a tiny data helper — no schema changes, no flow changes)
 
-We will **not** modify the `enforce_booking_defaults` DB trigger or the `reservation_status` enum. The trigger still forces new bookings into `pending` (this protects payment integrity). Instead, we relabel `pending` to **"Joined"** wherever a participant sees it, so users feel immediately included while organizers retain `pending → confirmed/rejected` controls underneath.
+### 1. Manage Sessions inside Groups (organizer)
+**Where**: `src/pages/organizer/OrganizeLanding.tsx` (the expanded group panel).
 
-### Status display mapping
+For each activity row inside a group, add a small **"Remove from group"** action (icon button, confirm via `toast`). It calls a new `dataService.updateActivityGroup(activityId, null)` which simply runs `supabase.from('activities').update({ group_id: null })`. The activity then shows up under "Unlinked Activities".
 
-| DB status     | Player sees   | Organizer sees           |
-|---------------|---------------|--------------------------|
-| `pending`     | ✓ Joined (green) | ✓ Joined (neutral)    |
-| `confirmed`   | ✓ Confirmed   | ✓ Confirmed              |
-| `waitlisted`  | Waitlist      | Waitlist                 |
-| `rejected`    | (hidden)      | Removed                  |
-| `cancelled`   | (hidden)      | Cancelled                |
+For attaching, add an **"Add to group"** control on each unlinked activity row that opens a small dropdown of the organizer's groups; selecting one calls `dataService.updateActivityGroup(activityId, groupId)`.
 
-## Changes
+The existing per-group "Quick Create" buttons (Activity / Ballot / Event with `?group=<id>`) already handle "add a brand-new session to a group" — keep them as-is.
 
-### 1. Player-facing status relabel
-- **`src/pages/player/EventDetails.tsx`** — In `getBookingDisplayStatus` / status badge logic and the `SupabaseActivityView` participant rendering, render `pending` as "✓ Joined" with green styling (instead of "⏳ Pending" / yellow).
-- **`src/pages/player/Dashboard.tsx`** — In the "My Bookee" activity cards (the badge + icon block), treat `pending` the same as `confirmed` for display: green pill labeled "JOINED", check icon. Stats card "Pending" → "Joined".
-- **`src/pages/player/Bookings.tsx`** — Status badge for `pending` becomes "JOINED" with the green (`bg-jade-green`) style; keep "Pay Now" CTA logic untouched (payment still required for paid sessions).
+**No new pages, no migrations.** RLS already allows organizers to update their own activities (`auth.uid() = organizer_id`).
 
-### 2. Organizer-facing relabel (lightweight)
-- **`src/pages/organizer/ManageEvent.tsx`** — Replace "⏳ Pending" badge with neutral "✓ Joined" badge in the participant row. Keep all existing per-row actions intact: **Confirm**, **Move to Waitlist**, **Remove** (reject). No new approval workflow.
+### 2. Sort Activities: Upcoming vs Past (CRITICAL)
+**Where**: `src/pages/organizer/OrganizeLanding.tsx`.
 
-### 3. Remove non-functional buttons
-In **`src/pages/organizer/ManageEvent.tsx`** (Supabase view, around the action button row):
-- Remove **"Post to Telegram"** button + the `TelegramPostDialog` component and related state (`showTelegramPostDialog`, `telegramSessionId`, etc.)
-- Remove **"Post Game"** button and its handler invocation of `post-game-telegram`.
-- Remove **"Find Participants"** button if present and not wired to a working flow.
-- Keep the **"Copy Link"** / share functionality fully intact.
+Currently the expanded group panel and the "Unlinked Activities" section render every activity regardless of date. Change to:
 
-### 4. Things explicitly NOT changed
-- ❌ No DB migration. `reservation_status` enum stays. `enforce_booking_defaults` trigger stays.
-- ❌ No changes to the email/notification system (deferred).
-- ❌ No changes to payment gating (paid sessions still need payment to confirm).
-- ❌ No changes to organizer "Confirm/Reject/Waitlist" controls — they remain available for cases where the organizer needs to step in.
-- ❌ "Copy Link" sharing is preserved as-is.
+- **Default view per group**: render only `date >= today` activities.
+- Add a collapsed **"Past Activities (N)"** disclosure at the bottom of each group panel — clicking expands to show past sessions in a muted style. Same for the "Unlinked Activities" / "Unlinked Ballots" sections (split into upcoming list + collapsed "Past" group).
+- Sort upcoming **ascending** by date (soonest first), past **descending** (most recent first).
 
-## Success criteria
-- A user joining a session immediately sees "✓ Joined" (green) — no "Pending" anywhere player-facing.
-- Organizer sees the same participant as "Joined" with Confirm / Waitlist / Remove actions still available.
-- "Post to Telegram" / "Post Game" / "Find Participants" buttons are gone; no dead dialogs remain.
-- "Copy Link" still works.
-- No regressions to payment flow or email triggers.
+Player views (`Dashboard.tsx`, `GroupPage.tsx`) already separate upcoming/past via tabs — no change needed there.
+
+### 3. Restore + rename "Find Participants" → "Share Session"
+**Where**: `src/pages/organizer/ManageEvent.tsx` (header area of `SupabaseManageView`, around the "Players Visible / Public" buttons, lines ~978–996).
+
+Add a single primary **"Share Session"** button (with a `Share2` icon) next to the visibility toggles. Clicking it builds and copies a preformatted message based on the activity + its sessions:
+
+```
+Wed 8pm · Badminton @ ActiveSG Bishan
+
+6/8 slots filled · 2 slots left
+
+Join here:
+https://bookee-app.com/player/events/<activity-id>
+```
+
+Implementation:
+- One handler `handleShareSession()` that composes the string from `activity.title`, formatted date, `venue`, aggregated `filledSlots`/`totalSlots`, and the canonical link `https://bookee-app.com/player/events/${activity.id}`.
+- Copies via `navigator.clipboard.writeText(...)` and `toast.success('Session details copied — paste in WhatsApp/Telegram')`.
+- Add a small dropdown next to it with two optional deep-link shortcuts: **WhatsApp** (`https://wa.me/?text=<encoded>`) and **Telegram** (`https://t.me/share/url?url=<link>&text=<encoded>`). Both open in a new tab. Direct copy remains the primary path.
+
+### 4. Reduce ManageEvent UI clutter
+**Where**: `src/pages/organizer/ManageEvent.tsx` (`SupabaseManageView` only — the legacy mock view stays untouched).
+
+- Keep: Share Session, Players Visible toggle, Public/Private toggle, Add Timeslot, slot adjusters, per-row Confirm / Mark Paid / Waitlist / Remove, Add Guest, Announcements, bulk actions bar.
+- Remove the redundant **"Remind"** bulk action (no working notification path; consistent with prior cleanup of broken broadcast buttons).
+- Keep the existing row "Status" badge logic ("✓ Joined" / "✓ Confirmed" / "✕ Rejected") — already correct from the previous iteration.
+
+### 5. Things explicitly NOT changed
+- ❌ No DB schema/migration.
+- ❌ No changes to `enforce_booking_defaults` trigger or RLS.
+- ❌ No changes to email/notification system.
+- ❌ No changes to payment gating.
+- ❌ Player Dashboard / GroupPage past/upcoming tabs already exist — left as-is.
+- ❌ Existing `Share2` icon link in OrganizeLanding rows (copies bare URL) is replaced by the same preformatted message used in ManageEvent, for consistency.
 
 ## Files touched
-- `src/pages/player/EventDetails.tsx`
-- `src/pages/player/Dashboard.tsx`
-- `src/pages/player/Bookings.tsx`
-- `src/pages/organizer/ManageEvent.tsx`
+- `src/lib/data.ts` — add `updateActivityGroup(activityId: string, groupId: string | null): Promise<void>` and a small shared helper `buildShareMessage(activity, sessions): string`.
+- `src/pages/organizer/OrganizeLanding.tsx` — add per-row "Remove from group" / "Add to group" actions; split each section into upcoming + collapsible "Past Activities (N)"; switch the row Share button to copy the preformatted message.
+- `src/pages/organizer/ManageEvent.tsx` (`SupabaseManageView`) — add **"Share Session"** button + WhatsApp/Telegram quick-share dropdown in the header; remove the "Remind" bulk action.
+
+## Success criteria
+- Organizer can move any activity into or out of a group from `/organize` without leaving the page.
+- The default `/organize` view shows only upcoming activities; past ones are tucked into a collapsed "Past Activities (N)" section per group / unlinked list.
+- "Share Session" appears on the activity manage page; clicking copies a multi-line message with title, date/venue, slot fill, and canonical link.
+- Optional WhatsApp / Telegram quick-share opens a prefilled compose window.
+- "Copy Link" / share UX in OrganizeLanding rows now copies the same useful preformatted message instead of a bare URL.
+- No new broken/dead buttons; no DB migrations; no regressions to payment, RLS, or email flows.

@@ -53,9 +53,11 @@ Deno.serve(async (req) => {
     })
   }
 
-  const admin = createClient(supabaseUrl, serviceKey, {
-    global: { headers: { Authorization: `Bearer ${serviceKey}` } },
-  })
+  const admin = createClient(supabaseUrl, serviceKey)
+  const sendInvokeHeaders = {
+    Authorization: `Bearer ${serviceKey}`,
+    apikey: serviceKey,
+  }
 
   const { data: booking, error: bookingErr } = await admin
     .from('bookings')
@@ -127,6 +129,7 @@ Deno.serve(async (req) => {
   // 1) Booking confirmation → participant
   if (participantProfile?.email) {
     const { error } = await admin.functions.invoke('send-transactional-email', {
+      headers: sendInvokeHeaders,
       body: {
         templateName: 'booking-confirmation',
         recipientEmail: participantProfile.email,
@@ -151,6 +154,7 @@ Deno.serve(async (req) => {
   // 2) Organizer alert → organizer
   if (organizerProfile?.email && activity.organizer_id !== booking.user_id) {
     const { error } = await admin.functions.invoke('send-transactional-email', {
+      headers: sendInvokeHeaders,
       body: {
         templateName: 'organizer-alert',
         recipientEmail: organizerProfile.email,

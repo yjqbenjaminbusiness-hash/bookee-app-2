@@ -44,9 +44,11 @@ Deno.serve(async (req) => {
     })
   }
 
-  const admin = createClient(supabaseUrl, serviceKey, {
-    global: { headers: { Authorization: `Bearer ${serviceKey}` } },
-  })
+  const admin = createClient(supabaseUrl, serviceKey)
+  const sendInvokeHeaders = {
+    Authorization: `Bearer ${serviceKey}`,
+    apikey: serviceKey,
+  }
 
   // Look up announcement + activity
   const { data: announcement, error: annErr } = await admin
@@ -114,6 +116,7 @@ Deno.serve(async (req) => {
     const meta = byUser.get(p.user_id)!
     const idempotencyKey = `activity-update-${announcementId}-${p.user_id}`
     const { error: invokeErr } = await admin.functions.invoke('send-transactional-email', {
+      headers: sendInvokeHeaders,
       body: {
         templateName: 'activity-update',
         recipientEmail: p.email,

@@ -29,6 +29,7 @@ export default function OrganizeLanding() {
   const [ballotActivitiesByGroup, setBallotActivitiesByGroup] = useState<Record<string, Activity[]>>({});
   const [sessionsByActivity, setSessionsByActivity] = useState<Record<string, ActivitySession[]>>({});
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+  const [showPastFor, setShowPastFor] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState(true);
   const [showDemo, setShowDemo] = useState(() => localStorage.getItem('bookee_hide_demo') !== 'true');
 
@@ -88,6 +89,60 @@ export default function OrganizeLanding() {
       next.has(groupId) ? next.delete(groupId) : next.add(groupId);
       return next;
     });
+  };
+
+  const togglePast = (key: string) => {
+    setShowPastFor(prev => {
+      const next = new Set(prev);
+      next.has(key) ? next.delete(key) : next.add(key);
+      return next;
+    });
+  };
+
+  const reload = async () => {
+    if (!user) return;
+    const [grps, acts, blts] = await Promise.all([
+      dataService.listGroupsByOrganizer(user.id),
+      dataService.listActivitiesByOrganizer(user.id),
+      dataService.listBallotActivitiesByOrganizer(user.id),
+    ]);
+    setGroups(grps);
+    const regularActs = acts.filter(a => a.session_type !== 'ballot');
+    setAllActivities(regularActs);
+    setAllBallotActivities(blts);
+    const actMap: Record<string, Activity[]> = {};
+    for (const g of grps) actMap[g.id] = regularActs.filter(a => a.group_id === g.id).sort((a, b) => a.date.localeCompare(b.date));
+    setActivitiesByGroup(actMap);
+    const bltMap: Record<string, Activity[]> = {};
+    for (const g of grps) bltMap[g.id] = blts.filter(b => b.group_id === g.id).sort((a, b) => a.date.localeCompare(b.date));
+    setBallotActivitiesByGroup(bltMap);
+  };
+
+  const handleAddToGroup = async (activityId: string, groupId: string) => {
+    try {
+      await dataService.updateActivityGroup(activityId, groupId);
+      toast.success('Added to group');
+      await reload();
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to add to group');
+    }
+  };
+
+  const handleRemoveFromGroup = async (activityId: string) => {
+    try {
+      await dataService.updateActivityGroup(activityId, null);
+      toast.success('Removed from group');
+      await reload();
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to remove from group');
+    }
+  };
+
+  const handleShareRow = (act: Activity) => {
+    const sessions = sessionsByActivity[act.id] || [];
+    const msg = buildShareMessage(act, sessions);
+    navigator.clipboard.writeText(msg);
+    toast.success('Session details copied — paste in WhatsApp/Telegram');
   };
 
   const createOptions = [

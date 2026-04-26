@@ -39,9 +39,13 @@ Deno.serve(async (req) => {
   }
 
   let bookingId: string
+  let event: 'created' | 'updated' | 'cancelled' = 'created'
   try {
     const body = await req.json()
     bookingId = body.bookingId || body.booking_id
+    if (body.event === 'updated' || body.event === 'cancelled') {
+      event = body.event
+    }
   } catch {
     return new Response(JSON.stringify({ error: 'Invalid JSON' }), {
       status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -126,15 +130,32 @@ Deno.serve(async (req) => {
 
   const results: Record<string, any> = {}
 
-  // 1) Booking confirmation → participant
+  // Choose template + idempotency suffix based on event
+  const eventLabel =
+    event === 'updated' ? 'updated'
+    : event === 'cancelled' ? 'cancelled'
+    : 'confirmed'
+
+  const participantTemplate =
+    event === 'created' ? 'booking-confirmation' : 'activity-update'
+  const participantSubjectPrefix =
+    event === 'updated' ? 'Booking Updated'
+    : event === 'cancelled' ? 'Booking Cancelled'
+    : 'Booking Confirmed'
+  const participantMessage =
+    event === 'updated' ? 'Your booking details were updated.'
+    : event === 'cancelled' ? 'Your booking was cancelled. We hope to see you next time!'
+    : 'Your spot has been confirmed!'
+
+  // 1) Participant email
   if (participantProfile?.email) {
     const { error } = await admin.functions.invoke('send-transactional-email', {
       headers: sendInvokeHeaders,
       body: {
-        templateName: 'booking-confirmation',
+        templateName: participantTemplate,
         recipientEmail: participantProfile.email,
-        idempotencyKey: `booking-confirm-${bookingId}`,
-        templateData: {
+        idempotencyKey: `booking-${eventLabel}-${bookingId}`,
+        templateData: event === 'created' ? {
           playerName: participantProfile.display_name || booking.player_name,
           activityTitle: activity.title,
           date: dateStr,
@@ -142,6 +163,11 @@ Deno.serve(async (req) => {
           venue: activity.venue,
           amount,
           bookingId,
+        } : {
+          recipientName: participantProfile.display_name || booking.player_name,
+          activityTitle: activity.title,
+          message: `${participantSubjectPrefix}: ${participantMessage}${dateStr ? `\n\n📅 ${dateStr}${timeStr ? ` · ${timeStr}` : ''}` : ''}${activity.venue ? `\n📍 ${activity.venue}` : ''}`,
+          activityUrl: `${SITE_URL}/player/bookings`,
         },
       },
     })
@@ -151,14 +177,15 @@ Deno.serve(async (req) => {
     results.participant = 'no_email'
   }
 
-  // 2) Organizer alert → organizer
+  // 2) Organizer alert
   if (organizerProfile?.email && activity.organizer_id !== booking.user_id) {
+    const orgIdempotency = `organizer-alert-${eventLabel}-${bookingId}`
     const { error } = await admin.functions.invoke('send-transactional-email', {
       headers: sendInvokeHeaders,
       body: {
         templateName: 'organizer-alert',
         recipientEmail: organizerProfile.email,
-        idempotencyKey: `organizer-alert-${bookingId}`,
+        idempotencyKey: orgIdempotency,
         templateData: {
           organizerName: organizerProfile.display_name,
           activityTitle: activity.title,
@@ -168,6 +195,7 @@ Deno.serve(async (req) => {
           filledSlots: session.filled_slots,
           maxSlots: session.max_slots,
           manageUrl: `${SITE_URL}/organizer/events/${activity.id}`,
+          eventType: eventLabel,
         },
       },
     })

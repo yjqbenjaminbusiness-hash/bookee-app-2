@@ -516,6 +516,10 @@ export const dataService = {
       .update(updates)
       .eq('id', bookingId);
     if (error) throw new Error(error.message);
+    // Fire-and-forget: notify participant + organizer of update
+    supabase.functions.invoke('notify-booking', {
+      body: { bookingId, event: 'updated' },
+    }).catch((e) => console.error('notify-booking (updated) invoke error:', e));
   },
 
   async cancelBooking(bookingId: string, sessionId: string): Promise<void> {
@@ -537,6 +541,10 @@ export const dataService = {
         .update({ filled_slots: session.filled_slots - 1 })
         .eq('id', sessionId);
     }
+    // Fire-and-forget: notify participant + organizer of cancellation
+    supabase.functions.invoke('notify-booking', {
+      body: { bookingId, event: 'cancelled' },
+    }).catch((e) => console.error('notify-booking (cancelled) invoke error:', e));
   },
 
   // ─── Image Upload ───────────────────────────────────────────

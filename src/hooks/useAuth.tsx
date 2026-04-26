@@ -94,6 +94,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 const mockUser = supabaseUserToMockUser(profile, role);
                 setUser(mockUser);
                 setIsSupabaseAuth(true);
+
+                // Fire welcome email once per account (covers Google/Apple/email)
+                if (!(profile as any).welcome_email_sent_at) {
+                  supabase.functions
+                    .invoke('notify-signup', { body: {} })
+                    .catch((e) => console.error('notify-signup invoke error:', e));
+                }
               }
             } catch (e) {
               console.error('Error fetching profile:', e);

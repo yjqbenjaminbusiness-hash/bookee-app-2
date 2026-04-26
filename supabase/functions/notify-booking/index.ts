@@ -166,13 +166,8 @@ Deno.serve(async (req) => {
         } : {
           recipientName: participantProfile.display_name || booking.player_name,
           activityTitle: activity.title,
-          subjectPrefix: participantSubjectPrefix,
-          message: participantMessage,
-          date: dateStr,
-          time: timeStr,
-          venue: activity.venue,
-          ctaUrl: `${SITE_URL}/player/bookings`,
-          ctaLabel: 'View My Bookings',
+          message: `${participantSubjectPrefix}: ${participantMessage}${dateStr ? `\n\n📅 ${dateStr}${timeStr ? ` · ${timeStr}` : ''}` : ''}${activity.venue ? `\n📍 ${activity.venue}` : ''}`,
+          activityUrl: `${SITE_URL}/player/bookings`,
         },
       },
     })

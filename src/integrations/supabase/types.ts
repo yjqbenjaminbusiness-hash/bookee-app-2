@@ -736,8 +736,6 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      _check_welcome_vault_key: { Args: never; Returns: boolean }
-      _test_fire_welcome: { Args: { p_email: string }; Returns: Json }
       delete_email: {
         Args: { message_id: number; queue_name: string }
         Returns: boolean

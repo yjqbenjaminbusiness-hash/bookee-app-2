@@ -1,98 +1,78 @@
+# Fix Welcome Email Trigger & Backfill Missed Signups
 
-## Goal
+## Test Results Summary
 
-Guarantee an email is sent for **every signup** (email/password, Google, Apple) and for **every meaningful account/activity update** (join session, update reservation, leave session). Today, OAuth signups bypass verification entirely, and only the initial booking sends an email.
+I ran an end-to-end audit of the email pipeline. Most flows work correctly, but the **server-side welcome email trigger for OAuth (Google/Apple) signups is broken**.
 
----
+### ✅ Confirmed Working (via `email_send_log`)
+- Email/password signup → verification email (`signup` template)
+- Welcome email after password verification 
+- Booking confirmation → participant
+- Organizer alert → organizer
+- Activity update / announcement → participants
+- Booking cancellation & update notifications
+- Recovery / feedback emails
 
-## Part 1 — Signup Emails (Universal)
+### ❌ Confirmed Broken
+**Google/Apple OAuth signups receive NO welcome email.**
 
-### A. Email/password signups → mandatory verification email
-- Re-enable Supabase "Confirm email" so the existing `auth-email-hook` `signup` template is triggered by every email/password signup.
-- Update `src/hooks/useAuth.tsx` (`signupPlayerSupabase` / `signupOrganizerSupabase`):
-  - Keep `emailRedirectTo: ${window.location.origin}/`.
-  - After signup, do **not** assume the user is logged in — show a "Check your email to confirm" toast and route to `/login`.
-- Update `src/pages/SignupPlayerPage.tsx` and `src/pages/SignupOrganizerPage.tsx` accordingly (no auto-redirect to dashboard until session exists).
-- Update memory `mem://auth/onboarding-flow` to reflect that mandatory email verification is now ON for password signups.
+Evidence from `net._http_response` (the trigger's HTTP call log):
+- Most calls **time out at 5000 ms** (the configured `timeout_milliseconds`)
+- Calls that complete return **HTTP 403** — the Vault service-role key is being rejected by `send-transactional-email`
 
-### B. Google/Apple signups → branded "welcome" email (auto-confirmed accounts)
-OAuth users are auto-confirmed by the provider, so Supabase does NOT fire a `signup` auth email. We need to detect first-time OAuth signups and send our own `welcome` transactional email.
-
-Implementation:
-1. **New edge function `notify-signup`** (`verify_jwt = true`):
-   - Authenticated call from the client right after `onAuthStateChange` fires `SIGNED_IN`.
-   - Reads `auth.users.created_at` vs `last_sign_in_at` to detect first sign-in (or checks a new `profiles.welcome_email_sent_at` column to ensure idempotency).
-   - If first-time AND welcome not yet sent → invoke `send-transactional-email` with `templateName: 'welcome'`, `idempotencyKey: welcome-${user.id}`.
-   - Stamp `profiles.welcome_email_sent_at = now()` so it never fires twice.
-2. **DB migration**: add `welcome_email_sent_at timestamptz` to `profiles`.
-3. **Client wiring** in `src/hooks/useAuth.tsx`: inside the `onAuthStateChange` handler, after profile load, if `welcome_email_sent_at` is null → `supabase.functions.invoke('notify-signup')`. This covers Google, Apple, AND email/password (after they confirm and first sign in).
-4. **Welcome template tweak** (`supabase/functions/_shared/transactional-email-templates/welcome.tsx`): personalize with `displayName`, set subject "Welcome to Bookee 🎉", include CTA to `/player/events` or `/organize` depending on role.
-
-This guarantees: every new account — regardless of provider — receives at least one branded email from us.
+Evidence from `profiles` table:
+- Every existing user — including a Google signup at 14:39 today — has `welcome_email_sent_at = NULL`
+- The trigger fires but stamps `welcome_email_sent_at` BEFORE the HTTP call, so failures are invisible at the row level (we only see them in `net._http_response`)
 
 ---
 
-## Part 2 — Activity / Account Update Emails
+## Root Cause
 
-### Already wired (verified)
-- `createBooking` → `notify-booking` → sends `booking-confirmation` (participant) + `organizer-alert` (organizer). ✅
-- Announcements → `notify-activity-update` → emails all confirmed participants. ✅
+The trigger function `send_welcome_email_on_profile()` has two defects:
 
-### Gaps to close
-1. **Reservation update** (player edits phone / special request via `dataService.updateBooking`):
-   - Add a `notify-booking-updated` invocation (reuse `notify-booking` with a new `event: 'updated'` flag, or new function).
-   - Send `activity-update` template to participant: "Your booking for [Activity] was updated".
-   - Optionally notify organizer.
+1. **5-second timeout is too short** for cold-starting edge functions (most calls die before reaching the function)
+2. **Vault secret `welcome_trigger_service_role_key` is stale or malformed** — the few requests that complete get 403 from `send-transactional-email`
 
-2. **Leave session / cancel booking** (`dataService.cancelBooking`):
-   - Invoke a new `notify-booking-cancelled` flow that emails:
-     - Participant: confirmation that they left.
-     - Organizer: alert that a slot opened up (reuse `organizer-alert` template with a `cancelled: true` variant, or add a small `booking-cancelled.tsx` template).
-
-3. **Organizer-side actions** (already protected by RLS): when an organizer confirms/rejects a booking (`updateBookingPaymentStatus` or status change), send the participant a `booking-confirmation` (status: confirmed) or `activity-update` (status: rejected) email.
-
-4. **New template files** to add under `supabase/functions/_shared/transactional-email-templates/`:
-   - `booking-cancelled.tsx` (participant + organizer variants via a `role` prop).
-   - Register in `registry.ts`.
+Additionally, the trigger stamps `welcome_email_sent_at = now()` **before** firing the HTTP call, so a failed call still marks the user as "sent" — silently swallowing the error.
 
 ---
 
-## Part 3 — Verification & Testing
+## Proposed Fix
 
-After implementation, run live verification:
-1. Sign up via email/password → expect `signup` row in `email_send_log` (status `sent`).
-2. Sign up via Google → expect `welcome` row in `email_send_log`.
-3. Join an activity → expect `booking-confirmation` + `organizer-alert`.
-4. Update the booking → expect `activity-update` (or new "booking-updated") row.
-5. Leave the activity → expect `booking-cancelled` rows for both participant and organizer.
-6. Post an announcement → expect `activity-update` rows for all participants.
+### 1. Migration: Repair the trigger function
 
-Pull `email_send_log` for each test and report a clean table.
+- **Move the `welcome_email_sent_at` stamp to AFTER a successful enqueue** (use `net.http_post` return ID to verify dispatch was queued, not the response — pg_net is async). Actually keep the stamp but only set it once we've successfully called `net.http_post` (which queues the request); don't pre-stamp.
+- **Increase `timeout_milliseconds` to 30000** (30s) to accommodate cold starts.
+- **Refresh the Vault secret** `welcome_trigger_service_role_key` with the current `SUPABASE_SERVICE_ROLE_KEY` (the 403 indicates the stored value is wrong/stale).
+- Add an `EXCEPTION` block that logs failures via `RAISE WARNING` so we can see them in Postgres logs.
 
----
+### 2. Backfill existing users who never got a welcome email
 
-## Files to be created / changed
+Write a one-time SQL block that loops over `profiles WHERE welcome_email_sent_at IS NULL AND email IS NOT NULL` and invokes `send-transactional-email` for each. Targets 6 affected users (per current data).
 
-**New**
-- `supabase/functions/notify-signup/index.ts` (welcome trigger for OAuth + first sign-in)
-- `supabase/functions/notify-booking-updated/index.ts` (or extend `notify-booking`)
-- `supabase/functions/notify-booking-cancelled/index.ts`
-- `supabase/functions/_shared/transactional-email-templates/booking-cancelled.tsx`
-- DB migration: `profiles.welcome_email_sent_at`
+The backfill will use the same `idempotencyKey` pattern (`welcome-${user_id}`) so `send-transactional-email`'s idempotency layer prevents duplicates if any did sneak through.
 
-**Modified**
-- `src/hooks/useAuth.tsx` — invoke `notify-signup` on first sign-in; switch password signup flow to "check your email"
-- `src/pages/SignupPlayerPage.tsx`, `src/pages/SignupOrganizerPage.tsx` — reflect verification flow
-- `src/lib/data.ts` — invoke update/cancel notification functions in `updateBooking` and `cancelBooking`
-- `supabase/functions/_shared/transactional-email-templates/welcome.tsx` — personalize
-- `supabase/functions/_shared/transactional-email-templates/registry.ts` — register new template
-- `supabase/config.toml` — add `verify_jwt = true` for `notify-signup` and the new notification functions
-- Re-enable "Confirm email" in Auth settings (via `cloud--configure_auth`)
-- `mem://auth/onboarding-flow` — update to reflect mandatory verification for email/password signups
+### 3. Verification (after migration runs)
+
+- Query `net._http_response` for fresh entries with `status_code = 200`
+- Query `email_send_log` for new `welcome` rows matching the backfilled emails
+- Confirm `profiles.welcome_email_sent_at` is now populated for all backfilled users
 
 ---
 
-## Success criteria
-- Every new account (email/password, Google, Apple) receives at least one branded email (verification OR welcome).
-- Every booking lifecycle event (join, update, leave) results in an email to the participant AND an alert to the organizer.
-- `email_send_log` shows zero gaps across all test scenarios.
+## Files Changed
+
+- **New migration** (`supabase/migrations/<ts>_fix_welcome_trigger.sql`):
+  - `CREATE OR REPLACE FUNCTION public.send_welcome_email_on_profile()` with 30s timeout, post-stamp logic, and warning logs
+  - Refresh Vault secret `welcome_trigger_service_role_key`
+  - One-time backfill loop for existing `welcome_email_sent_at IS NULL` profiles
+
+No edge function code changes — `send-transactional-email`, `notify-booking`, `notify-activity-update`, and `notify-signup` are all working correctly per the logs.
+
+---
+
+## What Will NOT Change
+
+- All currently-working flows (booking, announcement, password verification) stay untouched
+- No client-side code changes needed — the server-side trigger handles all signup paths
+- Email templates unchanged
